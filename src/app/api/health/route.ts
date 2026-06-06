@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import Database from "better-sqlite3";
-import path from "path";
+import { ensureMigrated } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +13,12 @@ export async function GET() {
 
   // 2. Database check
   try {
-    const dbPath = path.join(process.cwd(), "data.db");
-    const db = new Database(dbPath);
-    db.pragma("journal_mode = WAL");
-    const row = db.prepare("SELECT COUNT(*) as count FROM shops").get() as { count: number };
-    db.close();
-    checks.database = `✅ (${row.count} shops)`;
+    await ensureMigrated();
+    // Import and run a quick query to check DB connectivity
+    const { neon } = await import("@neondatabase/serverless");
+    const sql = neon(process.env.DATABASE_URL || process.env.POSTGRES_URL || "");
+    await sql`SELECT 1 as ping`;
+    checks.database = "✅ (connected)";
   } catch (e: any) {
     checks.database = `❌ ${e.message}`;
     allOk = false;

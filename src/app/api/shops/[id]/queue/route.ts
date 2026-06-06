@@ -8,7 +8,6 @@ import {
   callAgain,
   getShop,
   getTodayCustomerCount,
-  emitShopEvent,
 } from "@/lib/db";
 import { canAcceptCustomer, getPlanLimits } from "@/lib/plans";
 
@@ -18,7 +17,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const queue = getActiveQueue(id);
+  const queue = await getActiveQueue(id);
   return NextResponse.json({ queue });
 }
 
@@ -28,12 +27,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const shop = getShop(id);
+  const shop = await getShop(id);
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
   // ── Plan enforcement: check daily customer limit ──
   const shopPlan = shop.plan || "free";
-  const todayCount = getTodayCustomerCount(id);
+  const todayCount = await getTodayCustomerCount(id);
   if (!canAcceptCustomer(shopPlan, todayCount)) {
     const limits = getPlanLimits(shopPlan);
     return NextResponse.json(
@@ -48,11 +47,9 @@ export async function POST(
 
   const body = await req.json();
   // Sanitize customer input
-  if (body.customerName) body.customerName = body.customerName.replace(/[<>&"']/g, "").trim();
+  if (body.customerName) body.customerName = body.customerName.replace(/[<>&\"']/g, "").trim();
   if (body.customerPhone) body.customerPhone = body.customerPhone.replace(/[^0-9+\- ]/g, "").trim();
-  const result = joinQueue({ shopId: id, ...body });
-
-  emitShopEvent(id, "queue-update", { action: "join", entry: result.entry });
+  const result = await joinQueue({ shopId: id, ...body });
 
   return NextResponse.json(result, { status: 201 });
 }
@@ -68,20 +65,16 @@ export async function PATCH(
   let result;
   switch (body.action) {
     case "call-next":
-      result = callNext(id);
-      if (result) emitShopEvent(id, "queue-update", { action: "called", entry: result });
+      result = await callNext(id);
       break;
     case "complete":
-      result = completeEntry(body.entryId);
-      if (result) emitShopEvent(id, "queue-update", { action: "completed", entry: result });
+      result = await completeEntry(body.entryId);
       break;
     case "cancel":
-      result = cancelEntry(body.entryId);
-      if (result) emitShopEvent(id, "queue-update", { action: "cancelled", entry: result });
+      result = await cancelEntry(body.entryId);
       break;
     case "call-again":
-      result = callAgain(body.entryId);
-      if (result) emitShopEvent(id, "queue-update", { action: "called", entry: result, recall: true });
+      result = await callAgain(body.entryId);
       break;
     default:
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });

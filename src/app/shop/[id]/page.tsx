@@ -174,71 +174,7 @@ export default function ShopPage() {
     }
   }, [shop]);
 
-  // SSE for real-time updates — باستخدام useRef عشان ما يتقطعش الاتصال
-  useEffect(() => {
-    if (!shop) return;
-    const evtSource = new EventSource(`/api/shops/${id}/queue/events`);
-
-    evtSource.addEventListener("queue-update", (e) => {
-      const data = JSON.parse(e.data);
-      if (data.action === "called" && myNumberRef.current === data.entry.number) {
-        // تحديث myEntry بكل البيانات (recall_count + called_at)
-        setMyEntry((prev) => {
-          if (!prev) return null;
-          return { ...prev, status: "called", recall_count: data.entry.recall_count, called_at: data.entry.called_at };
-        });
-        // 🔔 تشغيل الصوت فوراً — بنستخدم async عشان نستنى resume لو السياق معلق
-        playCallSound();
-        // 🔊 اهتزاز للموبايل
-        try { navigator.vibrate?.([200, 100, 200, 100, 400]); } catch {}
-        // 🔔 إشعار المتصفح — tag مختلف عشان يظهر حتى لو موجود قبله
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification(data.recall ? "🔔🔔 حان دورك! (إعادة نداء)" : "🔔 حان دورك!", {
-            body: `رقم ${data.entry.number} — تفضل إلى ${shop?.name || "المحل"}`,
-            tag: data.recall ? `turn-called-${Date.now()}` : "turn-called",
-          });
-        }
-        // تغيير عنوان الصفحة — نضيف recall indicator
-        document.title = data.recall
-          ? `🔔🔔 إعادة نداء! رقم ${data.entry.number} - ${shop?.name || "المحل"}`
-          : `🔔 حان دورك! - ${shop?.name || "المحل"}`;
-        // بعد 3 ثوان نرجع العنوان العادي
-        setTimeout(() => {
-          document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
-        }, 3000);
-      }
-      // تحديث قائمة الانتظار الحية
-      fetch(`/api/shops/${id}/queue`, { headers: { "ngrok-skip-browser-warning": "true" } }).then(r => r.json()).then(d => setQueue(d.queue || []));
-    });
-
-    evtSource.addEventListener("init", (e) => {
-      const data = JSON.parse(e.data);
-      setQueue(data.queue || []);
-      // ✅ التحقق من حالة العميل عند إعادة الاتصال
-      // لو الاتصال انقطع واتجدد، نتأكد إن رقمنا مش موجود في "called"
-      if (myNumberRef.current && data.called) {
-        const calledEntry = data.called.find(
-          (ce: QueueEntry) => ce.number === myNumberRef.current
-        );
-        if (calledEntry) {
-          setMyEntry(calledEntry);
-          playCallSound();
-          if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("🔔 حان دورك!", {
-              body: `رقم ${calledEntry.number} — تفضل إلى ${shop?.name || "المحل"}`,
-              tag: "turn-called",
-            });
-          }
-          document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
-        }
-      }
-    });
-
-    return () => evtSource.close();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, shop]);
-
-  // ⏱️ Polling مستمر — كل 3 ثوان عشان نكتشف إعادة النداء (حتى لو SSE انقطع من التونل)
+  // ⏱️ Polling مستمر — كل 3 ثوان للتحديث المباشر
   useEffect(() => {
     if (!shop || !myEntry) return;
     const interval = setInterval(async () => {

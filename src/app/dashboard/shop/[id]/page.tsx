@@ -94,42 +94,7 @@ export default function ShopDashboard() {
       .catch(() => {});
   }, [id]);
 
-  // SSE for real-time
-  useEffect(() => {
-    const evtSource = new EventSource(`/api/shops/${id}/queue/events`);
-    evtSource.addEventListener("init", (e) => {
-      const data = JSON.parse(e.data);
-      setQueue((prev) => {
-        const existing = [...prev];
-        data.queue.forEach((entry: QueueEntry) => {
-          if (!existing.find((e) => e.id === entry.id)) {
-            existing.push(entry);
-          }
-        });
-        return existing;
-      });
-    });
-    evtSource.addEventListener("queue-update", (e) => {
-      const data = JSON.parse(e.data);
-      if (data.action === "join") {
-        setQueue((prev) => [...prev, data.entry]);
-      } else if (data.action === "called") {
-        setQueue((prev) =>
-          prev.map((e) => (e.id === data.entry.id ? { ...e, status: data.entry.status, recall_count: data.entry.recall_count } : e))
-        );
-        setNotification({ number: data.entry.number, name: data.entry.customer_name });
-        setTimeout(() => setNotification(null), 5000);
-        setShop((prev) => prev ? { ...prev, current_number: data.entry.number } : prev);
-      } else if (data.action === "completed" || data.action === "cancelled") {
-        setQueue((prev) =>
-          prev.map((e) => (e.id === data.entry.id ? { ...e, status: data.entry.status } : e))
-        );
-      }
-    });
-    return () => evtSource.close();
-  }, [id]);
-
-  // ⏱️ Polling احتياطي — كل 5 ثوان عشان لو SSE انقطع من التونل
+  // ⏱️ تحديث مباشر عن طريق Polling — كل 3 ثوان
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -142,8 +107,9 @@ export default function ShopDashboard() {
         });
         const d = await res.json();
         if (d.allQueue) setQueue(d.allQueue);
+        if (d.shop) setShop(d.shop);
       } catch {}
-    }, 5000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [id]);
 

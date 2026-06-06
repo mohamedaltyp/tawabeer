@@ -6,10 +6,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const shop = getShop(id);
+  const shop = await getShop(id);
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
-  const settings = getQueueSettings(id);
+  const settings = await getQueueSettings(id);
   return NextResponse.json({ settings });
 }
 
@@ -19,6 +19,6 @@ export async function PUT(
 ) {
   const { id } = await params;
   const body = await req.json();
-  const settings = updateQueueSettings(id, body);
+  const settings = await updateQueueSettings(id, body);
   return NextResponse.json({ settings });
 }

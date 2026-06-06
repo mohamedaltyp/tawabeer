@@ -1,11 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: [
-    "*.trycloudflare.com",
-    "*.ngrok-free.app",
-    "*.ngrok.io",
-  ],
+  // Vercel domains are allowed by default
+  serverExternalPackages: ["@neondatabase/serverless"],
 };
 
 export default nextConfig;

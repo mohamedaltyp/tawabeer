@@ -1,50 +1,89 @@
-import Database from "better-sqlite3";
-import path from "path";
+import { neon, neonConfig } from "@neondatabase/serverless";
 import { v4 as uuidv4 } from "uuid";
 
-const dbPath = path.join(process.cwd(), "data.db");
-const db = new Database(dbPath);
+// Allow HTTP mode (no WebSocket needed) — works on Vercel Edge + Serverless
+neonConfig.poolQueryViaFetch = true;
 
-// Enable WAL mode for better concurrent access
-db.pragma("journal_mode = WAL");
+const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL || "";
+const sql = neon(DATABASE_URL);
 
-// Run migrations for existing tables
-function runMigrations() {
-  // Add plan columns to shops table if they don't exist
-  try {
-    db.exec("ALTER TABLE shops ADD COLUMN plan TEXT DEFAULT 'free'");
-  } catch {} // already exists
-  try {
-    db.exec("ALTER TABLE shops ADD COLUMN plan_status TEXT DEFAULT 'active'");
-  } catch {}
-  try {
-    db.exec("ALTER TABLE shops ADD COLUMN plan_started_at TEXT");
-  } catch {}
-  try {
-    db.exec("ALTER TABLE shops ADD COLUMN plan_expires_at TEXT");
-  } catch {}
-  try {
-    db.exec("ALTER TABLE shops ADD COLUMN stripe_customer_id TEXT DEFAULT ''");
-  } catch {}
-  try {
-    db.exec("ALTER TABLE shops ADD COLUMN stripe_subscription_id TEXT DEFAULT ''");
-  } catch {}
-  // WhatsApp columns in queue_settings
-  try {
-    db.exec("ALTER TABLE queue_settings ADD COLUMN whatsapp_enabled INTEGER DEFAULT 0");
-  } catch {}
-  try {
-    db.exec("ALTER TABLE queue_settings ADD COLUMN whatsapp_number TEXT DEFAULT ''");
-  } catch {}
-  try {
-    db.exec("ALTER TABLE queue_settings ADD COLUMN whatsapp_business_account_id TEXT DEFAULT ''");
-  } catch {}
-  // recall_count for queue_entries
-  try {
-    db.exec("ALTER TABLE queue_entries ADD COLUMN recall_count INTEGER DEFAULT 0");
-  } catch {}
-  // payment_methods table
-  db.exec(`
+// ─── Schema Setup ────────────────────────────
+
+async function runMigrations() {
+  // Enable UUID extension
+  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+  // Create tables
+  await sql`
+    CREATE TABLE IF NOT EXISTS shops (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      address TEXT DEFAULT '',
+      phone TEXT DEFAULT '',
+      category TEXT DEFAULT '',
+      current_number INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      owner_name TEXT DEFAULT '',
+      owner_phone TEXT DEFAULT '',
+      owner_password TEXT DEFAULT '',
+      plan TEXT DEFAULT 'free',
+      plan_status TEXT DEFAULT 'active',
+      plan_started_at TIMESTAMPTZ,
+      plan_expires_at TIMESTAMPTZ,
+      stripe_customer_id TEXT DEFAULT '',
+      stripe_subscription_id TEXT DEFAULT '',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS queue_entries (
+      id TEXT PRIMARY KEY,
+      shop_id TEXT NOT NULL,
+      number INTEGER NOT NULL,
+      customer_name TEXT DEFAULT '',
+      customer_phone TEXT DEFAULT '',
+      status TEXT DEFAULT 'waiting',
+      estimated_wait INTEGER DEFAULT 0,
+      recall_count INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      called_at TIMESTAMPTZ,
+      completed_at TIMESTAMPTZ,
+      FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS queue_settings (
+      shop_id TEXT PRIMARY KEY,
+      avg_service_minutes REAL DEFAULT 10,
+      is_open INTEGER DEFAULT 1,
+      greeting_message TEXT DEFAULT 'مرحباً بك!',
+      whatsapp_enabled INTEGER DEFAULT 0,
+      whatsapp_number TEXT DEFAULT '',
+      whatsapp_business_account_id TEXT DEFAULT '',
+      FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      shop_id TEXT NOT NULL,
+      entry_id TEXT NOT NULL,
+      type TEXT DEFAULT 'whatsapp',
+      status TEXT DEFAULT 'pending',
+      recipient TEXT DEFAULT '',
+      message TEXT DEFAULT '',
+      sent_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
+      FOREIGN KEY (entry_id) REFERENCES queue_entries(id) ON DELETE CASCADE
+    )
+  `;
+
+  await sql`
     CREATE TABLE IF NOT EXISTS payment_methods (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -53,95 +92,53 @@ function runMigrations() {
       icon TEXT DEFAULT '💳',
       is_active INTEGER DEFAULT 1,
       sort_order INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      created_at TIMESTAMPTZ DEFAULT NOW()
     )
-  `);
-  // Add default payment methods if empty
-  const count = db.prepare("SELECT COUNT(*) as c FROM payment_methods").get() as { c: number };
-  if (count.c === 0) {
-    const insert = db.prepare("INSERT INTO payment_methods (id, name, type, details, icon, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
-    insert.run(uuidv4(), "فودافون كاش", "vodafone_cash", "٠١٠٠٠٠٠٠٠٠ (محمد)", "📱", 1);
-    insert.run(uuidv4(), "بنك مصر", "bank_transfer", "١٠٠٠-٢٠٠٠٠٠-٣٠٠ (دورك لتقنية المعلومات)", "🏦", 2);
-    insert.run(uuidv4(), "إنستا باي", "instapay", "instapay@example.com", "💳", 3);
-  }
-  // app_settings table
-  db.exec(`
+  `;
+
+  await sql`
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL DEFAULT ''
     )
-  `);
-  // Default settings
-  const settingCount = db.prepare("SELECT COUNT(*) as c FROM app_settings").get() as { c: number };
-  if (settingCount.c === 0) {
-    db.prepare("INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)").run("admin_whatsapp", "01000000000");
+  `;
+
+  // Migration: Add plan columns if they don't exist (safe to run multiple times)
+  const migrations = [
+    `ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free'`,
+    `ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan_status TEXT DEFAULT 'active'`,
+    `ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan_started_at TIMESTAMPTZ`,
+    `ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMPTZ`,
+    `ALTER TABLE shops ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT DEFAULT ''`,
+    `ALTER TABLE shops ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT DEFAULT ''`,
+    `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS whatsapp_enabled INTEGER DEFAULT 0`,
+    `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS whatsapp_number TEXT DEFAULT ''`,
+    `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS whatsapp_business_account_id TEXT DEFAULT ''`,
+    `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS recall_count INTEGER DEFAULT 0`,
+  ];
+  for (const m of migrations) {
+    try { await sql.unsafe(m); } catch { /* column already exists */ }
+  }
+
+  // Default payment methods if empty
+  const { count: pmCount } = await sql`SELECT COUNT(*)::int as count FROM payment_methods` as unknown as { count: number };
+  if (pmCount === 0) {
+    await sql`
+      INSERT INTO payment_methods (id, name, type, details, icon, sort_order) VALUES
+      (${uuidv4()}, 'فودافون كاش', 'vodafone_cash', '٠١٠٠٠٠٠٠٠٠ (محمد)', '📱', 1),
+      (${uuidv4()}, 'بنك مصر', 'bank_transfer', '١٠٠٠-٢٠٠٠٠٠-٣٠٠ (دورك لتقنية المعلومات)', '🏦', 2),
+      (${uuidv4()}, 'إنستا باي', 'instapay', 'instapay@example.com', '💳', 3)
+    `;
+  }
+
+  // Default app settings
+  const { count: stCount } = await sql`SELECT COUNT(*)::int as count FROM app_settings` as unknown as { count: number };
+  if (stCount === 0) {
+    await sql`INSERT INTO app_settings (key, value) VALUES ('admin_whatsapp', '01000000000')`;
   }
 }
-runMigrations();
 
-// Create tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS shops (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT DEFAULT '',
-    address TEXT DEFAULT '',
-    phone TEXT DEFAULT '',
-    category TEXT DEFAULT '',
-    current_number INTEGER DEFAULT 0,
-    is_active INTEGER DEFAULT 1,
-    owner_name TEXT DEFAULT '',
-    owner_phone TEXT DEFAULT '',
-    owner_password TEXT DEFAULT '',
-    plan TEXT DEFAULT 'free',
-    plan_status TEXT DEFAULT 'active',
-    plan_started_at TEXT,
-    plan_expires_at TEXT,
-    stripe_customer_id TEXT DEFAULT '',
-    stripe_subscription_id TEXT DEFAULT '',
-    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-  );
-
-  CREATE TABLE IF NOT EXISTS queue_entries (
-    id TEXT PRIMARY KEY,
-    shop_id TEXT NOT NULL,
-    number INTEGER NOT NULL,
-    customer_name TEXT DEFAULT '',
-    customer_phone TEXT DEFAULT '',
-    status TEXT DEFAULT 'waiting',
-    estimated_wait INTEGER DEFAULT 0,
-    recall_count INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-    called_at TEXT,
-    completed_at TEXT,
-    FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
-  );
-
-  CREATE TABLE IF NOT EXISTS queue_settings (
-    shop_id TEXT PRIMARY KEY,
-    avg_service_minutes REAL DEFAULT 10,
-    is_open INTEGER DEFAULT 1,
-    greeting_message TEXT DEFAULT 'مرحباً بك!',
-    whatsapp_enabled INTEGER DEFAULT 0,
-    whatsapp_number TEXT DEFAULT '',
-    whatsapp_business_account_id TEXT DEFAULT '',
-    FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
-  );
-
-  CREATE TABLE IF NOT EXISTS notifications (
-    id TEXT PRIMARY KEY,
-    shop_id TEXT NOT NULL,
-    entry_id TEXT NOT NULL,
-    type TEXT DEFAULT 'whatsapp',
-    status TEXT DEFAULT 'pending',
-    recipient TEXT DEFAULT '',
-    message TEXT DEFAULT '',
-    sent_at TEXT,
-    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-    FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
-    FOREIGN KEY (entry_id) REFERENCES queue_entries(id) ON DELETE CASCADE
-  );
-`);
+// ─── Types ────────────────────────────────────
 
 export interface Shop {
   id: string;
@@ -188,9 +185,20 @@ export interface QueueSettings {
   whatsapp_business_account_id: string;
 }
 
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  type: string;
+  details: string;
+  icon: string;
+  is_active: number;
+  sort_order: number;
+  created_at: string;
+}
+
 // ─── Shops ────────────────────────────────────────
 
-export function createShop(data: {
+export async function createShop(data: {
   name: string;
   description?: string;
   address?: string;
@@ -199,57 +207,39 @@ export function createShop(data: {
   owner_name?: string;
   owner_phone?: string;
   owner_password?: string;
-}): Shop {
+}): Promise<Shop> {
   const id = uuidv4();
-  const stmt = db.prepare(`
+  await sql`
     INSERT INTO shops (id, name, description, address, phone, category, owner_name, owner_phone, owner_password)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  stmt.run(
-    id,
-    data.name,
-    data.description || "",
-    data.address || "",
-    data.phone || "",
-    data.category || "",
-    data.owner_name || "",
-    data.owner_phone || "",
-    data.owner_password || ""
-  );
-
-  // Create default settings
-  db.prepare(`INSERT INTO queue_settings (shop_id) VALUES (?)`).run(id);
-
+    VALUES (${id}, ${data.name}, ${data.description || ""}, ${data.address || ""}, ${data.phone || ""}, ${data.category || ""}, ${data.owner_name || ""}, ${data.owner_phone || ""}, ${data.owner_password || ""})
+  `;
+  await sql`INSERT INTO queue_settings (shop_id) VALUES (${id})`;
   return getShop(id)!;
 }
 
-export function getAllShops(): Shop[] {
-  return db.prepare("SELECT * FROM shops WHERE is_active = 1 ORDER BY name").all() as Shop[];
+export async function getAllShops(): Promise<Shop[]> {
+  return await sql`SELECT * FROM shops WHERE is_active = 1 ORDER BY name` as unknown as Shop[];
 }
 
-export function getShop(id: string): Shop | undefined {
-  return db.prepare("SELECT * FROM shops WHERE id = ?").get(id) as Shop | undefined;
+export async function getShop(id: string): Promise<Shop | undefined> {
+  const rows = await sql`SELECT * FROM shops WHERE id = ${id}` as unknown as Shop[];
+  return rows[0];
 }
 
-export function updateShop(id: string, data: Partial<Shop>): Shop | undefined {
-  const fields = Object.keys(data)
-    .filter((k) => k !== "id")
-    .map((k) => `${k} = ?`)
-    .join(", ");
-  const values = Object.entries(data)
-    .filter(([k]) => k !== "id")
-    .map(([, v]) => v);
-  if (fields) {
-    db.prepare(`UPDATE shops SET ${fields} WHERE id = ?`).run(...values, id);
-  }
+export async function updateShop(id: string, data: Partial<Shop>): Promise<Shop | undefined> {
+  const keys = Object.keys(data).filter(k => k !== "id");
+  if (keys.length === 0) return getShop(id);
+
+  const setClauses = keys.map((k, i) => `${k} = $${i + 1}`);
+  const values = keys.map(k => (data as any)[k]);
+  const query = `UPDATE shops SET ${setClauses.join(", ")} WHERE id = $${keys.length + 1}`;
+  const result = await sql.query(query, [...values, id]);
   return getShop(id);
 }
 
-// ─── Sanitize ────────────────────────────────────
-
 export function sanitizeText(input: string): string {
   return input
-    .replace(/[<>&"']/g, (char) => {
+    .replace(/[<>&\"']/g, (char) => {
       switch (char) {
         case "<": return "&lt;";
         case ">": return "&gt;";
@@ -282,22 +272,20 @@ export function sanitizeShops(shops: Shop[]): Omit<Shop, 'owner_password'>[] {
   return shops.map(sanitizeShop);
 }
 
-export function getOwnerShopsByPhone(ownerPhone: string): Shop[] {
-  return db
-    .prepare("SELECT * FROM shops WHERE owner_phone = ? ORDER BY created_at DESC")
-    .all(ownerPhone) as Shop[];
+export async function getOwnerShopsByPhone(ownerPhone: string): Promise<Shop[]> {
+  return await sql`SELECT * FROM shops WHERE owner_phone = ${ownerPhone} ORDER BY created_at DESC` as unknown as Shop[];
 }
 
-export function getShopPlan(shopId: string): string {
-  const shop = getShop(shopId);
+export async function getShopPlan(shopId: string): Promise<string> {
+  const shop = await getShop(shopId);
   return shop?.plan || "free";
 }
 
-export function updateShopPlan(
+export async function updateShopPlan(
   shopId: string,
   plan: string,
   expiresAt?: string
-): Shop | undefined {
+): Promise<Shop | undefined> {
   const updates: Record<string, any> = { plan };
   if (expiresAt) {
     updates.plan_expires_at = expiresAt;
@@ -307,8 +295,8 @@ export function updateShopPlan(
   return updateShop(shopId, updates);
 }
 
-export function isPlanActive(shopId: string): boolean {
-  const shop = getShop(shopId);
+export async function isPlanActive(shopId: string): Promise<boolean> {
+  const shop = await getShop(shopId);
   if (!shop) return false;
   if (shop.plan === "free") return true;
   if (shop.plan_status !== "active") return false;
@@ -318,276 +306,225 @@ export function isPlanActive(shopId: string): boolean {
   return true;
 }
 
-// ─── Queue (legacy) ────────────────────────────────────────
+// ─── Queue ────────────────────────────────────────
 
-export function getNextNumber(shopId: string): number {
-  const row = db
-    .prepare("SELECT MAX(number) as max_num FROM queue_entries WHERE shop_id = ?")
-    .get(shopId) as { max_num: number | null };
-  return (row?.max_num || 0) + 1;
+export async function getNextNumber(shopId: string): Promise<number> {
+  const rows = await sql`SELECT COALESCE(MAX(number), 0) + 1 as next_num FROM queue_entries WHERE shop_id = ${shopId}` as unknown as { next_num: number }[];
+  return rows[0]?.next_num || 1;
 }
 
-export function joinQueue(data: {
+export async function joinQueue(data: {
   shopId: string;
   customerName?: string;
   customerPhone?: string;
-}): { entry: QueueEntry; position: number; estimatedWait: number } {
-  const number = getNextNumber(data.shopId);
+}): Promise<{ entry: QueueEntry; position: number; estimatedWait: number }> {
+  const number = await getNextNumber(data.shopId);
   const id = uuidv4();
 
   // Get active queue count for position
-  const waitingCount = db
-    .prepare(
-      "SELECT COUNT(*) as count FROM queue_entries WHERE shop_id = ? AND status = 'waiting'"
-    )
-    .get(data.shopId) as { count: number };
+  const countRows = await sql`SELECT COUNT(*)::int as count FROM queue_entries WHERE shop_id = ${data.shopId} AND status = 'waiting'` as unknown as { count: number }[];
+  const position = countRows[0]?.count || 0;
 
-  const position = waitingCount.count + 1;
+  // Get average service time
+  const settingsRows = await sql`SELECT * FROM queue_settings WHERE shop_id = ${data.shopId}` as unknown as QueueSettings[];
+  const avgMinutes = settingsRows[0]?.avg_service_minutes || 10;
+  const estimatedWait = (position + 1) * avgMinutes;
 
-  // Get average service time for estimate
-  const settings = db
-    .prepare("SELECT * FROM queue_settings WHERE shop_id = ?")
-    .get(data.shopId) as QueueSettings | undefined;
-  const avgMinutes = settings?.avg_service_minutes || 10;
-
-  const estimatedWait = position * avgMinutes;
-
-  db.prepare(`
+  await sql`
     INSERT INTO queue_entries (id, shop_id, number, customer_name, customer_phone, estimated_wait)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(id, data.shopId, number, data.customerName || "", data.customerPhone || "", estimatedWait);
+    VALUES (${id}, ${data.shopId}, ${number}, ${data.customerName || ""}, ${data.customerPhone || ""}, ${estimatedWait})
+  `;
 
   // Update shop current number if this is the first entry
-  const shop = getShop(data.shopId);
+  const shop = await getShop(data.shopId);
   if (shop && shop.current_number === 0) {
-    db.prepare("UPDATE shops SET current_number = ? WHERE id = ?").run(number, data.shopId);
+    await sql`UPDATE shops SET current_number = ${number} WHERE id = ${data.shopId}`;
   }
 
+  const entry = await getQueueEntry(id);
   return {
-    entry: getQueueEntry(id)!,
-    position,
+    entry: entry!,
+    position: position + 1,
     estimatedWait,
   };
 }
 
-export function getQueueEntries(shopId: string): QueueEntry[] {
-  return db
-    .prepare(
-      "SELECT * FROM queue_entries WHERE shop_id = ? ORDER BY number ASC"
-    )
-    .all(shopId) as QueueEntry[];
+export async function getQueueEntries(shopId: string): Promise<QueueEntry[]> {
+  return await sql`SELECT * FROM queue_entries WHERE shop_id = ${shopId} ORDER BY number ASC` as unknown as QueueEntry[];
 }
 
-export function getActiveQueue(shopId: string): QueueEntry[] {
-  return db
-    .prepare(
-      "SELECT * FROM queue_entries WHERE shop_id = ? AND status = 'waiting' ORDER BY number ASC"
-    )
-    .all(shopId) as QueueEntry[];
+export async function getActiveQueue(shopId: string): Promise<QueueEntry[]> {
+  return await sql`SELECT * FROM queue_entries WHERE shop_id = ${shopId} AND status = 'waiting' ORDER BY number ASC` as unknown as QueueEntry[];
 }
 
-export function getQueueEntry(id: string): QueueEntry | undefined {
-  return db.prepare("SELECT * FROM queue_entries WHERE id = ?").get(id) as
-    | QueueEntry
-    | undefined;
+export async function getQueueEntry(id: string): Promise<QueueEntry | undefined> {
+  const rows = await sql`SELECT * FROM queue_entries WHERE id = ${id}` as unknown as QueueEntry[];
+  return rows[0];
 }
 
-export function callNext(shopId: string): QueueEntry | null {
-  const next = db
-    .prepare(
-      "SELECT * FROM queue_entries WHERE shop_id = ? AND status = 'waiting' ORDER BY number ASC LIMIT 1"
-    )
-    .get(shopId) as QueueEntry | undefined;
-
+export async function callNext(shopId: string): Promise<QueueEntry | null> {
+  const rows = await sql`SELECT * FROM queue_entries WHERE shop_id = ${shopId} AND status = 'waiting' ORDER BY number ASC LIMIT 1` as unknown as QueueEntry[];
+  const next = rows[0];
   if (!next) return null;
 
-  db.prepare(
-    "UPDATE queue_entries SET status = 'called', called_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?"
-  ).run(next.id);
+  await sql`UPDATE queue_entries SET status = 'called', called_at = NOW() WHERE id = ${next.id}`;
+  await sql`UPDATE shops SET current_number = ${next.number} WHERE id = ${shopId}`;
 
-  db.prepare("UPDATE shops SET current_number = ? WHERE id = ?").run(
-    next.number,
-    shopId
-  );
-
-  return getQueueEntry(next.id)!;
+  return getQueueEntry(next.id) || null;
 }
 
-export function completeEntry(id: string): QueueEntry | undefined {
-  db.prepare(
-    "UPDATE queue_entries SET status = 'completed', completed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?"
-  ).run(id);
+export async function completeEntry(id: string): Promise<QueueEntry | undefined> {
+  await sql`UPDATE queue_entries SET status = 'completed', completed_at = NOW() WHERE id = ${id}`;
   return getQueueEntry(id);
 }
 
-export function cancelEntry(id: string): QueueEntry | undefined {
-  db.prepare(
-    "UPDATE queue_entries SET status = 'cancelled' WHERE id = ?"
-  ).run(id);
+export async function cancelEntry(id: string): Promise<QueueEntry | undefined> {
+  await sql`UPDATE queue_entries SET status = 'cancelled' WHERE id = ${id}`;
   return getQueueEntry(id);
 }
 
-export function callAgain(id: string): QueueEntry | undefined {
-  const entry = getQueueEntry(id);
+export async function callAgain(id: string): Promise<QueueEntry | undefined> {
+  const entry = await getQueueEntry(id);
   if (!entry) return undefined;
-  db.prepare(
-    "UPDATE queue_entries SET status = 'called', called_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), recall_count = recall_count + 1 WHERE id = ?"
-  ).run(id);
-  // نحدث رقم الخدمة الحالي في المحل
-  db.prepare("UPDATE shops SET current_number = ? WHERE id = ?").run(entry.number, entry.shop_id);
+  await sql`UPDATE queue_entries SET status = 'called', called_at = NOW(), recall_count = recall_count + 1 WHERE id = ${id}`;
+  await sql`UPDATE shops SET current_number = ${entry.number} WHERE id = ${entry.shop_id}`;
   return getQueueEntry(id);
 }
 
 // ─── Settings ─────────────────────────────────────
 
-export function getQueueSettings(shopId: string): QueueSettings | undefined {
-  return db.prepare("SELECT * FROM queue_settings WHERE shop_id = ?").get(
-    shopId
-  ) as QueueSettings | undefined;
+export async function getQueueSettings(shopId: string): Promise<QueueSettings | undefined> {
+  const rows = await sql`SELECT * FROM queue_settings WHERE shop_id = ${shopId}` as unknown as QueueSettings[];
+  return rows[0];
 }
 
-export function updateQueueSettings(
+export async function updateQueueSettings(
   shopId: string,
   data: Partial<QueueSettings>
-): QueueSettings | undefined {
-  const fields = Object.keys(data)
-    .filter((k) => k !== "shop_id")
-    .map((k) => `${k} = ?`)
-    .join(", ");
-  const values = Object.entries(data)
-    .filter(([k]) => k !== "shop_id")
-    .map(([, v]) => v);
-  if (fields) {
-    db.prepare(`UPDATE queue_settings SET ${fields} WHERE shop_id = ?`).run(
-      ...values,
-      shopId
-    );
-  }
+): Promise<QueueSettings | undefined> {
+  const keys = Object.keys(data).filter(k => k !== "shop_id");
+  if (keys.length === 0) return getQueueSettings(shopId);
+
+  const setClauses = keys.map((k, i) => `${k} = $${i + 1}`);
+  const values = keys.map(k => (data as any)[k]);
+  const query = `UPDATE queue_settings SET ${setClauses.join(", ")} WHERE shop_id = $${keys.length + 1}`;
+  const result = await sql.query(query, [...values, shopId]);
   return getQueueSettings(shopId);
 }
 
 // ─── Stats ────────────────────────────────────────
 
-export function getTodayCustomerCount(shopId: string): number {
-  const row = db
-    .prepare(
-      "SELECT COUNT(*) as count FROM queue_entries WHERE shop_id = ? AND date(created_at) = date('now')"
-    )
-    .get(shopId) as { count: number };
-  return row.count;
+export async function getTodayCustomerCount(shopId: string): Promise<number> {
+  const rows = await sql`
+    SELECT COUNT(*)::int as count FROM queue_entries 
+    WHERE shop_id = ${shopId} AND DATE(created_at) = CURRENT_DATE
+  ` as unknown as { count: number }[];
+  return rows[0]?.count || 0;
 }
 
-export function getQueueStats(shopId: string) {
-  const waiting = db
-    .prepare(
-      "SELECT COUNT(*) as count FROM queue_entries WHERE shop_id = ? AND status = 'waiting'"
-    )
-    .get(shopId) as { count: number };
+export async function getQueueStats(shopId: string) {
+  const waiting = await sql`
+    SELECT COUNT(*)::int as count FROM queue_entries 
+    WHERE shop_id = ${shopId} AND status = 'waiting'
+  ` as unknown as { count: number }[];
 
-  const today = db
-    .prepare(
-      "SELECT COUNT(*) as count FROM queue_entries WHERE shop_id = ? AND date(created_at) = date('now')"
-    )
-    .get(shopId) as { count: number };
+  const today = await sql`
+    SELECT COUNT(*)::int as count FROM queue_entries 
+    WHERE shop_id = ${shopId} AND DATE(created_at) = CURRENT_DATE
+  ` as unknown as { count: number }[];
 
-  const avgWait = db
-    .prepare(
-      "SELECT AVG((julianday(called_at) - julianday(created_at)) * 24 * 60) as avg_min FROM queue_entries WHERE shop_id = ? AND called_at IS NOT NULL AND date(created_at) = date('now')"
-    )
-    .get(shopId) as { avg_min: number | null };
+  const avgWait = await sql`
+    SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (called_at - created_at)) / 60), 0)::int as avg_min 
+    FROM queue_entries 
+    WHERE shop_id = ${shopId} AND called_at IS NOT NULL AND DATE(created_at) = CURRENT_DATE
+  ` as unknown as { avg_min: number }[];
 
-  const peakHours = db
-    .prepare(
-      `SELECT strftime('%H', created_at) as hour, COUNT(*) as count
-       FROM queue_entries WHERE shop_id = ? AND date(created_at) = date('now')
-       GROUP BY hour ORDER BY count DESC LIMIT 3`
-    )
-    .all(shopId) as { hour: string; count: number }[];
+  const peakHours = await sql`
+    SELECT TO_CHAR(created_at, 'HH24') as hour, COUNT(*)::int as count
+    FROM queue_entries 
+    WHERE shop_id = ${shopId} AND DATE(created_at) = CURRENT_DATE
+    GROUP BY hour ORDER BY count DESC LIMIT 3
+  `;
 
   return {
-    waiting: waiting.count,
-    today_total: today.count,
-    avg_wait_minutes: Math.round(avgWait?.avg_min || 0),
+    waiting: waiting[0]?.count || 0,
+    today_total: today[0]?.count || 0,
+    avg_wait_minutes: Math.round(avgWait[0]?.avg_min || 0),
     peak_hours: peakHours,
   };
 }
 
 // ─── Payment Methods ───────────────────────────
 
-export interface PaymentMethod {
-  id: string;
-  name: string;
-  type: string;
-  details: string;
-  icon: string;
-  is_active: number;
-  sort_order: number;
-  created_at: string;
+export async function getPaymentMethods(): Promise<PaymentMethod[]> {
+  return await sql`SELECT * FROM payment_methods ORDER BY sort_order ASC` as unknown as PaymentMethod[];
 }
 
-export function getPaymentMethods(): PaymentMethod[] {
-  return db.prepare("SELECT * FROM payment_methods ORDER BY sort_order ASC").all() as PaymentMethod[];
+export async function getActivePaymentMethods(): Promise<PaymentMethod[]> {
+  return await sql`SELECT * FROM payment_methods WHERE is_active = 1 ORDER BY sort_order ASC` as unknown as PaymentMethod[];
 }
 
-export function getActivePaymentMethods(): PaymentMethod[] {
-  return db.prepare("SELECT * FROM payment_methods WHERE is_active = 1 ORDER BY sort_order ASC").all() as PaymentMethod[];
-}
-
-export function addPaymentMethod(data: { name: string; type: string; details: string; icon?: string }): PaymentMethod {
+export async function addPaymentMethod(data: { name: string; type: string; details: string; icon?: string }): Promise<PaymentMethod> {
   const id = uuidv4();
-  const maxOrder = db.prepare("SELECT MAX(sort_order) as max FROM payment_methods").get() as { max: number | null };
-  db.prepare("INSERT INTO payment_methods (id, name, type, details, icon, sort_order) VALUES (?, ?, ?, ?, ?, ?)").run(
-    id, data.name, data.type, data.details, data.icon || "💳", (maxOrder.max || 0) + 1
-  );
-  return db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(id) as PaymentMethod;
+  const maxOrder = await sql`SELECT COALESCE(MAX(sort_order), 0)::int as max FROM payment_methods` as unknown as { max: number }[];
+  await sql`
+    INSERT INTO payment_methods (id, name, type, details, icon, sort_order) 
+    VALUES (${id}, ${data.name}, ${data.type}, ${data.details}, ${data.icon || "💳"}, ${(maxOrder[0]?.max || 0) + 1})
+  `;
+  const rows = await sql`SELECT * FROM payment_methods WHERE id = ${id}` as unknown as PaymentMethod[];
+  return rows[0];
 }
 
-export function updatePaymentMethod(id: string, data: Partial<PaymentMethod>): PaymentMethod | undefined {
-  const fields = Object.keys(data).filter(k => k !== "id").map(k => `${k} = ?`).join(", ");
-  const values = Object.entries(data).filter(([k]) => k !== "id").map(([, v]) => v);
-  if (fields) db.prepare(`UPDATE payment_methods SET ${fields} WHERE id = ?`).run(...values, id);
-  return db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(id) as PaymentMethod | undefined;
-}
-
-export function deletePaymentMethod(id: string): boolean {
-  const result = db.prepare("DELETE FROM payment_methods WHERE id = ?").run(id);
-  return result.changes > 0;
-}
-
-// ─── SSE Event Emitter ────────────────────────────
-
-type SSECallback = (data: any) => void;
-const sseClients = new Map<string, Set<SSECallback>>();
-
-export function subscribeToShop(shopId: string, callback: SSECallback): () => void {
-  if (!sseClients.has(shopId)) {
-    sseClients.set(shopId, new Set());
+export async function updatePaymentMethod(id: string, data: Partial<PaymentMethod>): Promise<PaymentMethod | undefined> {
+  const keys = Object.keys(data).filter(k => k !== "id");
+  if (keys.length === 0) {
+    const rows = await sql`SELECT * FROM payment_methods WHERE id = ${id}` as unknown as PaymentMethod[];
+    return rows[0];
   }
-  sseClients.get(shopId)!.add(callback);
-
-  return () => {
-    sseClients.get(shopId)?.delete(callback);
-    if (sseClients.get(shopId)?.size === 0) {
-      sseClients.delete(shopId);
-    }
-  };
+  const setClauses = keys.map((k, i) => `${k} = $${i + 1}`);
+  const values = keys.map(k => (data as any)[k]);
+  const query = `UPDATE payment_methods SET ${setClauses.join(", ")} WHERE id = $${keys.length + 1}`;
+  const result = await sql.query(query, [...values, id]);
+  const rows = await sql`SELECT * FROM payment_methods WHERE id = ${id}` as unknown as PaymentMethod[];
+  return rows[0];
 }
 
-export function emitShopEvent(shopId: string, event: string, data: any) {
-  const clients = sseClients.get(shopId);
-  if (clients) {
-    const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-    clients.forEach((cb) => cb(message));
+export async function deletePaymentMethod(id: string): Promise<boolean> {
+  const result = await sql`DELETE FROM payment_methods WHERE id = ${id}`;
+  return result.length > 0; // neon returns array of results
+}
+
+// ─── Synchronous wrappers for API routes that need sync access ──────
+// These cache the result after first call (only used at module load)
+let _migrated = false;
+export async function ensureMigrated() {
+  if (!_migrated) {
+    await runMigrations();
+    _migrated = true;
   }
 }
 
 // ─── App Settings ────────────────────────────
 
-export function getAppSetting(key: string): string {
-  const row = db.prepare("SELECT value FROM app_settings WHERE key = ?").get(key) as { value: string } | undefined;
-  return row?.value || "";
+export async function getAppSetting(key: string): Promise<string> {
+  const rows = await sql`SELECT value FROM app_settings WHERE key = ${key}` as unknown as { value: string }[];
+  return rows[0]?.value || "";
 }
 
-export function setAppSetting(key: string, value: string): void {
-  db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)").run(key, value);
+export async function setAppSetting(key: string, value: string): Promise<void> {
+  await sql`INSERT INTO app_settings (key, value) VALUES (${key}, ${value}) ON CONFLICT (key) DO UPDATE SET value = ${value}`;
+}
+
+// ─── Email login code ─────────────────────────
+
+export async function saveLoginCode(email: string, code: string): Promise<void> {
+  await sql`
+    INSERT INTO app_settings (key, value) VALUES (${"login_code_" + email}, ${code})
+    ON CONFLICT (key) DO UPDATE SET value = ${code}
+  `;
+}
+
+export async function verifyLoginCode(email: string, code: string): Promise<boolean> {
+  const rows = await sql`SELECT value FROM app_settings WHERE key = ${"login_code_" + email}` as unknown as { value: string }[];
+  return rows[0]?.value === code;
 }
