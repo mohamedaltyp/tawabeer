@@ -30,6 +30,34 @@ interface QueueSettings {
   avg_service_minutes: number;
 }
 
+const CATEGORY_EMOJI: Record<string, string> = {
+  "مطعم": "🍽️",
+  "حلاق": "💈",
+  "عيادة": "🏥",
+  "مغسلة": "🧺",
+  "بنق": "🏦",
+  "صيدلية": "💊",
+  "مخبز": "🥖",
+  "سوبرماركت": "🛒",
+  "مكتبة": "📚",
+  "مركز طبي": "🏥",
+  "معمل تحاليل": "🔬",
+  "عيادة أسنان": "🦷",
+  "عيادة عيون": "👁️",
+  "عيادة جلدية": "🧴",
+  "عيادة عظام": "🦴",
+  "عيادة أطفال": "👶",
+  "عيادة نساء": "👩‍⚕️",
+  "عيانة باطنة": "🩺",
+};
+
+function getCategoryEmoji(category: string): string {
+  for (const [key, emoji] of Object.entries(CATEGORY_EMOJI)) {
+    if (category?.includes(key)) return emoji;
+  }
+  return "🏪";
+}
+
 export default function ShopPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -43,44 +71,45 @@ export default function ShopPage() {
   const [myEntry, setMyEntry] = useState<QueueEntry | null>(null);
   const [error, setError] = useState("");
 
-  // 🔔 صوت التنبيه عند النداء
   const audioCtxRef = useRef<AudioContext | null>(null);
-  async function playCallSound() {
-    try {
-      // نستخدم AudioContext موجود أو نعمل واحد جديد
-      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
-      const ctx = audioCtxRef.current;
-      // نستنى الـ resume لو السياق معلق
-      if (ctx.state === "suspended") await ctx.resume();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      // نغمتين متتاليتين عشان يكون الصوت واضح
-      osc.frequency.setValueAtTime(660, ctx.currentTime);
-      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.2);
-      osc.type = "sine";
-      gain.gain.setValueAtTime(0.4, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 1);
-    } catch {
-      // لو فشل الصوت، نعتمد على الإشعار والمؤقت
-    }
-  }
-
-  // المتغير المرجعي لرقم العميل — عشان الـ SSE يقدر يوصل للرقم من غير ما يحتاج useEffect
   const myNumberRef = useRef<number | null>(null);
+  const lastRecallRef = useRef<number>(-1);
+
   useEffect(() => {
     if (myEntry) myNumberRef.current = myEntry.number;
   }, [myEntry]);
 
-  // طلب إذن الإشعارات مرة واحدة عند فتح الصفحة
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
   }, []);
+
+  async function playCallSound() {
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") await ctx.resume();
+
+      const playTone = (freq: number, start: number, dur: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.35, ctx.currentTime + start);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + dur);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + dur);
+      };
+
+      playTone(523, 0, 0.15);
+      playTone(659, 0.15, 0.15);
+      playTone(784, 0.3, 0.2);
+      playTone(1047, 0.5, 0.4);
+    } catch {}
+  }
 
   useEffect(() => {
     fetch(`/api/shops/${id}`, { headers: { "ngrok-skip-browser-warning": "true" } })
@@ -95,7 +124,6 @@ export default function ShopPage() {
       .catch(() => setLoading(false));
   }, [id]);
 
-  // Calculate my position from the live queue
   const myPosition = useCallback(() => {
     if (!myEntry) return 0;
     return queue.filter(
@@ -104,22 +132,17 @@ export default function ShopPage() {
   }, [myEntry, queue]);
 
   const myRealPosition = myPosition();
-
   const estimatedWait = myRealPosition * (settings?.avg_service_minutes || 10);
-
-  const totalAhead = myRealPosition;
   const peopleCalled = queue.filter(
     (e) => e.status === "called" && e.number < (myEntry?.number || 0)
   ).length;
 
-  // المتغير المرجعي لآخر recall_count — عشان نكتشف إعادة النداء بدقة
-  const lastRecallRef = useRef<number>(-1);
-
-  // ⏱️ مؤقت الوقت المنقضي من أول نداء
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!myEntry?.called_at) return;
-    const calledDate = myEntry.called_at.endsWith("Z") ? new Date(myEntry.called_at) : new Date(myEntry.called_at + "Z");
+    const calledDate = myEntry.called_at.endsWith("Z")
+      ? new Date(myEntry.called_at)
+      : new Date(myEntry.called_at + "Z");
     const update = () => setElapsed(Math.floor((Date.now() - calledDate.getTime()) / 1000));
     update();
     const timer = setInterval(update, 1000);
@@ -134,52 +157,50 @@ export default function ShopPage() {
     return `منذ ${hrs} ساعة و${mins % 60} دقيقة`;
   }
 
-  // 🔄 دالة مساعدة: تشوف لو الـ entry بتاع العميل اتنادى من البيانات
-  const checkIfCalled = useCallback((allEntries: QueueEntry[], myNum: number | null) => {
-    if (!myNum) return;
-    const found = allEntries.find((e) => e.number === myNum);
-    if (found && found.status === "called") {
-      const recallCount = found.recall_count ?? 0;
-      // لو recall_count اتغير عن آخر مرة شفناها — يبقى فيه نداء جديد
-      if (recallCount !== lastRecallRef.current) {
-        const isRecall = lastRecallRef.current >= 0;
-        lastRecallRef.current = recallCount;
-        // نحدث myEntry
-        setMyEntry(found);
-        playCallSound();
-        try { navigator.vibrate?.([200, 100, 200, 100, 400]); } catch {}
-        if (!isRecall) {
-          // أول نداء
-          if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("🔔 حان دورك!", {
-              body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
-              tag: "turn-called",
-            });
-          }
-          document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
-        } else {
-          // إعادة نداء
-          if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("🔔🔔 إعادة نداء!", {
-              body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
-              tag: `turn-called-${Date.now()}`,
-            });
-          }
-          document.title = `🔔🔔 إعادة نداء! رقم ${found.number} - ${shop?.name || "المحل"}`;
-          setTimeout(() => {
+  const checkIfCalled = useCallback(
+    (allEntries: QueueEntry[], myNum: number | null) => {
+      if (!myNum) return;
+      const found = allEntries.find((e) => e.number === myNum);
+      if (found && found.status === "called") {
+        const recallCount = found.recall_count ?? 0;
+        if (recallCount !== lastRecallRef.current) {
+          const isRecall = lastRecallRef.current >= 0;
+          lastRecallRef.current = recallCount;
+          setMyEntry(found);
+          playCallSound();
+          try {
+            navigator.vibrate?.([200, 100, 200, 100, 400]);
+          } catch {}
+          if (!isRecall) {
+            if ("Notification" in window && Notification.permission === "granted") {
+              new Notification("🔔 حان دورك!", {
+                body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
+                tag: "turn-called",
+              });
+            }
             document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
-          }, 3000);
+          } else {
+            if ("Notification" in window && Notification.permission === "granted") {
+              new Notification("🔔🔔 إعادة نداء!", {
+                body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
+                tag: `turn-called-${Date.now()}`,
+              });
+            }
+            document.title = `🔔🔔 إعادة نداء! رقم ${found.number}`;
+            setTimeout(() => {
+              document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
+            }, 3000);
+          }
         }
       }
-    }
-  }, [shop]);
+    },
+    [shop]
+  );
 
-  // ⏱️ Polling مستمر — كل 3 ثوان للتحديث المباشر
   useEffect(() => {
     if (!shop || !myEntry) return;
     const interval = setInterval(async () => {
       try {
-        // جلب كل حاجة في طلب واحد — مع منع التخزين المؤقت
         const shopRes = await fetch(`/api/shops/${id}?t=${Date.now()}`, {
           headers: {
             "ngrok-skip-browser-warning": "true",
@@ -189,11 +210,7 @@ export default function ShopPage() {
         });
         const shopData = await shopRes.json();
         setQueue(shopData.queue || []);
-        // تحديث وقت الانتظار لو اتغير من لوحة التحكم
-        if (shopData.settings) {
-          setSettings(shopData.settings);
-        }
-        // دايم نشوف لو تمت مناداتنا — للنداء الأول وإعادة النداء
+        if (shopData.settings) setSettings(shopData.settings);
         checkIfCalled(shopData.allQueue || [], myNumberRef.current);
       } catch {}
     }, 3000);
@@ -207,14 +224,9 @@ export default function ShopPage() {
     }
     setJoining(true);
     setError("");
-    // نشغل AudioContext من أول تفاعل عشان المتصفح يسمح بالصوت بعدين
     try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new AudioContext();
-      }
-      if (audioCtxRef.current.state === "suspended") {
-        await audioCtxRef.current.resume();
-      }
+      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+      if (audioCtxRef.current.state === "suspended") await audioCtxRef.current.resume();
     } catch {}
     try {
       const res = await fetch(`/api/shops/${id}/queue`, {
@@ -223,7 +235,10 @@ export default function ShopPage() {
         body: JSON.stringify({ customerName: name, customerPhone: phone }),
       });
       const data = await res.json();
-      if (data.error) { setError(data.error); return; }
+      if (data.error) {
+        setError(data.error);
+        return;
+      }
       setMyEntry(data.entry);
     } catch {
       setError("حدث خطأ، حاول مرة أخرى");
@@ -232,142 +247,267 @@ export default function ShopPage() {
     }
   };
 
-  // Progress percentage
   const initialTotal = myEntry
     ? queue.filter((e) => e.status === "waiting" && e.number <= myEntry.number).length
     : 0;
-  const progressPercent = myEntry && initialTotal > 0
-    ? Math.min(100, Math.round(((initialTotal - myRealPosition - 1) / initialTotal) * 100))
-    : 0;
+  const progressPercent =
+    myEntry && initialTotal > 0
+      ? Math.min(100, Math.round(((initialTotal - myRealPosition - 1) / initialTotal) * 100))
+      : 0;
 
+  // ─── Loading State ───
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6C3CE1 100%)" }}>
+        <div className="text-center animate-fade-in">
+          <div className="relative mx-auto mb-6" style={{ width: 80, height: 80 }}>
+            <div className="absolute inset-0 rounded-full border-4 border-white/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-white animate-spin"></div>
+          </div>
+          <p className="text-white/70 text-lg font-medium">جاري التحميل...</p>
+        </div>
       </div>
     );
   }
 
+  // ─── Not Found ───
   if (!shop) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 gap-4">
-        <span className="text-6xl">😕</span>
-        <p className="text-lg font-medium text-gray-900">المحل غير موجود</p>
-        <Link href="/" className="text-indigo-600 hover:underline">عودة للرئيسية</Link>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6C3CE1 100%)" }}>
+        <div className="text-8xl animate-float">😕</div>
+        <h1 className="text-2xl font-bold text-white">المحل غير موجود</h1>
+        <p className="text-white/60 text-center">تأكد من الرابط وحاول مرة أخرى</p>
+        <Link
+          href="/"
+          className="btn-primary"
+          style={{ textDecoration: "none" }}
+        >
+          العودة للرئيسية
+        </Link>
       </div>
     );
   }
 
   const waitingCount = queue.filter((e) => e.status === "waiting").length;
+  const isQueueOpen = settings?.is_open !== 0;
 
-  // ─── Joined / Waiting View ───
-  if (myEntry) {
-    const isCalled = myEntry.status === "called";
+  // ─── Called View ───
+  if (myEntry && myEntry.status === "called") {
     return (
-      <div className={`min-h-screen ${isCalled ? "bg-gradient-to-br from-green-500 to-emerald-600" : "waiting-board"} text-white`}>
-        <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center animate-fade-in">
+      <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #064E3B 0%, #065F46 30%, #047857 60%, #10B981 100%)" }}>
+        {/* Decorative circles */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-white/5 animate-float"></div>
+          <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-white/5 animate-float" style={{ animationDelay: "1.5s" }}></div>
+          <div className="absolute top-1/3 left-1/4 w-32 h-32 rounded-full bg-white/5 animate-float" style={{ animationDelay: "0.8s" }}></div>
+        </div>
 
-          {isCalled ? (
-            <>
-              <div className="animate-pulse-ring mb-6 rounded-full bg-white/20 p-6">
-                <span className="text-6xl">🎉</span>
+        <div className="relative flex min-h-screen flex-col items-center justify-center px-6 text-center py-12">
+          {/* Success Icon */}
+          <div className="animate-bounce-in mb-8">
+            <div className="relative">
+              <div className="w-28 h-28 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center border-2 border-white/20 animate-glow">
+                <span className="text-6xl animate-wave">🎉</span>
               </div>
-              <h1 className="text-3xl font-bold mb-2">حان دورك!</h1>
-              <p className="text-xl text-white/80 mb-2">رقم {myEntry.number} — تفضل إلى المحل</p>
-              {(myEntry.recall_count ?? 0) > 0 && (
-                <p className="text-sm text-white/60 mb-1">🔔 تمت مناداتك {(myEntry.recall_count ?? 0) + 1} مرات</p>
-              )}
-              <p className="text-sm text-emerald-200 mb-8">⏱️ {formatElapsed(elapsed)}</p>
-              <div className="rounded-2xl bg-white/10 backdrop-blur-md px-8 py-6 border border-white/20">
-                <p className="text-sm text-white/70">{shop.name}</p>
-                <p className="text-lg font-bold mt-1">{shop.address}</p>
-              </div>
-              <button
-                onClick={() => { setMyEntry(null); setName(""); setPhone(""); }}
-                className="mt-8 rounded-2xl bg-white/20 px-6 py-3 text-white font-medium hover:bg-white/30 transition-all backdrop-blur-sm"
-              >
-                امسح مرة أخرى
-              </button>
-            </>
-          ) : (
-            <>
-              {/* Big Number */}
-              <div className="mb-4">
-                <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-white/10 backdrop-blur-md border-2 border-white/20 animate-pulse-ring">
-                  <span className="text-5xl font-black">{myEntry.number}</span>
-                </div>
-              </div>
-              <h1 className="text-2xl font-bold mb-1">مرحباً {myEntry.customer_name}!</h1>
-              <p className="text-indigo-200 text-sm mb-6">رقم دورك</p>
+              {/* Sparkles */}
+              <div className="absolute -top-2 -right-2 text-2xl animate-float" style={{ animationDelay: "0.3s" }}>✨</div>
+              <div className="absolute -bottom-1 -left-3 text-xl animate-float" style={{ animationDelay: "0.7s" }}>⭐</div>
+              <div className="absolute top-0 -left-4 text-lg animate-float" style={{ animationDelay: "1s" }}>🎊</div>
+            </div>
+          </div>
 
-              {/* Real-time Position Card */}
-              <div className="rounded-2xl bg-white/10 backdrop-blur-md px-6 py-5 border border-white/20 w-full max-w-sm space-y-3">
-                {/* Progress bar */}
-                <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-l from-green-400 to-emerald-300 transition-all duration-700 ease-out"
-                    style={{ width: `${progressPercent}%` }}
-                  ></div>
-                </div>
+          {/* Title */}
+          <h1 className="text-4xl font-black text-white mb-3 animate-slide-up">
+            حان دورك!
+          </h1>
 
-                {/* People ahead */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-indigo-200">👥 الأشخاص قدامك</span>
-                  <span className="text-xl font-black">{myRealPosition}</span>
-                </div>
+          {/* Number */}
+          <div className="animate-scale-in mb-4" style={{ animationDelay: "0.2s" }}>
+            <div className="number-badge w-24 h-24 mx-auto">
+              <span className="text-4xl font-black" style={{ color: "#064E3B" }}>
+                {myEntry.number}
+              </span>
+            </div>
+          </div>
 
-                {/* Estimated time remaining */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-indigo-200">⏱️ الوقت المتبقي تقديرياً</span>
-                  <span className="text-lg font-bold">
-                    {estimatedWait <= 1
-                      ? "أقل من دقيقة"
-                      : `≈ ${estimatedWait} دقيقة`}
-                  </span>
-                </div>
+          <p className="text-xl text-white/80 mb-2 animate-fade-in" style={{ animationDelay: "0.3s" }}>
+            تفضل إلى المحل
+          </p>
 
-                {/* Current serving */}
-                <div className="flex items-center justify-between border-t border-white/10 pt-3">
-                  <span className="text-sm text-indigo-200">🔄 يتم خدمة رقم</span>
-                  <span className="text-lg font-bold">{shop.current_number || "—"}</span>
-                </div>
+          {(myEntry.recall_count ?? 0) > 0 && (
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm px-4 py-2 mb-4 animate-fade-in" style={{ animationDelay: "0.4s" }}>
+              <span className="text-sm">🔔</span>
+              <span className="text-sm text-white/80">
+                تمت مناداتك {(myEntry.recall_count ?? 0) + 1} مرات
+              </span>
+            </div>
+          )}
 
-                {/* People served so far */}
-                {peopleCalled > 0 && (
-                  <div className="flex items-center justify-between text-xs text-indigo-300">
-                    <span>✅ تم مناداة {peopleCalled} قبل</span>
-                  </div>
+          {/* Timer */}
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm px-5 py-2.5 mb-8">
+            <span className="text-sm">⏱️</span>
+            <span className="text-sm text-emerald-200 font-medium">{formatElapsed(elapsed)}</span>
+          </div>
+
+          {/* Shop Info Card */}
+          <div className="w-full max-w-sm glass-dark rounded-3xl p-6 mb-8 animate-slide-up" style={{ animationDelay: "0.5s" }}>
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-3xl">{getCategoryEmoji(shop.category)}</span>
+              <div className="text-right">
+                <p className="text-white font-bold text-lg">{shop.name}</p>
+                {shop.address && (
+                  <p className="text-white/60 text-sm flex items-center gap-1 justify-end">
+                    <span>{shop.address}</span>
+                    <span>📍</span>
+                  </p>
                 )}
               </div>
+            </div>
+          </div>
 
-              {/* Telegram Notification Button */}
-              <div className="mt-4 w-full max-w-sm">
-                <a
-                  href={`https://t.me/tawabeer_bot?start=notif_${myEntry.id}_${id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md py-3 px-4 text-sm text-white font-medium transition-all"
-                >
-                  <span>✈️</span>
-                  <span>اشترك في إشعارات تيليجرام</span>
-                  <span className="text-xs text-indigo-300">(إشعار لحظة قدوم دورك)</span>
-                </a>
-              </div>
+          {/* Reset Button */}
+          <button
+            onClick={() => {
+              setMyEntry(null);
+              setName("");
+              setPhone("");
+            }}
+            className="rounded-2xl bg-white/15 backdrop-blur-sm px-8 py-3.5 text-white font-medium hover:bg-white/25 transition-all border border-white/20"
+          >
+            مسح وبدء من جديد
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-              {/* Live indicator */}
-              <div className="mt-4 flex items-center gap-2 text-sm text-indigo-300">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-green-400"></span>
+  // ─── Waiting View ───
+  if (myEntry) {
+    return (
+      <div className="min-h-screen waiting-board">
+        {/* Decorative elements */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/5 animate-float"></div>
+          <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-white/5 animate-float" style={{ animationDelay: "2s" }}></div>
+          <div className="absolute top-1/4 right-1/4 w-24 h-24 rounded-full bg-white/5 animate-float" style={{ animationDelay: "1s" }}></div>
+        </div>
+
+        <div className="relative flex min-h-screen flex-col items-center px-5 py-8 text-white">
+
+          {/* Shop Name Header */}
+          <div className="w-full max-w-sm mb-6 animate-slide-down">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <h2 className="text-lg font-bold text-white/90">{shop.name}</h2>
+              <span className="text-2xl">{getCategoryEmoji(shop.category)}</span>
+            </div>
+            {shop.address && (
+              <p className="text-center text-white/50 text-sm">📍 {shop.address}</p>
+            )}
+          </div>
+
+          {/* Big Number */}
+          <div className="mb-6 animate-scale-in">
+            <div className="number-badge w-36 h-36 mx-auto">
+              <div className="text-center">
+                <span className="text-6xl font-black" style={{ color: "#1E1B4B" }}>
+                  {myEntry.number}
                 </span>
-                متابعة حية — يتحدّث تلقائياً
               </div>
+            </div>
+          </div>
 
-              <p className="mt-4 text-xs text-indigo-300/60">
-                سيتم تحديث موقعك لحظة مناداة كل شخص
-              </p>
-            </>
+          {/* Greeting */}
+          <h1 className="text-2xl font-bold mb-1 animate-fade-in">
+            مرحباً {myEntry.customer_name}! 👋
+          </h1>
+          <p className="text-indigo-200/70 text-sm mb-8 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+            رقم دورك — هنبلغك لما يجي دورك
+          </p>
+
+          {/* Stats Grid */}
+          <div className="w-full max-w-sm grid grid-cols-2 gap-3 mb-6">
+            {/* Position */}
+            <div className="stat-card animate-slide-up" style={{ animationDelay: "0.1s" }}>
+              <div className="text-3xl font-black text-white mb-1">{myRealPosition}</div>
+              <div className="text-xs text-indigo-200/70">أشخاص قدامك</div>
+            </div>
+
+            {/* Estimated Time */}
+            <div className="stat-card animate-slide-up" style={{ animationDelay: "0.2s" }}>
+              <div className="text-2xl font-black text-white mb-1">
+                {estimatedWait <= 1 ? "<1" : `≈${estimatedWait}`}
+              </div>
+              <div className="text-xs text-indigo-200/70">دقيقة متوقعة</div>
+            </div>
+
+            {/* Current Serving */}
+            <div className="stat-card animate-slide-up" style={{ animationDelay: "0.3s" }}>
+              <div className="text-3xl font-black text-amber-300 mb-1">
+                {shop.current_number || "—"}
+              </div>
+              <div className="text-xs text-indigo-200/70">يُخدم الآن</div>
+            </div>
+
+            {/* Total Waiting */}
+            <div className="stat-card animate-slide-up" style={{ animationDelay: "0.4s" }}>
+              <div className="text-3xl font-black text-white mb-1">{waitingCount}</div>
+              <div className="text-xs text-indigo-200/70">في الانتظار</div>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="w-full max-w-sm mb-6 animate-fade-in" style={{ animationDelay: "0.5s" }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-indigo-200/60">تقدمك في الطابور</span>
+              <span className="text-xs font-bold text-emerald-300">{progressPercent}%</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-bar-fill" style={{ width: `${progressPercent}%` }}></div>
+            </div>
+          </div>
+
+          {/* People served info */}
+          {peopleCalled > 0 && (
+            <div className="w-full max-w-sm mb-6 animate-fade-in" style={{ animationDelay: "0.6s" }}>
+              <div className="stat-card flex items-center justify-center gap-2">
+                <span className="text-sm">✅</span>
+                <span className="text-sm text-indigo-200/80">
+                  تم مناداة {peopleCalled} شخص قبلك
+                </span>
+              </div>
+            </div>
           )}
+
+          {/* Telegram Notification */}
+          <div className="w-full max-w-sm mb-4 animate-slide-up" style={{ animationDelay: "0.7s" }}>
+            <a
+              href={`https://t.me/tawabeer_bot?start=notif_${myEntry.id}_${id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-3 w-full rounded-2xl py-4 px-5 text-white font-medium transition-all"
+              style={{
+                background: "linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(14, 165, 233, 0.2) 100%)",
+                border: "1px solid rgba(56, 189, 248, 0.3)",
+                backdropFilter: "blur(10px)",
+                textDecoration: "none",
+              }}
+            >
+              <span className="text-xl">✈️</span>
+              <div className="text-right">
+                <div className="text-sm font-bold">إشعارات تيليجرام</div>
+                <div className="text-xs text-sky-200/60">هيوصلك إشعار لحظة ما يتنادى دورك</div>
+              </div>
+            </a>
+          </div>
+
+          {/* Live Indicator */}
+          <div className="flex items-center gap-2.5 animate-fade-in" style={{ animationDelay: "0.8s" }}>
+            <span className="relative flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-400"></span>
+            </span>
+            <span className="text-sm text-indigo-200/60">متابعة حية — يتحدث تلقائياً</span>
+          </div>
         </div>
       </div>
     );
@@ -375,88 +515,190 @@ export default function ShopPage() {
 
   // ─── Join Form ───
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Shop Header */}
-      <div className="bg-gradient-to-br from-indigo-600 to-purple-700 px-6 py-12 text-white text-center">
-        <span className="text-5xl mb-4 block">
-          {shop.category === "مطعم" ? "🍽️" : shop.category === "حلاق" ? "💈" : shop.category === "عيادة" ? "🏥" : shop.category === "مغسلة" ? "🧺" : "🏪"}
-        </span>
-        <h1 className="text-2xl font-bold">{shop.name}</h1>
-        {shop.description && <p className="mt-1 text-indigo-200">{shop.description}</p>}
-        {shop.address && <p className="mt-1 text-sm text-indigo-200">📍 {shop.address}</p>}
+    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #1E1B4B 0%, #312E81 40%, #FDF8F0 100%)" }}>
+      {/* Hero Section */}
+      <div className="relative px-6 pt-12 pb-16 text-center overflow-hidden">
+        {/* Decorative blobs */}
+        <div className="absolute top-0 left-0 w-64 h-64 rounded-full opacity-20 blur-3xl" style={{ background: "radial-gradient(circle, #8B5CF6, transparent)" }}></div>
+        <div className="absolute top-10 right-0 w-48 h-48 rounded-full opacity-15 blur-3xl" style={{ background: "radial-gradient(circle, #F59E0B, transparent)" }}></div>
+
+        <div className="relative">
+          {/* Category Emoji */}
+          <div className="animate-bounce-in mb-4">
+            <span className="text-7xl block animate-float">{getCategoryEmoji(shop.category)}</span>
+          </div>
+
+          {/* Shop Name */}
+          <h1 className="text-3xl font-black text-white mb-2 animate-slide-up">
+            {shop.name}
+          </h1>
+
+          {/* Description */}
+          {shop.description && (
+            <p className="text-indigo-200/70 text-sm mb-1 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+              {shop.description}
+            </p>
+          )}
+
+          {/* Address */}
+          {shop.address && (
+            <p className="text-indigo-200/50 text-sm flex items-center justify-center gap-1 animate-fade-in" style={{ animationDelay: "0.2s" }}>
+              <span>{shop.address}</span>
+              <span>📍</span>
+            </p>
+          )}
+
+          {/* Phone */}
+          {shop.phone && (
+            <p className="text-indigo-200/50 text-sm mt-1 animate-fade-in" style={{ animationDelay: "0.25s" }}>
+              📞 {shop.phone}
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Queue Status */}
-      <div className="mx-auto max-w-md px-6 -mt-6">
-        <div className="rounded-2xl bg-white shadow-md border border-gray-100 p-5">
-          <div className="flex items-center justify-between">
+      {/* Queue Status Card */}
+      <div className="mx-auto max-w-md px-5 -mt-8 relative z-10">
+        <div className="card p-5 animate-slide-up" style={{ animationDelay: "0.1s" }}>
+          <div className="flex items-center justify-around">
+            {/* Waiting */}
             <div className="text-center flex-1">
-              <p className="text-xs text-gray-400">في الانتظار</p>
-              <p className="text-2xl font-bold text-indigo-600">{waitingCount}</p>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-2" style={{ background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)" }}>
+                <span className="text-xl">👥</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-1">في الانتظار</p>
+              <p className="text-2xl font-black" style={{ color: "#6C3CE1" }}>{waitingCount}</p>
             </div>
-            <div className="h-10 w-px bg-gray-100"></div>
+
+            <div className="h-12 w-px bg-gray-100"></div>
+
+            {/* Current */}
             <div className="text-center flex-1">
-              <p className="text-xs text-gray-400">رقم الحالي</p>
-              <p className="text-2xl font-bold text-gray-900">{shop.current_number || "—"}</p>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-2" style={{ background: "linear-gradient(135deg, #FEF3C7, #FDE68A)" }}>
+                <span className="text-xl">🔄</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-1">الدور الحالي</p>
+              <p className="text-2xl font-black text-gray-800">{shop.current_number || "—"}</p>
             </div>
-            <div className="h-10 w-px bg-gray-100"></div>
+
+            <div className="h-12 w-px bg-gray-100"></div>
+
+            {/* Avg Time */}
             <div className="text-center flex-1">
-              <p className="text-xs text-gray-400">متوسط الانتظار</p>
-              <p className="text-2xl font-bold text-amber-500">~{settings?.avg_service_minutes || 10}د</p>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-2" style={{ background: "linear-gradient(135deg, #D1FAE5, #A7F3D0)" }}>
+                <span className="text-xl">⏱️</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-1">متوسط الانتظار</p>
+              <p className="text-2xl font-black" style={{ color: "#F59E0B" }}>~{settings?.avg_service_minutes || 10}<span className="text-sm">د</span></p>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Queue Closed Message */}
+      {!isQueueOpen && (
+        <div className="mx-auto max-w-md px-5 mt-4 animate-fade-in">
+          <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-center">
+            <span className="text-2xl mb-2 block">🔒</span>
+            <p className="text-amber-700 font-medium text-sm">الطابور مغلق حالياً</p>
+            <p className="text-amber-500 text-xs mt-1">يرجى المحاولة لاحقاً</p>
+          </div>
+        </div>
+      )}
+
       {/* Join Form */}
-      <div className="mx-auto max-w-md px-6 mt-6 animate-slide-up">
-        <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 text-center">احجز دورك الآن</h2>
+      <div className="mx-auto max-w-md px-5 mt-6 pb-8">
+        <div className="card p-6 animate-slide-up" style={{ animationDelay: "0.2s" }}>
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold text-gray-900">احجز دورك الآن</h2>
+            <p className="text-sm text-gray-400 mt-1">أدخل بياناتك وهنبلغك لما يجي دورك</p>
+          </div>
+
           <div className="space-y-4">
+            {/* Name Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 text-right">الاسم *</label>
+              <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-2">
+                <span>👤</span>
+                <span>الاسم *</span>
+              </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="أدخل اسمك"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-right text-gray-900 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-50 transition-all"
+                placeholder="أدخل اسمك الكامل"
+                className="input-field"
                 onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+                disabled={!isQueueOpen}
               />
             </div>
+
+            {/* Phone Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 text-right">رقم الهاتف (اختياري)</label>
+              <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-2">
+                <span>📱</span>
+                <span>رقم الهاتف (اختياري)</span>
+              </label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="مثال: 0100xxxxxxx"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-right text-gray-900 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-50 transition-all"
+                className="input-field"
                 onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+                disabled={!isQueueOpen}
               />
-              <p className="text-xs text-gray-400 mt-1 text-right">
-                🔔 إذا أدخلت رقم موبايلك، هتوصللك إشعارات على <b>تيليجرام</b> تلقائياً!<br/>
-                فقط اربط رقمك مع البوت أولاً: <a href="https://t.me/tawabeer_bot" target="_blank" className="text-indigo-500 hover:underline">@tawabeer_bot</a>
-              </p>
+              <div className="mt-2 flex items-start gap-1.5 text-xs text-gray-400 bg-indigo-50 rounded-xl p-3">
+                <span className="text-sm mt-0.5">💡</span>
+                <div>
+                  <span>لو دخلت رقم موبايلك، هتوصللك إشعار على </span>
+                  <b style={{ color: "#6C3CE1" }}>تيليجرام</b>
+                  <span> تلقائياً لما يتنادى دورك!</span>
+                  <br />
+                  <span>اربط رقمك مع البوت: </span>
+                  <a href="https://t.me/tawabeer_bot" target="_blank" className="font-semibold hover:underline" style={{ color: "#6C3CE1" }}>
+                    @tawabeer_bot
+                  </a>
+                </div>
+              </div>
             </div>
 
+            {/* Error */}
             {error && (
-              <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 text-center">{error}</div>
+              <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 text-center animate-fade-in flex items-center justify-center gap-2">
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
             )}
 
+            {/* Submit Button */}
             <button
               onClick={handleJoin}
-              disabled={joining}
-              className="w-full rounded-2xl bg-indigo-600 py-4 text-lg font-bold text-white hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl"
+              disabled={joining || !isQueueOpen}
+              className="btn-primary w-full text-lg flex items-center justify-center gap-2"
             >
-              {joining ? "جاري الحجز..." : "🔢 احجز دوري"}
+              {joining ? (
+                <>
+                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  <span>جاري الحجز...</span>
+                </>
+              ) : (
+                <>
+                  <span>🔢</span>
+                  <span>احجز دوري</span>
+                </>
+              )}
             </button>
           </div>
         </div>
 
-        <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-gray-400 hover:text-indigo-600 transition-colors">
-            ← العودة للرئيسية
+        {/* Back Link */}
+        <div className="mt-6 text-center animate-fade-in" style={{ animationDelay: "0.4s" }}>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-600 transition-colors"
+          >
+            <span>←</span>
+            <span>العودة للرئيسية</span>
           </Link>
         </div>
       </div>
