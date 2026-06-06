@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
       const botUsername = "@tawabeer_bot";
 
       if (payload.startsWith("notif_")) {
-        // Linking: /start notif_entryId_shopId
-        const entryId = payload.replace("notif_", "");
+        // Linking: /start notif_entryId (payload format from QR page)
+        const entryId = payload.replace("notif_", "").split("_")[0];
         const entry = await getQueueEntry(entryId);
 
         if (!entry) {
