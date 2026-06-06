@@ -560,6 +560,20 @@ export async function deletePaymentMethod(id: string): Promise<boolean> {
   return result.length > 0;
 }
 
+// ─── App Settings ───────────────────────────
+
+export async function getAppSetting(key: string): Promise<string> {
+  const rows = await sql`SELECT value FROM app_settings WHERE key = ${key}` as unknown as { value: string }[];
+  return rows[0]?.value || "";
+}
+
+export async function setAppSetting(key: string, value: string): Promise<void> {
+  await sql`
+    INSERT INTO app_settings (key, value) VALUES (${key}, ${value})
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+  `;
+}
+
 // ─── Synchronous wrappers for API routes that need sync access ──────
 // These cache the result after first call (only used at module load)
 let _migrated = false;
