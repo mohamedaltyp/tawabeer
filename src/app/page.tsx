@@ -200,6 +200,9 @@ export default function HomePage() {
       {/* ─── Footer ─── */}
       <footer className="border-t border-gray-100 bg-white py-8 text-center text-sm text-gray-400">
         <p>© 2026 دورك — كل الحقوق محفوظة</p>
+        <Link href="/admin" className="mt-2 inline-block text-xs text-gray-300 hover:text-indigo-400 transition-colors">
+          👑 المشرف
+        </Link>
       </footer>
     </div>
   );
