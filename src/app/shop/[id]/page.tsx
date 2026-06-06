@@ -434,6 +434,10 @@ export default function ShopPage() {
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-right text-gray-900 placeholder-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-50 transition-all"
                 onKeyDown={(e) => e.key === "Enter" && handleJoin()}
               />
+              <p className="text-xs text-gray-400 mt-1 text-right">
+                🔔 إذا أدخلت رقم موبايلك، هتوصللك إشعارات على <b>تيليجرام</b> تلقائياً!<br/>
+                فقط اربط رقمك مع البوت أولاً: <a href="https://t.me/tawabeer_bot" target="_blank" className="text-indigo-500 hover:underline">@tawabeer_bot</a>
+              </p>
             </div>
 
             {error && (

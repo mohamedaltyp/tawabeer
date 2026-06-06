@@ -23,6 +23,15 @@ export async function middleware(request: NextRequest) {
       await sql`CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, entry_id TEXT NOT NULL, type TEXT DEFAULT 'whatsapp', status TEXT DEFAULT 'pending', recipient TEXT DEFAULT '', message TEXT DEFAULT '', sent_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE, FOREIGN KEY (entry_id) REFERENCES queue_entries(id) ON DELETE CASCADE)`;
       await sql`CREATE TABLE IF NOT EXISTS payment_methods (id TEXT PRIMARY KEY, name TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'other', details TEXT NOT NULL DEFAULT '', icon TEXT DEFAULT '💳', is_active INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW())`;
       await sql`CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '')`;
+      // Add telegram_chat_id to queue_entries if not exists
+      await sql`ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT DEFAULT ''`;
+
+      // Create telegram_links table for phone↔chat_id mapping
+      await sql`CREATE TABLE IF NOT EXISTS telegram_links (
+        phone TEXT PRIMARY KEY,
+        chat_id TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )`;
       migrated = true;
       console.log("✅ Database migration complete");
     } catch (e: any) {

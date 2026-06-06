@@ -1,112 +1,160 @@
 import { NextRequest, NextResponse } from "next/server";
-import { linkTelegramToEntry, getQueueEntry, ensureMigrated } from "@/lib/db";
+import { neon } from "@neondatabase/serverless";
 
 const BOT_TOKEN = process.env.BOT_TOKEN || "";
-const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const sql = neon(process.env.DATABASE_URL || process.env.POSTGRES_URL || "");
 
-interface TelegramUpdate {
-  update_id: number;
-  message?: {
-    message_id: number;
-    chat: { id: number; type: string; first_name?: string; username?: string };
-    text?: string;
-    entities?: { type: string; offset: number; length: number }[];
-  };
-}
-
-export async function POST(req: NextRequest) {
-  if (!BOT_TOKEN) {
-    return NextResponse.json({ ok: false, error: "BOT_TOKEN not configured" }, { status: 500 });
-  }
-
+async function sendTelegram(chatId: number | string, text: string) {
+  if (!BOT_TOKEN) return;
   try {
-    await ensureMigrated();
-    const update: TelegramUpdate = await req.json();
-
-    if (!update.message?.text) {
-      return NextResponse.json({ ok: true });
-    }
-
-    const chatId = String(update.message.chat.id);
-    const text = update.message.text.trim();
-    const firstName = update.message.chat.first_name || "عميلنا";
-
-    // /start command
-    if (text.startsWith("/start")) {
-      const parts = text.split(/\s+/);
-      const payload = parts[1] || "";
-
-      if (payload.startsWith("notif_")) {
-        const entryId = payload.replace("notif_", "").split("_")[0];
-        const entry = await getQueueEntry(entryId);
-
-        if (!entry) {
-          const sent = await sendTelegramMessage(chatId, `مرحباً ${firstName} 🙋‍♂️\n\nعذراً، لم نعد نجد بيانات هذا الدخول. قد يكون قد اكتمل أو تم إلغاؤه.\n\nتفضل بزيارة الموقع لأخذ دور جديد: https://tawabeer-mu.vercel.app/`);
-          return NextResponse.json({ ok: true, message: "not_found", sent });
-        }
-
-  const linked = await linkTelegramToEntry(entryId, chatId);
-  if (linked) {
-    const sent = await sendTelegramMessage(chatId,
-      `✅ *تم الاشتراك في الإشعارات بنجاح!* 🎉\n\nمرحباً *${entry.customer_name || firstName}* 🙋‍♂️\n\n📋 رقم دورك: *${entry.number}*\n🏪 سيتم إعلامك عند قدوم دورك\n\n🔔 *سواء صفحة الموقع مفتوحة ولا لأ — هنبعتلك إشعار لحظة ما يجي دورك!*\n\nاسترخي واحنا نناديلك ✅`
-    );
-    return NextResponse.json({ ok: true, message: "linked", sent, entryId });
-  } else {
-    const sent = await sendTelegramMessage(chatId, `عذراً ${firstName}، حدث خطأ أثناء ربط الإشعارات. حاول مرة أخرى من الموقع. 🙏`);
-    return NextResponse.json({ ok: true, message: "link_failed", sent });
-  }
-      } else {
-        const sent = await sendTelegramMessage(chatId,
-          `مرحباً بك في *دورك* 🙋‍♂️🎉
-
-أنا بوت مساعد لنظام إدارة الطوابير.
-
-📌 *ماذا يمكنني أن أفعل لك؟*
-• 🔔 أشعرك لما يجي دورك في أي محل
-• 📊 أتابع حالة الطابور
-
-👆 امسح QR كود المحل، ودور على زر "إشعار تيليجرام" بعد ما تاخد رقمك!
-        
-https://tawabeer-mu.vercel.app/`
-        );
-        return NextResponse.json({ ok: true, message: "welcome", sent });
-      }
-    }
-
-    return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err.message, stack: err.stack?.substring(0, 500) }, { status: 500 });
-  }
-}
-
-export async function GET() {
-  return NextResponse.json({
-    ok: true,
-    message: "Tawabeer Bot Webhook is running",
-    bot: "@tawabeer_bot",
-    token_set: !!BOT_TOKEN,
-    token_prefix: BOT_TOKEN.substring(0, 10),
-  });
-}
-
-async function sendTelegramMessage(chatId: string, text: string): Promise<boolean> {
-  try {
-    const res = await fetch(`${TELEGRAM_API}/sendMessage`, {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+    await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId,
         text,
-        parse_mode: "Markdown",
+        parse_mode: "HTML",
       }),
     });
-    if (!res.ok) {
-      const errBody = await res.text();
-      console.error(`Telegram API error: ${res.status} - ${errBody}`);
+  } catch (e) {
+    console.error("Telegram send error:", e);
+  }
+}
+
+// GET — Telegram verifies the webhook exists
+export async function GET() {
+  return NextResponse.json({ ok: true, bot: "tawabeer_bot" });
+}
+
+// POST — Incoming updates from Telegram (user messages to the bot)
+export async function POST(req: NextRequest) {
+  try {
+    const update = await req.json();
+
+    // Only handle messages
+    if (!update.message) {
+      return NextResponse.json({ ok: true });
     }
-    return res.ok;
-  } catch (err: any) {
-    console.error(`sendTelegramMessage catch: ${err.message}`);
-    return false;
+
+    const chatId = update.message.chat.id;
+    const text = (update.message.text || "").trim();
+
+    // ── /start command — show welcome ──
+    if (text === "/start") {
+      await sendTelegram(
+        chatId,
+        `👋 مرحباً بك في بوت <b>دورك</b>!
+
+📌 هذا البوت يرسل لك إشعار لما يجي دورك في أي محل يستخدم نظام توابير.
+
+💡 <b>الاستخدام:</b>
+1️⃣ أرسل رقم موبايلك عشان تربط حسابك (مثال: 01001112233)
+2️⃣ امسح QR المحل
+3️⃣ احجز دورك بنفس رقم الموبايل
+4️⃣ هتوصلك رسالة 🔔 لما يحين دورك!
+
+🔍 <b>للاستعلام عن دور:</b>
+أرسل رقم الدور لمتابعة وضعه.
+
+📋 <b>الأوامر:</b>
+/start — عرض هذه الرسالة
+/phone 01001112233 — ربط رقم موبايلك
+/unlink — إلغاء ربط رقمك`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── /phone command — link phone number ──
+    if (text.startsWith("/phone ")) {
+      const phone = text.replace("/phone ", "").replace(/[^0-9+]/g, "").trim();
+      if (phone.length < 10) {
+        await sendTelegram(chatId, "❌ رقم الموبايل غير صحيح. أرسل رقم صحيح مكون من 11 رقم (مثال: 01001112233)");
+        return NextResponse.json({ ok: true });
+      }
+      await sql`
+        INSERT INTO telegram_links (phone, chat_id) 
+        VALUES (${phone}, ${String(chatId)})
+        ON CONFLICT (phone) DO UPDATE SET chat_id = ${String(chatId)}
+      `;
+      await sendTelegram(
+        chatId,
+        `✅ <b>تم ربط رقمك بنجاح!</b>\n\n📱 ${phone}\n\n🔔 هتوصللك إشعارات على تيليجرام لما يجي دورك في أي محل — بس تأكد إنك تستخدم نفس الرقم عند حجز الدور.`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── /unlink command ──
+    if (text === "/unlink") {
+      await sql`DELETE FROM telegram_links WHERE chat_id = ${String(chatId)}`;
+      await sendTelegram(chatId, "✅ تم إلغاء ربط رقمك. لن تستقبل إشعارات.");
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── Phone number detection (starts with 0 or +20, 10+ digits) ──
+    const isPhone = /^(\+20|0|0020)?1[0-9]{9}$/.test(text.replace(/[^0-9+]/g, ""));
+    if (isPhone) {
+      const cleanPhone = text.replace(/[^0-9]/g, "").trim();
+      await sql`
+        INSERT INTO telegram_links (phone, chat_id) 
+        VALUES (${cleanPhone}, ${String(chatId)})
+        ON CONFLICT (phone) DO UPDATE SET chat_id = ${String(chatId)}
+      `;
+      await sendTelegram(
+        chatId,
+        `✅ <b>تم ربط رقم ${cleanPhone}</b>\n\n🔔 هتوصللك إشعارات تيليجرام لما يجي دورك!\n\n📌 استخدم /unlink لو عايز تلغي الربط.`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── If user sends a number (not phone), search for their entry ──
+    const isTicketNumber = /^\d+$/.test(text);
+    if (isTicketNumber) {
+      const entries = await sql`
+        SELECT qe.*, s.name as shop_name 
+        FROM queue_entries qe 
+        JOIN shops s ON s.id = qe.shop_id 
+        WHERE qe.number = ${parseInt(text)} 
+          AND qe.customer_phone != '' 
+        ORDER BY qe.created_at DESC 
+        LIMIT 1
+      `;
+
+      if (entries.length > 0) {
+        const entry: any = entries[0];
+        const statusMap: Record<string, string> = {
+          waiting: "🟢 في الانتظار",
+          called: "🔔 تمت مناداتك — تفضل للمحل",
+          completed: "✅ تمت الخدمة",
+          cancelled: "❌ ملغي",
+        };
+        await sendTelegram(
+          chatId,
+          `🔍 <b>الرقم ${entry.number}</b>
+🏪 ${entry.shop_name}
+الحالة: ${statusMap[entry.status] || entry.status}`
+        );
+      } else {
+        await sendTelegram(
+          chatId,
+          "❌ ما لقيت دور بهذا الرقم.\nتأكد من الرقم أو سجل دورك أولاً."
+        );
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── Default: help message ──
+    await sendTelegram(
+      chatId,
+      `👋 أهلاً! أنا بوت <b>دورك</b> 🤖\n\n`
+        + `📱 أرسل رقم موبايلك عشان تربطه وتستقبل الإشعارات\n`
+        + `🔢 أرسل رقم دورك عشان تعرف وضعه\n`
+        + `📋 أو اكتب /start`
+    );
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    console.error("Bot webhook error:", e.message);
+    return NextResponse.json({ ok: true }); // Always return 200 to Telegram
   }
 }

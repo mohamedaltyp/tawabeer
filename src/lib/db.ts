@@ -1,5 +1,6 @@
 import { neon, neonConfig } from "@neondatabase/serverless";
 import { v4 as uuidv4 } from "uuid";
+import { notifyCustomerCalled } from "./telegram";
 
 // Allow HTTP mode (no WebSocket needed) — works on Vercel Edge + Serverless
 neonConfig.poolQueryViaFetch = true;
@@ -47,7 +48,6 @@ async function runMigrations() {
       status TEXT DEFAULT 'waiting',
       estimated_wait INTEGER DEFAULT 0,
       recall_count INTEGER DEFAULT 0,
-      telegram_chat_id TEXT DEFAULT '',
       created_at TIMESTAMPTZ DEFAULT NOW(),
       called_at TIMESTAMPTZ,
       completed_at TIMESTAMPTZ,
@@ -104,7 +104,7 @@ async function runMigrations() {
     )
   `;
 
-  // Migrations for existing columns
+  // Migration: Add plan columns if they don't exist (safe to run multiple times)
   const migrations = [
     `ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free'`,
     `ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan_status TEXT DEFAULT 'active'`,
@@ -199,61 +199,6 @@ export interface PaymentMethod {
   created_at: string;
 }
 
-// ─── Telegram ─────────────────────────────────
-
-const BOT_TOKEN = process.env.BOT_TOKEN || "";
-const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
-
-export async function sendTelegramMessage(chatId: string, text: string): Promise<boolean> {
-  const token = process.env.BOT_TOKEN || "";
-  if (!token) return false;
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "Markdown",
-      }),
-    });
-    if (!res.ok) {
-      const errBody = await res.text();
-      console.error(`Telegram API error: ${res.status} - ${errBody}`);
-    }
-    return res.ok;
-  } catch (err: any) {
-    console.error(`sendTelegramMessage catch: ${err.message}`);
-    return false;
-  }
-}
-
-export async function linkTelegramToEntry(entryId: string, chatId: string): Promise<boolean> {
-  try {
-    await sql`UPDATE queue_entries SET telegram_chat_id = ${chatId} WHERE id = ${entryId}`;
-    return true;
-  } catch (e: any) {
-    // Column doesn't exist — create it via raw query
-    try {
-      await sql.query("ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT DEFAULT ''", []);
-      await sql`UPDATE queue_entries SET telegram_chat_id = ${chatId} WHERE id = ${entryId}`;
-      return true;
-    } catch (e2: any) {
-      console.error("linkTelegramToEntry error:", e.message, "\ninner:", e2?.message);
-      return false;
-    }
-  }
-}
-
-export async function getEntryByTelegramChat(shopId: string, chatId: string): Promise<QueueEntry | undefined> {
-  const rows = await sql`
-    SELECT * FROM queue_entries 
-    WHERE shop_id = ${shopId} AND telegram_chat_id = ${chatId} AND status = 'waiting'
-    ORDER BY created_at DESC LIMIT 1
-  ` as unknown as QueueEntry[];
-  return rows[0];
-}
-
 // ─── Shops ────────────────────────────────────────
 
 export async function createShop(data: {
@@ -272,8 +217,7 @@ export async function createShop(data: {
     VALUES (${id}, ${data.name}, ${data.description || ""}, ${data.address || ""}, ${data.phone || ""}, ${data.category || ""}, ${data.owner_name || ""}, ${data.owner_phone || ""}, ${data.owner_password || ""})
   `;
   await sql`INSERT INTO queue_settings (shop_id) VALUES (${id})`;
-  const shop = await getShop(id);
-  return shop!;
+  return getShop(id)!;
 }
 
 export async function getAllShops(): Promise<Shop[]> {
@@ -380,6 +324,16 @@ export async function joinQueue(data: {
   const number = await getNextNumber(data.shopId);
   const id = uuidv4();
 
+  // Check if phone is linked to Telegram
+  let telegramChatId = "";
+  if (data.customerPhone) {
+    const cleanPhone = data.customerPhone.replace(/[^0-9]/g, "");
+    const links = await sql`SELECT chat_id FROM telegram_links WHERE phone = ${cleanPhone}` as unknown as { chat_id: string }[];
+    if (links.length > 0) {
+      telegramChatId = links[0].chat_id;
+    }
+  }
+
   // Get active queue count for position
   const countRows = await sql`SELECT COUNT(*)::int as count FROM queue_entries WHERE shop_id = ${data.shopId} AND status = 'waiting'` as unknown as { count: number }[];
   const position = countRows[0]?.count || 0;
@@ -390,8 +344,8 @@ export async function joinQueue(data: {
   const estimatedWait = (position + 1) * avgMinutes;
 
   await sql`
-    INSERT INTO queue_entries (id, shop_id, number, customer_name, customer_phone, estimated_wait)
-    VALUES (${id}, ${data.shopId}, ${number}, ${data.customerName || ""}, ${data.customerPhone || ""}, ${estimatedWait})
+    INSERT INTO queue_entries (id, shop_id, number, customer_name, customer_phone, estimated_wait, telegram_chat_id)
+    VALUES (${id}, ${data.shopId}, ${number}, ${data.customerName || ""}, ${data.customerPhone || ""}, ${estimatedWait}, ${telegramChatId})
   `;
 
   // Update shop current number if this is the first entry
@@ -429,19 +383,16 @@ export async function callNext(shopId: string): Promise<QueueEntry | null> {
   await sql`UPDATE queue_entries SET status = 'called', called_at = NOW() WHERE id = ${next.id}`;
   await sql`UPDATE shops SET current_number = ${next.number} WHERE id = ${shopId}`;
 
-  // Send Telegram notification if linked
-  let telegramSent = false;
-  if (next.telegram_chat_id) {
+  const updated = await getQueueEntry(next.id) || null;
+
+  // Send Telegram notification if customer provided a chat ID
+  if (updated && updated.telegram_chat_id) {
     const shop = await getShop(shopId);
     const shopName = shop?.name || "المحل";
-    telegramSent = await sendTelegramMessage(
-      next.telegram_chat_id,
-      `🔔 حان دورك يا ${next.customer_name || "عميلنا العزيز"}!\n\nرقم ${next.number} — تفضل إلى ${shopName}\n📍 ${shop?.address || ""}\n\nنتمنى لك تجربة ممتعة! 🎉`
-    );
+    notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number).catch(() => {});
   }
 
-  const entry = (await getQueueEntry(next.id)) || null;
-  return { ...entry, _telegramSent: telegramSent } as any;
+  return updated;
 }
 
 export async function completeEntry(id: string): Promise<QueueEntry | undefined> {
@@ -460,17 +411,16 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
   await sql`UPDATE queue_entries SET status = 'called', called_at = NOW(), recall_count = recall_count + 1 WHERE id = ${id}`;
   await sql`UPDATE shops SET current_number = ${entry.number} WHERE id = ${entry.shop_id}`;
 
-  // Send Telegram notification for re-call
-  if (entry.telegram_chat_id) {
+  const updated = await getQueueEntry(id);
+
+  // Send Telegram notification for recall
+  if (updated && updated.telegram_chat_id) {
     const shop = await getShop(entry.shop_id);
     const shopName = shop?.name || "المحل";
-    await sendTelegramMessage(
-      entry.telegram_chat_id,
-      `🔔🔔 *إعادة نداء!*\n\nرقم *${entry.number}* — تفضل إلى *${shopName}*\n📍 ${shop?.address || ""}\n\nينتظرك المحل! 🏪`
-    );
+    notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, updated.recall_count).catch(() => {});
   }
 
-  return getQueueEntry(id);
+  return updated;
 }
 
 // ─── Settings ─────────────────────────────────────
@@ -573,10 +523,20 @@ export async function updatePaymentMethod(id: string, data: Partial<PaymentMetho
 
 export async function deletePaymentMethod(id: string): Promise<boolean> {
   const result = await sql`DELETE FROM payment_methods WHERE id = ${id}`;
-  return result.length > 0;
+  return result.length > 0; // neon returns array of results
 }
 
-// ─── App Settings ───────────────────────────
+// ─── Synchronous wrappers for API routes that need sync access ──────
+// These cache the result after first call (only used at module load)
+let _migrated = false;
+export async function ensureMigrated() {
+  if (!_migrated) {
+    await runMigrations();
+    _migrated = true;
+  }
+}
+
+// ─── App Settings ────────────────────────────
 
 export async function getAppSetting(key: string): Promise<string> {
   const rows = await sql`SELECT value FROM app_settings WHERE key = ${key}` as unknown as { value: string }[];
@@ -584,18 +544,19 @@ export async function getAppSetting(key: string): Promise<string> {
 }
 
 export async function setAppSetting(key: string, value: string): Promise<void> {
+  await sql`INSERT INTO app_settings (key, value) VALUES (${key}, ${value}) ON CONFLICT (key) DO UPDATE SET value = ${value}`;
+}
+
+// ─── Email login code ─────────────────────────
+
+export async function saveLoginCode(email: string, code: string): Promise<void> {
   await sql`
-    INSERT INTO app_settings (key, value) VALUES (${key}, ${value})
-    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    INSERT INTO app_settings (key, value) VALUES (${"login_code_" + email}, ${code})
+    ON CONFLICT (key) DO UPDATE SET value = ${code}
   `;
 }
 
-// ─── Synchronous wrappers for API routes that need sync access ──────
-// These cache the result after first call (only used at module load)
-let _migrated = false;
-
-export async function ensureMigrated() {
-  if (_migrated) return;
-  await runMigrations();
-  _migrated = true;
+export async function verifyLoginCode(email: string, code: string): Promise<boolean> {
+  const rows = await sql`SELECT value FROM app_settings WHERE key = ${"login_code_" + email}` as unknown as { value: string }[];
+  return rows[0]?.value === code;
 }
