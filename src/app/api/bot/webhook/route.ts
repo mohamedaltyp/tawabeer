@@ -52,19 +52,8 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json({ ok: true, message: "linked", sent, entryId });
   } else {
-    // Try direct UPDATE as fallback
-    try {
-      const { neon } = await import("@neondatabase/serverless");
-      const sql2 = neon(process.env.DATABASE_URL || "");
-      await sql2`UPDATE queue_entries SET telegram_chat_id = ${chatId} WHERE id = ${entryId}`;
-      const sent = await sendTelegramMessage(chatId, `✅ *تم الاشتراك بنجاح!* 🎉\n\nمرحباً *${entry.customer_name || firstName}*🙋‍♂️\n\n📋 رقم دورك: *${entry.number}*\n🔔 سنرسل لك إشعاراً لحظة قدوم دورك!`);
-      return NextResponse.json({ ok: true, message: "linked_fallback", sent, entryId });
-    } catch (e2: any) {
-      const sent = await sendTelegramMessage(chatId,
-        `عذراً ${firstName}، حدث خطأ أثناء ربط الإشعارات (${e2.message?.substring(0, 100)}).\n\nحاول مرة أخرى أو تواصل مع الدعم. 🙏`
-      );
-      return NextResponse.json({ ok: true, message: "link_failed", error: e2.message, sent });
-    }
+    const sent = await sendTelegramMessage(chatId, `عذراً ${firstName}، حدث خطأ أثناء ربط الإشعارات. حاول مرة أخرى من الموقع. 🙏`);
+    return NextResponse.json({ ok: true, message: "link_failed", sent });
   }
       } else {
         const sent = await sendTelegramMessage(chatId,

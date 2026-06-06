@@ -227,8 +227,15 @@ export async function linkTelegramToEntry(entryId: string, chatId: string): Prom
     await sql`UPDATE queue_entries SET telegram_chat_id = ${chatId} WHERE id = ${entryId}`;
     return true;
   } catch (e: any) {
-    console.error("linkTelegramToEntry error:", e.message);
-    return false;
+    // Column might not exist yet — try to add it and retry
+    try {
+      await sql.unsafe(`ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT DEFAULT ''`);
+      await sql`UPDATE queue_entries SET telegram_chat_id = ${chatId} WHERE id = ${entryId}`;
+      return true;
+    } catch (e2: any) {
+      console.error("linkTelegramToEntry error:", e.message, e2?.message);
+      return false;
+    }
   }
 }
 
