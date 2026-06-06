@@ -71,6 +71,8 @@ export default function ShopPage() {
   const [myEntry, setMyEntry] = useState<QueueEntry | null>(null);
   const [error, setError] = useState("");
 
+  const [telegramLinkUrl, setTelegramLinkUrl] = useState("");
+
   const audioCtxRef = useRef<AudioContext | null>(null);
   const myNumberRef = useRef<number | null>(null);
   const lastRecallRef = useRef<number>(-1);
@@ -240,6 +242,7 @@ export default function ShopPage() {
         return;
       }
       setMyEntry(data.entry);
+      setTelegramLinkUrl(data.telegram_link_url || "");
     } catch {
       setError("حدث خطأ، حاول مرة أخرى");
     } finally {
@@ -478,25 +481,26 @@ export default function ShopPage() {
             </div>
           )}
 
-          {/* Telegram Notification */}
+          {/* Telegram Notification Button */}
           <div className="w-full max-w-sm mb-4 animate-slide-up" style={{ animationDelay: "0.7s" }}>
             <a
-              href={`https://t.me/tawabeer_bot?start=notif_${myEntry.id}_${id}`}
+              href={telegramLinkUrl || `https://t.me/tawabeer_bot?start=notif_${myEntry.id}_${id}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-3 w-full rounded-2xl py-4 px-5 text-white font-medium transition-all"
               style={{
-                background: "linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(14, 165, 233, 0.2) 100%)",
-                border: "1px solid rgba(56, 189, 248, 0.3)",
+                background: "linear-gradient(135deg, rgba(56, 189, 248, 0.25) 0%, rgba(14, 165, 233, 0.25) 100%)",
+                border: "1px solid rgba(56, 189, 248, 0.35)",
                 backdropFilter: "blur(10px)",
                 textDecoration: "none",
               }}
             >
-              <span className="text-xl">✈️</span>
-              <div className="text-right">
-                <div className="text-sm font-bold">إشعارات تيليجرام</div>
-                <div className="text-xs text-sky-200/60">هيوصلك إشعار لحظة ما يتنادى دورك</div>
+              <span className="text-2xl">✈️</span>
+              <div className="text-right flex-1">
+                <div className="text-sm font-bold">🔔 اشترك في إشعارات تيليجرام</div>
+                <div className="text-xs text-sky-200/70">اضغط هنا عشان توصلك إشعار لما يتنادى دورك</div>
               </div>
+              <span className="text-lg">←</span>
             </a>
           </div>
 

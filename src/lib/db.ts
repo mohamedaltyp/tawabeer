@@ -320,7 +320,7 @@ export async function joinQueue(data: {
   shopId: string;
   customerName?: string;
   customerPhone?: string;
-}): Promise<{ entry: QueueEntry; position: number; estimatedWait: number }> {
+}): Promise<{ entry: QueueEntry; position: number; estimatedWait: number; telegram_link_url: string }> {
   const number = await getNextNumber(data.shopId);
   const id = uuidv4();
 
@@ -355,10 +355,15 @@ export async function joinQueue(data: {
   }
 
   const entry = await getQueueEntry(id);
+
+  // Generate Telegram deep link URL
+  const telegram_link_url = `https://t.me/tawabeer_bot?start=link_${id}`;
+
   return {
     entry: entry!,
     position: position + 1,
     estimatedWait,
+    telegram_link_url,
   };
 }
 
