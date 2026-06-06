@@ -14,6 +14,8 @@ interface Shop {
   owner_password: string;
   current_number: number;
   is_active: number;
+  plan: string;
+  plan_status: string;
 }
 
 export default function DashboardPage() {
@@ -122,6 +124,9 @@ export default function DashboardPage() {
               <span className="text-xl font-bold text-indigo-700">دورك</span>
             </Link>
             <div className="flex items-center gap-4">
+              <Link href="/dashboard/pricing" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+                💎 الباقات
+              </Link>
               <span className="text-sm text-gray-500">👋 {loggedIn.name}</span>
               <button onClick={handleLogout} className="text-sm text-red-500 hover:text-red-600">
                 تسجيل خروج
@@ -155,11 +160,16 @@ export default function DashboardPage() {
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <h3 className="text-lg font-bold text-gray-900">{shop.name}</h3>
-                        {shop.category && (
-                          <span className="mt-1 inline-block rounded-full bg-indigo-50 px-3 py-0.5 text-xs font-medium text-indigo-600">
-                            {shop.category}
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {shop.category && (
+                            <span className="inline-block rounded-full bg-indigo-50 px-3 py-0.5 text-xs font-medium text-indigo-600">
+                              {shop.category}
+                            </span>
+                          )}
+                          <span className="inline-block rounded-full bg-gray-100 px-3 py-0.5 text-xs font-medium text-gray-500">
+                            {shop.plan === "free" ? "مجاني" : shop.plan === "basic" ? "⭐ أساسي" : shop.plan === "pro" ? "💎 احترافية" : "🏢 مؤسسات"}
                           </span>
-                        )}
+                        </div>
                       </div>
                       <span className="text-3xl">{shop.category === "مطعم" ? "🍽️" : shop.category === "حلاق" ? "💈" : shop.category === "عيادة" ? "🏥" : "🏪"}</span>
                     </div>

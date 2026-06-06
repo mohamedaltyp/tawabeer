@@ -8,6 +8,30 @@ const db = new Database(dbPath);
 // Enable WAL mode for better concurrent access
 db.pragma("journal_mode = WAL");
 
+// Run migrations for existing tables
+function runMigrations() {
+  // Add plan columns to shops table if they don't exist
+  try {
+    db.exec("ALTER TABLE shops ADD COLUMN plan TEXT DEFAULT 'free'");
+  } catch {} // already exists
+  try {
+    db.exec("ALTER TABLE shops ADD COLUMN plan_status TEXT DEFAULT 'active'");
+  } catch {}
+  try {
+    db.exec("ALTER TABLE shops ADD COLUMN plan_started_at TEXT");
+  } catch {}
+  try {
+    db.exec("ALTER TABLE shops ADD COLUMN plan_expires_at TEXT");
+  } catch {}
+  try {
+    db.exec("ALTER TABLE shops ADD COLUMN stripe_customer_id TEXT DEFAULT ''");
+  } catch {}
+  try {
+    db.exec("ALTER TABLE shops ADD COLUMN stripe_subscription_id TEXT DEFAULT ''");
+  } catch {}
+}
+runMigrations();
+
 // Create tables
 db.exec(`
   CREATE TABLE IF NOT EXISTS shops (
@@ -22,6 +46,12 @@ db.exec(`
     owner_name TEXT DEFAULT '',
     owner_phone TEXT DEFAULT '',
     owner_password TEXT DEFAULT '',
+    plan TEXT DEFAULT 'free',
+    plan_status TEXT DEFAULT 'active',
+    plan_started_at TEXT,
+    plan_expires_at TEXT,
+    stripe_customer_id TEXT DEFAULT '',
+    stripe_subscription_id TEXT DEFAULT '',
     created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
 
@@ -60,6 +90,12 @@ export interface Shop {
   owner_name: string;
   owner_phone: string;
   owner_password: string;
+  plan: string;
+  plan_status: string;
+  plan_started_at: string | null;
+  plan_expires_at: string | null;
+  stripe_customer_id: string;
+  stripe_subscription_id: string;
   created_at: string;
 }
 
@@ -140,7 +176,45 @@ export function updateShop(id: string, data: Partial<Shop>): Shop | undefined {
   return getShop(id);
 }
 
-// ─── Queue ────────────────────────────────────────
+// ─── Plans / Subscriptions ───────────────────────
+
+export function getOwnerShopsByPhone(ownerPhone: string): Shop[] {
+  return db
+    .prepare("SELECT * FROM shops WHERE owner_phone = ? ORDER BY created_at DESC")
+    .all(ownerPhone) as Shop[];
+}
+
+export function getShopPlan(shopId: string): string {
+  const shop = getShop(shopId);
+  return shop?.plan || "free";
+}
+
+export function updateShopPlan(
+  shopId: string,
+  plan: string,
+  expiresAt?: string
+): Shop | undefined {
+  const updates: Record<string, any> = { plan };
+  if (expiresAt) {
+    updates.plan_expires_at = expiresAt;
+    updates.plan_status = "active";
+    updates.plan_started_at = new Date().toISOString();
+  }
+  return updateShop(shopId, updates);
+}
+
+export function isPlanActive(shopId: string): boolean {
+  const shop = getShop(shopId);
+  if (!shop) return false;
+  if (shop.plan === "free") return true;
+  if (shop.plan_status !== "active") return false;
+  if (shop.plan_expires_at && new Date(shop.plan_expires_at) < new Date()) {
+    return false;
+  }
+  return true;
+}
+
+// ─── Queue (legacy) ────────────────────────────────────────
 
 export function getNextNumber(shopId: string): number {
   const row = db
