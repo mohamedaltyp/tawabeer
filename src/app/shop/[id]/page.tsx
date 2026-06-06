@@ -340,8 +340,22 @@ export default function ShopPage() {
                 )}
               </div>
 
+              {/* Telegram Notification Button */}
+              <div className="mt-4 w-full max-w-sm">
+                <a
+                  href={`https://t.me/tawabeer_bot?start=notif_${myEntry.id}_${id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md py-3 px-4 text-sm text-white font-medium transition-all"
+                >
+                  <span>✈️</span>
+                  <span>اشترك في إشعارات تيليجرام</span>
+                  <span className="text-xs text-indigo-300">(إشعار لحظة قدوم دورك)</span>
+                </a>
+              </div>
+
               {/* Live indicator */}
-              <div className="mt-6 flex items-center gap-2 text-sm text-indigo-300">
+              <div className="mt-4 flex items-center gap-2 text-sm text-indigo-300">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-green-400"></span>

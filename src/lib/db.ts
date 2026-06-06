@@ -47,6 +47,7 @@ async function runMigrations() {
       status TEXT DEFAULT 'waiting',
       estimated_wait INTEGER DEFAULT 0,
       recall_count INTEGER DEFAULT 0,
+      telegram_chat_id TEXT DEFAULT '',
       created_at TIMESTAMPTZ DEFAULT NOW(),
       called_at TIMESTAMPTZ,
       completed_at TIMESTAMPTZ,
@@ -103,7 +104,7 @@ async function runMigrations() {
     )
   `;
 
-  // Migration: Add plan columns if they don't exist (safe to run multiple times)
+  // Migrations for existing columns
   const migrations = [
     `ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free'`,
     `ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan_status TEXT DEFAULT 'active'`,
@@ -115,6 +116,7 @@ async function runMigrations() {
     `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS whatsapp_number TEXT DEFAULT ''`,
     `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS whatsapp_business_account_id TEXT DEFAULT ''`,
     `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS recall_count INTEGER DEFAULT 0`,
+    `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT DEFAULT ''`,
   ];
   for (const m of migrations) {
     try { await sql.unsafe(m); } catch { /* column already exists */ }
@@ -170,6 +172,7 @@ export interface QueueEntry {
   status: "waiting" | "called" | "completed" | "cancelled";
   estimated_wait: number;
   recall_count: number;
+  telegram_chat_id: string;
   created_at: string;
   called_at: string | null;
   completed_at: string | null;
@@ -194,6 +197,47 @@ export interface PaymentMethod {
   is_active: number;
   sort_order: number;
   created_at: string;
+}
+
+// ─── Telegram ─────────────────────────────────
+
+const BOT_TOKEN = process.env.BOT_TOKEN || "";
+const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+
+export async function sendTelegramMessage(chatId: string, text: string): Promise<boolean> {
+  if (!BOT_TOKEN) return false;
+  try {
+    const res = await fetch(`${TELEGRAM_API}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "Markdown",
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function linkTelegramToEntry(entryId: string, chatId: string): Promise<boolean> {
+  try {
+    await sql`UPDATE queue_entries SET telegram_chat_id = ${chatId} WHERE id = ${entryId}`;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function getEntryByTelegramChat(shopId: string, chatId: string): Promise<QueueEntry | undefined> {
+  const rows = await sql`
+    SELECT * FROM queue_entries 
+    WHERE shop_id = ${shopId} AND telegram_chat_id = ${chatId} AND status = 'waiting'
+    ORDER BY created_at DESC LIMIT 1
+  ` as unknown as QueueEntry[];
+  return rows[0];
 }
 
 // ─── Shops ────────────────────────────────────────
@@ -371,6 +415,16 @@ export async function callNext(shopId: string): Promise<QueueEntry | null> {
   await sql`UPDATE queue_entries SET status = 'called', called_at = NOW() WHERE id = ${next.id}`;
   await sql`UPDATE shops SET current_number = ${next.number} WHERE id = ${shopId}`;
 
+  // Send Telegram notification if linked
+  if (next.telegram_chat_id) {
+    const shop = await getShop(shopId);
+    const shopName = shop?.name || "المحل";
+    await sendTelegramMessage(
+      next.telegram_chat_id,
+      `🔔 *حان دورك يا ${next.customer_name || "عميلنا العزيز"}!*\n\nرقم *${next.number}* — تفضل إلى *${shopName}*\n📍 ${shop?.address || ""}\n\nنتمنى لك تجربة ممتعة! 🎉`
+    );
+  }
+
   return (await getQueueEntry(next.id)) || null;
 }
 
@@ -389,6 +443,17 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
   if (!entry) return undefined;
   await sql`UPDATE queue_entries SET status = 'called', called_at = NOW(), recall_count = recall_count + 1 WHERE id = ${id}`;
   await sql`UPDATE shops SET current_number = ${entry.number} WHERE id = ${entry.shop_id}`;
+
+  // Send Telegram notification for re-call
+  if (entry.telegram_chat_id) {
+    const shop = await getShop(entry.shop_id);
+    const shopName = shop?.name || "المحل";
+    await sendTelegramMessage(
+      entry.telegram_chat_id,
+      `🔔🔔 *إعادة نداء!*\n\nرقم *${entry.number}* — تفضل إلى *${shopName}*\n📍 ${shop?.address || ""}\n\nينتظرك المحل! 🏪`
+    );
+  }
+
   return getQueueEntry(id);
 }
 
@@ -492,40 +557,15 @@ export async function updatePaymentMethod(id: string, data: Partial<PaymentMetho
 
 export async function deletePaymentMethod(id: string): Promise<boolean> {
   const result = await sql`DELETE FROM payment_methods WHERE id = ${id}`;
-  return result.length > 0; // neon returns array of results
+  return result.length > 0;
 }
 
 // ─── Synchronous wrappers for API routes that need sync access ──────
 // These cache the result after first call (only used at module load)
 let _migrated = false;
+
 export async function ensureMigrated() {
-  if (!_migrated) {
-    await runMigrations();
-    _migrated = true;
-  }
-}
-
-// ─── App Settings ────────────────────────────
-
-export async function getAppSetting(key: string): Promise<string> {
-  const rows = await sql`SELECT value FROM app_settings WHERE key = ${key}` as unknown as { value: string }[];
-  return rows[0]?.value || "";
-}
-
-export async function setAppSetting(key: string, value: string): Promise<void> {
-  await sql`INSERT INTO app_settings (key, value) VALUES (${key}, ${value}) ON CONFLICT (key) DO UPDATE SET value = ${value}`;
-}
-
-// ─── Email login code ─────────────────────────
-
-export async function saveLoginCode(email: string, code: string): Promise<void> {
-  await sql`
-    INSERT INTO app_settings (key, value) VALUES (${"login_code_" + email}, ${code})
-    ON CONFLICT (key) DO UPDATE SET value = ${code}
-  `;
-}
-
-export async function verifyLoginCode(email: string, code: string): Promise<boolean> {
-  const rows = await sql`SELECT value FROM app_settings WHERE key = ${"login_code_" + email}` as unknown as { value: string }[];
-  return rows[0]?.value === code;
+  if (_migrated) return;
+  await runMigrations();
+  _migrated = true;
 }
