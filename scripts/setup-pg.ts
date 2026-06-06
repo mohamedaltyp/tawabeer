@@ -65,7 +65,7 @@ async function setup() {
   
   console.log("✅ Tables created");
   console.log("\n📊 Empty DB ready at:");
-  console.log(DATABASE_URL.replace(/:[^:@]+@/, ':****@'));
+  console.log((DATABASE_URL || "").replace(/:[^:@]+@/, ':****@'));
 }
 
 setup().catch(e => {
