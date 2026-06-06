@@ -41,12 +41,26 @@ export async function notifyCustomerCalled(
   chatId: number | string,
   shopName: string,
   entryNumber: number,
-  recallCount: number = 0
+  recallCount: number = 0,
+  customerPhone?: string
 ): Promise<TelegramResult> {
   const isRecall = recallCount > 0;
-  const message = isRecall
-    ? `🔔🔔 <b>إعادة نداء!</b>\n\nرقم <b>${entryNumber}</b> — تفضل إلى <b>${shopName}</b> 🏪\n\n📌 تمت مناداتك ${recallCount + 1} مرات`
-    : `🔔 <b>حان دورك!</b>\n\nرقم <b>${entryNumber}</b> — تفضل إلى <b>${shopName}</b> 🏪\n\n🎉 دورك جه!`;
+
+  // بناء الرسالة الأساسية
+  let message: string;
+
+  if (isRecall) {
+    message = `🔔🔔 <b>إعادة نداء!</b>\n\nرقم <b>${entryNumber}</b> — تفضل إلى <b>${shopName}</b> 🏪\n\n📌 تمت مناداتك ${recallCount + 1} مرات`;
+  } else {
+    message = `🔔 <b>حان دورك!</b>\n\nرقم <b>${entryNumber}</b> — تفضل إلى <b>${shopName}</b> 🏪\n\n🎉 دورك جه!`;
+  }
+
+  // إضافة رقم التليفون للربط لو موجود
+  if (customerPhone) {
+    message += `\n\n📱 <b>رقمك:</b> <code>${customerPhone}</code>`;
+    message += `\n\n💡 <i>لو التليفون ده بتاعك، ابعته للبوت ده عشان تربط رقمك وتوصلك إشعارات تلقائيًا في كل مرة:</i>`;
+    message += `\n👉 @tawabeer_bot`;
+  }
 
   return sendTelegramNotification(chatId, message);
 }

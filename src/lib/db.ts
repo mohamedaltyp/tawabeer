@@ -390,7 +390,7 @@ export async function callNext(shopId: string): Promise<QueueEntry | null> {
     const shop = await getShop(shopId);
     const shopName = shop?.name || "المحل";
     try {
-      await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number);
+      await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, 0, updated.customer_phone || undefined);
     } catch {}
   }
 
@@ -420,7 +420,7 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
     const shop = await getShop(entry.shop_id);
     const shopName = shop?.name || "المحل";
     try {
-      await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, updated.recall_count);
+      await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, updated.recall_count, updated.customer_phone || undefined);
     } catch {}
   }
 
