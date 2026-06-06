@@ -17,7 +17,8 @@ import json
 import time
 
 # --- CONFIG ---
-APP_URL = os.getenv("APP_URL", "https://operates-minister-review-jun.trycloudflare.com")
+# Use the Vercel production URL (not the local tunnel)
+APP_URL = os.getenv("APP_URL", "https://tawabeer-mu.vercel.app")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "1027781923")
 TIMEOUT = 15
@@ -68,7 +69,7 @@ def main():
         with open(STATUS_FILE, "w") as f:
             f.write(timestamp)
         if not was_down:
-            msg = f"""<b>RED Application Down!</b>
+            msg = f"""<b>🔴 Application Down!</b>
 
 Time: {timestamp}
 URL: <code>{APP_URL}</code>
@@ -80,7 +81,7 @@ Status: {result}"""
     else:
         if was_down:
             os.remove(STATUS_FILE)
-            msg = f"""<b>GREEN Application Back Up!</b>
+            msg = f"""<b>🟢 Application Back Up!</b>
 
 Time: {timestamp}
 URL: <code>{APP_URL}</code>
