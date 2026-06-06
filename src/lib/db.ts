@@ -389,7 +389,9 @@ export async function callNext(shopId: string): Promise<QueueEntry | null> {
   if (updated && updated.telegram_chat_id) {
     const shop = await getShop(shopId);
     const shopName = shop?.name || "المحل";
-    notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number).catch(() => {});
+    try {
+      await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number);
+    } catch {}
   }
 
   return updated;
@@ -417,7 +419,9 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
   if (updated && updated.telegram_chat_id) {
     const shop = await getShop(entry.shop_id);
     const shopName = shop?.name || "المحل";
-    notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, updated.recall_count).catch(() => {});
+    try {
+      await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, updated.recall_count);
+    } catch {}
   }
 
   return updated;
