@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { subscribeToShop, getShop, getActiveQueue } from "@/lib/db";
+import { subscribeToShop, getShop, getActiveQueue, getQueueEntries } from "@/lib/db";
 
 export async function GET(
   req: NextRequest,
@@ -12,10 +12,12 @@ export async function GET(
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
-      // Send initial queue state
-      const queue = getActiveQueue(id);
+      // Send initial queue state — نبعث كل الانترت عشان العميل يعرف لو اتنادى
+      const waiting = getActiveQueue(id);
+      const all = getQueueEntries(id);
+      const called = all.filter((e) => e.status === "called");
       controller.enqueue(
-        encoder.encode(`event: init\ndata: ${JSON.stringify({ queue })}\n\n`)
+        encoder.encode(`event: init\ndata: ${JSON.stringify({ queue: waiting, all, called })}\n\n`)
       );
 
       // Subscribe to new events

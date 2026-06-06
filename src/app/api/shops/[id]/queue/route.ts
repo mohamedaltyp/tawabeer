@@ -78,7 +78,7 @@ export async function PATCH(
       break;
     case "call-again":
       result = callAgain(body.entryId);
-      if (result) emitShopEvent(id, "queue-update", { action: "called", entry: result });
+      if (result) emitShopEvent(id, "queue-update", { action: "called", entry: result, recall: true });
       break;
     default:
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
