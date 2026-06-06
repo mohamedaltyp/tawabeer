@@ -205,9 +205,10 @@ const BOT_TOKEN = process.env.BOT_TOKEN || "";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 export async function sendTelegramMessage(chatId: string, text: string): Promise<boolean> {
-  if (!BOT_TOKEN) return false;
+  const token = process.env.BOT_TOKEN || "";
+  if (!token) return false;
   try {
-    const res = await fetch(`${TELEGRAM_API}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -216,8 +217,13 @@ export async function sendTelegramMessage(chatId: string, text: string): Promise
         parse_mode: "Markdown",
       }),
     });
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error(`Telegram API error: ${res.status} - ${errBody}`);
+    }
     return res.ok;
-  } catch {
+  } catch (err: any) {
+    console.error(`sendTelegramMessage catch: ${err.message}`);
     return false;
   }
 }
