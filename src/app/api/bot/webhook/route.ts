@@ -45,16 +45,27 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ ok: true, message: "not_found", sent });
         }
 
-        const linked = await linkTelegramToEntry(entryId, chatId);
-        if (linked) {
-          const sent = await sendTelegramMessage(chatId,
-            `✅ *تم الاشتراك في الإشعارات بنجاح!* 🎉\n\nمرحباً *${entry.customer_name || firstName}* 🙋‍♂️\n\n📋 رقم دورك: *${entry.number}*\n🏪 سيتم إعلامك عند قدوم دورك\n\n🔔 *سواء صفحة الموقع مفتوحة ولا لأ — هنبعتلك إشعار لحظة ما يجي دورك!*\n\nاسترخي واحنا نناديلك ✅`
-          );
-          return NextResponse.json({ ok: true, message: "linked", sent });
-        } else {
-          const sent = await sendTelegramMessage(chatId, `عذراً ${firstName}، حدث خطأ أثناء ربط الإشعارات. حاول مرة أخرى من الموقع. 🙏`);
-          return NextResponse.json({ ok: true, message: "link_failed", sent });
-        }
+  const linked = await linkTelegramToEntry(entryId, chatId);
+  if (linked) {
+    const sent = await sendTelegramMessage(chatId,
+      `✅ *تم الاشتراك في الإشعارات بنجاح!* 🎉\n\nمرحباً *${entry.customer_name || firstName}* 🙋‍♂️\n\n📋 رقم دورك: *${entry.number}*\n🏪 سيتم إعلامك عند قدوم دورك\n\n🔔 *سواء صفحة الموقع مفتوحة ولا لأ — هنبعتلك إشعار لحظة ما يجي دورك!*\n\nاسترخي واحنا نناديلك ✅`
+    );
+    return NextResponse.json({ ok: true, message: "linked", sent, entryId });
+  } else {
+    // Try direct UPDATE as fallback
+    try {
+      const { neon } = await import("@neondatabase/serverless");
+      const sql2 = neon(process.env.DATABASE_URL || "");
+      await sql2`UPDATE queue_entries SET telegram_chat_id = ${chatId} WHERE id = ${entryId}`;
+      const sent = await sendTelegramMessage(chatId, `✅ *تم الاشتراك بنجاح!* 🎉\n\nمرحباً *${entry.customer_name || firstName}*🙋‍♂️\n\n📋 رقم دورك: *${entry.number}*\n🔔 سنرسل لك إشعاراً لحظة قدوم دورك!`);
+      return NextResponse.json({ ok: true, message: "linked_fallback", sent, entryId });
+    } catch (e2: any) {
+      const sent = await sendTelegramMessage(chatId,
+        `عذراً ${firstName}، حدث خطأ أثناء ربط الإشعارات (${e2.message?.substring(0, 100)}).\n\nحاول مرة أخرى أو تواصل مع الدعم. 🙏`
+      );
+      return NextResponse.json({ ok: true, message: "link_failed", error: e2.message, sent });
+    }
+  }
       } else {
         const sent = await sendTelegramMessage(chatId,
           `مرحباً بك في *دورك* 🙋‍♂️🎉

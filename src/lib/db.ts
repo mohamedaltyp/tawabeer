@@ -226,7 +226,8 @@ export async function linkTelegramToEntry(entryId: string, chatId: string): Prom
   try {
     await sql`UPDATE queue_entries SET telegram_chat_id = ${chatId} WHERE id = ${entryId}`;
     return true;
-  } catch {
+  } catch (e: any) {
+    console.error("linkTelegramToEntry error:", e.message);
     return false;
   }
 }
