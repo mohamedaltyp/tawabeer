@@ -174,6 +174,17 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                       <span>🔄 رقم الحالي: <strong className="text-indigo-600">{shop.current_number || 0}</strong></span>
                     </div>
+                    <div className="mb-4 flex items-center gap-1 text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-1.5">
+                      <span>🆔 رقم المحل:</span>
+                      <code dir="ltr" className="text-gray-600 font-mono text-[11px]">{shop.id}</code>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(shop.id); }}
+                        className="mr-auto text-indigo-500 hover:text-indigo-700"
+                        title="نسخ المعرف"
+                      >
+                        📋
+                      </button>
+                    </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => router.push(`/dashboard/shop/${shop.id}`)}

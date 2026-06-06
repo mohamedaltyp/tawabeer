@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -18,17 +18,31 @@ function UpgradeContent() {
   const [shopId, setShopId] = useState("");
   const [message, setMessage] = useState("");
   const [step, setStep] = useState<"info" | "confirm">("info");
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [adminWhatsapp, setAdminWhatsapp] = useState("01000000000");
+
+  useEffect(() => {
+    fetch("/api/payment-methods", { headers: { "ngrok-skip-browser-warning": "true" } })
+      .then((r) => r.json())
+      .then((d) => setPaymentMethods(d.methods || []))
+      .catch(() => {});
+    fetch("/api/admin/settings", { headers: { "ngrok-skip-browser-warning": "true" } })
+      .then((r) => r.json())
+      .then((d) => { if (d.admin_whatsapp) setAdminWhatsapp(d.admin_whatsapp); })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = () => {
     if (!phone || !shopId) return;
+    const methodsList = paymentMethods
+      .map((m) => `${m.icon || "💳"} ${m.name}: ${m.details}`)
+      .join("\n");
     setMessage(
       `تم استلام طلبك للترقية إلى الباقة ${plan.name}!\n\n` +
         `📱 رقم المحل: ${shopId}\n` +
         `💳 المطلوب: ${plan.price} ج.م شهرياً\n\n` +
-        `يرجى تحويل المبلغ على:\n` +
-        `📱 فودافون كاش: ٠١٠٠٠٠٠٠٠٠ (محمد)\n` +
-        `🏦 بنك مصر: ١٠٠٠-٢٠٠٠٠٠-٣٠٠\n\n` +
-        `بعد التحويل، أرسل صورة الإيصال على واتساب ٠١٠٠٠٠٠٠٠٠\n` +
+        `يرجى تحويل المبلغ على:\n${methodsList}\n\n` +
+        `بعد التحويل، أرسل صورة الإيصال على واتساب ${adminWhatsapp}\n` +
         `وسيتم تفعيل الباقة فوراً ✅`
     );
     setStep("confirm");
@@ -74,7 +88,27 @@ function UpgradeContent() {
                   placeholder="مثال: a1b2c3d4-..."
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-right focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-50"
                 />
+                <p className="text-xs text-gray-400 mt-1">
+                  ⚡ تجده في لوحة التحكم ← بجانب اسم المحل ← 🆔 رقم المحل
+                </p>
               </div>
+
+              {/* 💳 طرق الدفع المتاحة */}
+              {paymentMethods.length > 0 && (
+                <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+                  <p className="text-xs font-bold text-gray-700 mb-2">💳 وسائل الدفع المتاحة:</p>
+                  <div className="space-y-1.5">
+                    {paymentMethods.map((m) => (
+                      <div key={m.id} className="flex items-center gap-2 text-xs text-gray-600">
+                        <span>{m.icon || "💳"}</span>
+                        <span className="font-medium">{m.name}:</span>
+                        <span className="text-gray-500">{m.details}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button
                 onClick={handleSubmit}
                 disabled={!phone || !shopId}

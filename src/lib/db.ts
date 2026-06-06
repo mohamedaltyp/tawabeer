@@ -43,6 +43,39 @@ function runMigrations() {
   try {
     db.exec("ALTER TABLE queue_entries ADD COLUMN recall_count INTEGER DEFAULT 0");
   } catch {}
+  // payment_methods table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS payment_methods (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'other',
+      details TEXT NOT NULL DEFAULT '',
+      icon TEXT DEFAULT '💳',
+      is_active INTEGER DEFAULT 1,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    )
+  `);
+  // Add default payment methods if empty
+  const count = db.prepare("SELECT COUNT(*) as c FROM payment_methods").get() as { c: number };
+  if (count.c === 0) {
+    const insert = db.prepare("INSERT INTO payment_methods (id, name, type, details, icon, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
+    insert.run(uuidv4(), "فودافون كاش", "vodafone_cash", "٠١٠٠٠٠٠٠٠٠ (محمد)", "📱", 1);
+    insert.run(uuidv4(), "بنك مصر", "bank_transfer", "١٠٠٠-٢٠٠٠٠٠-٣٠٠ (دورك لتقنية المعلومات)", "🏦", 2);
+    insert.run(uuidv4(), "إنستا باي", "instapay", "instapay@example.com", "💳", 3);
+  }
+  // app_settings table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL DEFAULT ''
+    )
+  `);
+  // Default settings
+  const settingCount = db.prepare("SELECT COUNT(*) as c FROM app_settings").get() as { c: number };
+  if (settingCount.c === 0) {
+    db.prepare("INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)").run("admin_whatsapp", "01000000000");
+  }
 }
 runMigrations();
 
@@ -479,6 +512,48 @@ export function getQueueStats(shopId: string) {
   };
 }
 
+// ─── Payment Methods ───────────────────────────
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  type: string;
+  details: string;
+  icon: string;
+  is_active: number;
+  sort_order: number;
+  created_at: string;
+}
+
+export function getPaymentMethods(): PaymentMethod[] {
+  return db.prepare("SELECT * FROM payment_methods ORDER BY sort_order ASC").all() as PaymentMethod[];
+}
+
+export function getActivePaymentMethods(): PaymentMethod[] {
+  return db.prepare("SELECT * FROM payment_methods WHERE is_active = 1 ORDER BY sort_order ASC").all() as PaymentMethod[];
+}
+
+export function addPaymentMethod(data: { name: string; type: string; details: string; icon?: string }): PaymentMethod {
+  const id = uuidv4();
+  const maxOrder = db.prepare("SELECT MAX(sort_order) as max FROM payment_methods").get() as { max: number | null };
+  db.prepare("INSERT INTO payment_methods (id, name, type, details, icon, sort_order) VALUES (?, ?, ?, ?, ?, ?)").run(
+    id, data.name, data.type, data.details, data.icon || "💳", (maxOrder.max || 0) + 1
+  );
+  return db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(id) as PaymentMethod;
+}
+
+export function updatePaymentMethod(id: string, data: Partial<PaymentMethod>): PaymentMethod | undefined {
+  const fields = Object.keys(data).filter(k => k !== "id").map(k => `${k} = ?`).join(", ");
+  const values = Object.entries(data).filter(([k]) => k !== "id").map(([, v]) => v);
+  if (fields) db.prepare(`UPDATE payment_methods SET ${fields} WHERE id = ?`).run(...values, id);
+  return db.prepare("SELECT * FROM payment_methods WHERE id = ?").get(id) as PaymentMethod | undefined;
+}
+
+export function deletePaymentMethod(id: string): boolean {
+  const result = db.prepare("DELETE FROM payment_methods WHERE id = ?").run(id);
+  return result.changes > 0;
+}
+
 // ─── SSE Event Emitter ────────────────────────────
 
 type SSECallback = (data: any) => void;
@@ -504,4 +579,15 @@ export function emitShopEvent(shopId: string, event: string, data: any) {
     const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
     clients.forEach((cb) => cb(message));
   }
+}
+
+// ─── App Settings ────────────────────────────
+
+export function getAppSetting(key: string): string {
+  const row = db.prepare("SELECT value FROM app_settings WHERE key = ?").get(key) as { value: string } | undefined;
+  return row?.value || "";
+}
+
+export function setAppSetting(key: string, value: string): void {
+  db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)").run(key, value);
 }

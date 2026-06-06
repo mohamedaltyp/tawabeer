@@ -115,6 +115,25 @@ export default function ShopPage() {
   // المتغير المرجعي لآخر recall_count — عشان نكتشف إعادة النداء بدقة
   const lastRecallRef = useRef<number>(-1);
 
+  // ⏱️ مؤقت الوقت المنقضي من أول نداء
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!myEntry?.called_at) return;
+    const calledDate = myEntry.called_at.endsWith("Z") ? new Date(myEntry.called_at) : new Date(myEntry.called_at + "Z");
+    const update = () => setElapsed(Math.floor((Date.now() - calledDate.getTime()) / 1000));
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [myEntry?.called_at]);
+
+  function formatElapsed(seconds: number): string {
+    if (seconds < 60) return `منذ ${seconds} ثانية`;
+    const mins = Math.floor(seconds / 60);
+    if (mins < 60) return `منذ ${mins} دقيقة`;
+    const hrs = Math.floor(mins / 60);
+    return `منذ ${hrs} ساعة و${mins % 60} دقيقة`;
+  }
+
   // 🔄 دالة مساعدة: تشوف لو الـ entry بتاع العميل اتنادى من البيانات
   const checkIfCalled = useCallback((allEntries: QueueEntry[], myNum: number | null) => {
     if (!myNum) return;
@@ -163,10 +182,10 @@ export default function ShopPage() {
     evtSource.addEventListener("queue-update", (e) => {
       const data = JSON.parse(e.data);
       if (data.action === "called" && myNumberRef.current === data.entry.number) {
-        // تحديث حالة myEntry إلى called
+        // تحديث myEntry بكل البيانات (recall_count + called_at)
         setMyEntry((prev) => {
           if (!prev) return null;
-          return { ...prev, status: "called" };
+          return { ...prev, status: "called", recall_count: data.entry.recall_count, called_at: data.entry.called_at };
         });
         // 🔔 تشغيل الصوت فوراً — بنستخدم async عشان نستنى resume لو السياق معلق
         playCallSound();
@@ -234,6 +253,10 @@ export default function ShopPage() {
         });
         const shopData = await shopRes.json();
         setQueue(shopData.queue || []);
+        // تحديث وقت الانتظار لو اتغير من لوحة التحكم
+        if (shopData.settings) {
+          setSettings(shopData.settings);
+        }
         // دايم نشوف لو تمت مناداتنا — للنداء الأول وإعادة النداء
         checkIfCalled(shopData.allQueue || [], myNumberRef.current);
       } catch {}
@@ -314,7 +337,11 @@ export default function ShopPage() {
                 <span className="text-6xl">🎉</span>
               </div>
               <h1 className="text-3xl font-bold mb-2">حان دورك!</h1>
-              <p className="text-xl text-white/80 mb-8">رقم {myEntry.number} — تفضل إلى المحل</p>
+              <p className="text-xl text-white/80 mb-2">رقم {myEntry.number} — تفضل إلى المحل</p>
+              {(myEntry.recall_count ?? 0) > 0 && (
+                <p className="text-sm text-white/60 mb-1">🔔 تمت مناداتك {(myEntry.recall_count ?? 0) + 1} مرات</p>
+              )}
+              <p className="text-sm text-emerald-200 mb-8">⏱️ {formatElapsed(elapsed)}</p>
               <div className="rounded-2xl bg-white/10 backdrop-blur-md px-8 py-6 border border-white/20">
                 <p className="text-sm text-white/70">{shop.name}</p>
                 <p className="text-lg font-bold mt-1">{shop.address}</p>

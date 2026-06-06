@@ -37,6 +37,7 @@ interface QueueEntry {
   customer_phone: string;
   status: string;
   estimated_wait: number;
+  recall_count?: number;
   created_at: string;
 }
 
@@ -58,6 +59,8 @@ export default function ShopDashboard() {
   const [notification, setNotification] = useState<{ number: number; name: string } | null>(null);
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [avgServiceMinutes, setAvgServiceMinutes] = useState(10);
+  const [savingWaitTime, setSavingWaitTime] = useState(false);
 
   // Load shop data
   useEffect(() => {
@@ -77,6 +80,16 @@ export default function ShopDashboard() {
       .then((d) => {
         setWhatsappEnabled(d.whatsapp_enabled === 1);
         setWhatsappNumber(d.whatsapp_number || "");
+      })
+      .catch(() => {});
+  }, [id]);
+
+  // Load queue settings (avg service time)
+  useEffect(() => {
+    fetch(`/api/shops/${id}/settings`, { headers: { "ngrok-skip-browser-warning": "true" } })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.settings) setAvgServiceMinutes(d.settings.avg_service_minutes || 10);
       })
       .catch(() => {});
   }, [id]);
@@ -102,7 +115,7 @@ export default function ShopDashboard() {
         setQueue((prev) => [...prev, data.entry]);
       } else if (data.action === "called") {
         setQueue((prev) =>
-          prev.map((e) => (e.id === data.entry.id ? { ...e, status: data.entry.status } : e))
+          prev.map((e) => (e.id === data.entry.id ? { ...e, status: data.entry.status, recall_count: data.entry.recall_count } : e))
         );
         setNotification({ number: data.entry.number, name: data.entry.customer_name });
         setTimeout(() => setNotification(null), 5000);
@@ -114,6 +127,24 @@ export default function ShopDashboard() {
       }
     });
     return () => evtSource.close();
+  }, [id]);
+
+  // ⏱️ Polling احتياطي — كل 5 ثوان عشان لو SSE انقطع من التونل
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/shops/${id}?t=${Date.now()}`, {
+          headers: {
+            "ngrok-skip-browser-warning": "true",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+          },
+        });
+        const d = await res.json();
+        if (d.allQueue) setQueue(d.allQueue);
+      } catch {}
+    }, 5000);
+    return () => clearInterval(interval);
   }, [id]);
 
   const handleCallNext = async () => {
@@ -152,6 +183,10 @@ export default function ShopDashboard() {
         setNotification({ number: data.entry.number, name: data.entry.customer_name });
         setTimeout(() => setNotification(null), 5000);
         playNotificationSound();
+        // تحديث recall_count محلياً فوراً
+        setQueue((prev) =>
+          prev.map((e) => (e.id === entryId ? { ...e, status: "called", recall_count: data.entry.recall_count } : e))
+        );
       } else if (data.error) {
         setNotification({ number: 0, name: data.error });
         setTimeout(() => setNotification(null), 3000);
@@ -205,6 +240,13 @@ export default function ShopDashboard() {
             <div>
               <h1 className="text-lg font-bold text-gray-900">{shop.name}</h1>
               <p className="text-xs text-gray-400">إدارة الطابور</p>
+              <button
+                onClick={() => { navigator.clipboard.writeText(id); }}
+                className="text-[10px] text-gray-300 hover:text-indigo-500 transition-colors flex items-center gap-1 mt-0.5"
+                title="نسخ رقم المحل"
+              >
+                🆔 <code dir="ltr" className="font-mono">{id.substring(0, 8)}...</code> 📋 نسخ
+              </button>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -320,6 +362,65 @@ export default function ShopDashboard() {
           </div>
         </details>
 
+        {/* ⏱️ إعدادات وقت الانتظار */}
+        <details className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden mb-6">
+          <summary className="px-5 py-3 font-bold text-gray-700 cursor-pointer hover:bg-gray-50 flex items-center gap-2">
+            <span>⏱️</span> وقت الانتظار التقديري
+          </summary>
+          <div className="px-5 py-4 border-t border-gray-100 space-y-3">
+            <p className="text-xs text-gray-400">
+              حدد متوسط وقت الخدمة لكل زبون بالدقائق — على أساسه بيتم حساب وقت الانتظار التقديري للزبائن.
+            </p>
+            <div className="flex items-center gap-4">
+              <input
+                type="range"
+                min="1"
+                max="60"
+                value={avgServiceMinutes}
+                onChange={(e) => setAvgServiceMinutes(Number(e.target.value))}
+                className="flex-1 h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer"
+              />
+              <div className="flex items-center gap-2 min-w-[100px]">
+                <input
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={avgServiceMinutes}
+                  onChange={(e) => setAvgServiceMinutes(Math.max(1, Math.min(60, Number(e.target.value))))}
+                  className="w-16 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-center text-sm font-bold text-gray-900 focus:border-indigo-300 focus:outline-none"
+                />
+                <span className="text-sm text-gray-500">دقيقة</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-xs text-gray-400">
+              <span>1 د</span>
+              <span>حالياً: كل زبون ≈ {avgServiceMinutes} دقيقة</span>
+              <span>60 د</span>
+            </div>
+            <button
+              onClick={async () => {
+                setSavingWaitTime(true);
+                try {
+                  const res = await fetch(`/api/shops/${id}/settings`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+                    body: JSON.stringify({ avg_service_minutes: avgServiceMinutes }),
+                  });
+                  if (res.ok) {
+                    setNotification({ number: 0, name: "✅ تم حفظ وقت الانتظار الجديد" });
+                    setTimeout(() => setNotification(null), 3000);
+                  }
+                } catch {}
+                setSavingWaitTime(false);
+              }}
+              disabled={savingWaitTime}
+              className="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50 transition-all"
+            >
+              {savingWaitTime ? "جاري الحفظ..." : "💾 حفظ وقت الانتظار"}
+            </button>
+          </div>
+        </details>
+
         {/* Waiting Queue */}
         {waiting.length > 0 && (
           <div className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden mb-6">
@@ -375,7 +476,14 @@ export default function ShopDashboard() {
                     <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-sm font-bold text-amber-600">
                       {entry.number}
                     </span>
-                    <p className="font-medium text-gray-900">{entry.customer_name || "بدون اسم"}</p>
+                    <div>
+                      <p className="font-medium text-gray-900">{entry.customer_name || "بدون اسم"}</p>
+                      {(entry.recall_count ?? 0) > 0 && (
+                        <span className="text-xs text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">
+                          🔔 {(entry.recall_count ?? 0)}× نداء
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-1">
                     <button
