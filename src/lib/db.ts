@@ -217,7 +217,7 @@ export async function createShop(data: {
     VALUES (${id}, ${data.name}, ${data.description || ""}, ${data.address || ""}, ${data.phone || ""}, ${data.category || ""}, ${data.owner_name || ""}, ${data.owner_phone || ""}, ${data.owner_password || ""})
   `;
   await sql`INSERT INTO queue_settings (shop_id) VALUES (${id})`;
-  return getShop(id)!;
+  return getShop(id) as Promise<Shop>;
 }
 
 export async function getAllShops(): Promise<Shop[]> {
