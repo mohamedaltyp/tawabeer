@@ -214,7 +214,8 @@ export async function createShop(data: {
     VALUES (${id}, ${data.name}, ${data.description || ""}, ${data.address || ""}, ${data.phone || ""}, ${data.category || ""}, ${data.owner_name || ""}, ${data.owner_phone || ""}, ${data.owner_password || ""})
   `;
   await sql`INSERT INTO queue_settings (shop_id) VALUES (${id})`;
-  return getShop(id)!;
+  const shop = await getShop(id);
+  return shop!;
 }
 
 export async function getAllShops(): Promise<Shop[]> {
@@ -370,7 +371,7 @@ export async function callNext(shopId: string): Promise<QueueEntry | null> {
   await sql`UPDATE queue_entries SET status = 'called', called_at = NOW() WHERE id = ${next.id}`;
   await sql`UPDATE shops SET current_number = ${next.number} WHERE id = ${shopId}`;
 
-  return getQueueEntry(next.id) || null;
+  return (await getQueueEntry(next.id)) || null;
 }
 
 export async function completeEntry(id: string): Promise<QueueEntry | undefined> {
