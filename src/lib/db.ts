@@ -430,16 +430,18 @@ export async function callNext(shopId: string): Promise<QueueEntry | null> {
   await sql`UPDATE shops SET current_number = ${next.number} WHERE id = ${shopId}`;
 
   // Send Telegram notification if linked
+  let telegramSent = false;
   if (next.telegram_chat_id) {
     const shop = await getShop(shopId);
     const shopName = shop?.name || "المحل";
-    await sendTelegramMessage(
+    telegramSent = await sendTelegramMessage(
       next.telegram_chat_id,
-      `🔔 *حان دورك يا ${next.customer_name || "عميلنا العزيز"}!*\n\nرقم *${next.number}* — تفضل إلى *${shopName}*\n📍 ${shop?.address || ""}\n\nنتمنى لك تجربة ممتعة! 🎉`
+      `🔔 حان دورك يا ${next.customer_name || "عميلنا العزيز"}!\n\nرقم ${next.number} — تفضل إلى ${shopName}\n📍 ${shop?.address || ""}\n\nنتمنى لك تجربة ممتعة! 🎉`
     );
   }
 
-  return (await getQueueEntry(next.id)) || null;
+  const entry = (await getQueueEntry(next.id)) || null;
+  return { ...entry, _telegramSent: telegramSent } as any;
 }
 
 export async function completeEntry(id: string): Promise<QueueEntry | undefined> {
