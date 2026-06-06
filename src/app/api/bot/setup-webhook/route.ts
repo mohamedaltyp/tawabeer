@@ -2,36 +2,51 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BOT_TOKEN = process.env.BOT_TOKEN || "";
 
-// GET — Set Telegram webhook (call once after deployment)
 export async function GET(req: NextRequest) {
   if (!BOT_TOKEN) {
     return NextResponse.json({ ok: false, error: "No BOT_TOKEN configured" }, { status: 500 });
   }
 
-  // Get the base URL from the request
   const host = req.headers.get("host") || "tawabeer-mu.vercel.app";
-  const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
+  const protocol = req.headers.get("x-forwarded-proto") || "https";
+  const bypass = req.nextUrl.searchParams.get("bypass") || "";
+  
+  // Use the bypass token to make the webhook reachable
   const webhookUrl = `${protocol}://${host}/api/bot/webhook`;
+  const bypassUrl = bypass ? `${webhookUrl}?x-vercel-protection-bypass=${bypass}` : webhookUrl;
 
-  try {
-    const res = await fetch(
-      `https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: webhookUrl,
-          allowed_updates: ["message"],
-        }),
-      }
-    );
-    const data = await res.json();
-    return NextResponse.json({
-      ok: data.ok,
-      description: data.description,
-      webhook_url: webhookUrl,
-    });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
-  }
+  const results: Record<string, any> = {};
+  
+  // First, check current webhook
+  const currentRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo`);
+  const currentData = await currentRes.json();
+  results.old_webhook = currentData.ok ? currentData.result : currentData;
+
+  // Remove old webhook
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteWebhook`);
+
+  // Set new webhook
+  const setRes = await fetch(
+    `https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: bypassUrl,
+        allowed_updates: ["message"],
+        drop_pending_updates: true,
+        max_connections: 40,
+      }),
+    }
+  );
+  const setData = await setRes.json();
+  results.set_webhook = setData;
+  results.new_webhook_url = bypassUrl;
+
+  // Verify
+  const verifyRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo`);
+  const verifyData = await verifyRes.json();
+  results.verify = verifyData.ok ? verifyData.result : verifyData;
+
+  return NextResponse.json(results);
 }
