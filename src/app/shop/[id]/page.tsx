@@ -504,6 +504,23 @@ export default function ShopPage() {
             </a>
           </div>
 
+          {/* QR Code for Telegram */}
+          {telegramLinkUrl && (
+            <div className="w-full max-w-sm mb-6 animate-slide-up" style={{ animationDelay: "0.75s" }}>
+              <div className="rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 p-5 text-center">
+                <p className="text-xs text-indigo-200/60 mb-3">📱 امسح الكود ده بالكاميرا عشان تفتح تيليجرام</p>
+                <div className="inline-block rounded-xl bg-white p-3">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(telegramLinkUrl)}`}
+                    alt="QR Code for Telegram"
+                    className="w-44 h-44"
+                  />
+                </div>
+                <p className="text-xs text-indigo-200/50 mt-3">هيفتح البوت ويربط رقمك تلقائياً ✅</p>
+              </div>
+            </div>
+          )}
+
           {/* Live Indicator */}
           <div className="flex items-center gap-2.5 animate-fade-in" style={{ animationDelay: "0.8s" }}>
             <span className="relative flex h-3 w-3">
