@@ -9,11 +9,25 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "دورك — نظام إدارة الطوابير الذكي",
   description: "نظام إدارة قوائم الانتظار الرقمية للمحلات والخدمات",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "دورك",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ar" dir="rtl" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="دورك" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#4f46e5" />
+      </head>
       <body className="min-h-screen bg-gray-50 font-sans antialiased">
         <NgrokBypass />
         {children}

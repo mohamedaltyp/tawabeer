@@ -1,0 +1,48 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getShop, getQueueSettings, updateQueueSettings } from "@/lib/db";
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const shop = getShop(id);
+  if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+
+  const settings = getQueueSettings(id);
+  return NextResponse.json({
+    whatsapp_enabled: settings?.whatsapp_enabled || 0,
+    whatsapp_number: settings?.whatsapp_number || "",
+  });
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const shop = getShop(id);
+  if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+
+  const body = await req.json();
+  const { whatsapp_enabled, whatsapp_number } = body;
+
+  // WhatsApp ميزة مدفوعة — متاحة فقط للباقات basic+
+  if (whatsapp_enabled && shop.plan === "free") {
+    return NextResponse.json(
+      {
+        error: "إشعارات واتساب متاحة فقط للباقات المدفوعة. رقي باقتك أولاً.",
+        code: "plan_upgrade_required",
+        upgradeUrl: "/dashboard/pricing",
+      },
+      { status: 403 }
+    );
+  }
+
+  const updated = updateQueueSettings(id, {
+    whatsapp_enabled: whatsapp_enabled ? 1 : 0,
+    whatsapp_number: whatsapp_number || "",
+  });
+
+  return NextResponse.json({ settings: updated });
+}

@@ -55,6 +55,8 @@ export default function ShopDashboard() {
   const [calling, setCalling] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [notification, setNotification] = useState<{ number: number; name: string } | null>(null);
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState("");
 
   // Load shop data
   useEffect(() => {
@@ -65,6 +67,17 @@ export default function ShopDashboard() {
         setShop(d.shop);
         setQueue(d.allQueue || []);
       });
+  }, [id]);
+
+  // Load WhatsApp settings
+  useEffect(() => {
+    fetch(`/api/shops/${id}/whatsapp-settings`, { headers: { "ngrok-skip-browser-warning": "true" } })
+      .then((r) => r.json())
+      .then((d) => {
+        setWhatsappEnabled(d.whatsapp_enabled === 1);
+        setWhatsappNumber(d.whatsapp_number || "");
+      })
+      .catch(() => {});
   }, [id]);
 
   // SSE for real-time
@@ -228,6 +241,61 @@ export default function ShopDashboard() {
         >
           {calling ? "جاري..." : waiting.length > 0 ? `🔔 نادِ التالي (${waiting[0].number})` : "🟢 لا يوجد انتظار"}
         </button>
+
+        {/* WhatsApp Settings — متاحة للباقات المدفوعة */}
+        <details className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden mb-6">
+          <summary className="px-5 py-3 font-bold text-gray-700 cursor-pointer hover:bg-gray-50 flex items-center gap-2">
+            <span>💬</span> إشعارات واتساب {whatsappEnabled ? "✅" : ""}
+          </summary>
+          <div className="px-5 py-4 border-t border-gray-100 space-y-3">
+            <p className="text-xs text-gray-400">
+              لما العميل يجي دوره، توصله رسالة واتساب تلقائياً. (متاح للباقات المدفوعة)
+            </p>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">تفعيل الإشعارات</span>
+              <button
+                onClick={async () => {
+                  const newVal = !whatsappEnabled;
+                  const res = await fetch(`/api/shops/${id}/whatsapp-settings`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+                    body: JSON.stringify({ whatsapp_enabled: newVal, whatsapp_number: whatsappNumber }),
+                  });
+                  if (res.ok) setWhatsappEnabled(newVal);
+                  else {
+                    const err = await res.json();
+                    alert(err.error || "حدث خطأ");
+                  }
+                }}
+                className={`relative w-12 h-6 rounded-full transition-colors ${whatsappEnabled ? "bg-green-500" : "bg-gray-300"}`}
+              >
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${whatsappEnabled ? "translate-x-6" : "translate-x-0.5"}`} />
+              </button>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">رقم واتساب المحل (لإرسال التنبيهات)</label>
+              <input
+                type="tel"
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+                onBlur={async () => {
+                  await fetch(`/api/shops/${id}/whatsapp-settings`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+                    body: JSON.stringify({ whatsapp_enabled: whatsappEnabled, whatsapp_number: whatsappNumber }),
+                  });
+                }}
+                placeholder="20100xxxxxxx"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-right focus:border-indigo-300 focus:outline-none"
+              />
+            </div>
+            {!whatsappEnabled && (
+              <div className="rounded-lg bg-amber-50 p-3 text-xs text-amber-700">
+                ⚡ إشعارات واتساب من أفضل المميزات اللي تخلي المحل يشتري الباقة!
+              </div>
+            )}
+          </div>
+        </details>
 
         {/* Waiting Queue */}
         {waiting.length > 0 && (

@@ -7,8 +7,10 @@ import {
   cancelEntry,
   callAgain,
   getShop,
+  getTodayCustomerCount,
   emitShopEvent,
 } from "@/lib/db";
+import { canAcceptCustomer, getPlanLimits } from "@/lib/plans";
 
 // GET queue for a shop
 export async function GET(
@@ -28,6 +30,21 @@ export async function POST(
   const { id } = await params;
   const shop = getShop(id);
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+
+  // ── Plan enforcement: check daily customer limit ──
+  const shopPlan = shop.plan || "free";
+  const todayCount = getTodayCustomerCount(id);
+  if (!canAcceptCustomer(shopPlan, todayCount)) {
+    const limits = getPlanLimits(shopPlan);
+    return NextResponse.json(
+      {
+        error: `المحل وصل للحد الأقصى من الزبائن اليوم (${limits.maxDailyCustomers}). جرب بكرة أو رقي الباقة.`,
+        code: "daily_limit_reached",
+        upgradeUrl: "/dashboard/pricing",
+      },
+      { status: 403 }
+    );
+  }
 
   const body = await req.json();
   const result = joinQueue({ shopId: id, ...body });

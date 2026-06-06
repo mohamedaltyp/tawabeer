@@ -29,6 +29,16 @@ function runMigrations() {
   try {
     db.exec("ALTER TABLE shops ADD COLUMN stripe_subscription_id TEXT DEFAULT ''");
   } catch {}
+  // WhatsApp columns in queue_settings
+  try {
+    db.exec("ALTER TABLE queue_settings ADD COLUMN whatsapp_enabled INTEGER DEFAULT 0");
+  } catch {}
+  try {
+    db.exec("ALTER TABLE queue_settings ADD COLUMN whatsapp_number TEXT DEFAULT ''");
+  } catch {}
+  try {
+    db.exec("ALTER TABLE queue_settings ADD COLUMN whatsapp_business_account_id TEXT DEFAULT ''");
+  } catch {}
 }
 runMigrations();
 
@@ -74,7 +84,24 @@ db.exec(`
     avg_service_minutes REAL DEFAULT 10,
     is_open INTEGER DEFAULT 1,
     greeting_message TEXT DEFAULT 'مرحباً بك!',
+    whatsapp_enabled INTEGER DEFAULT 0,
+    whatsapp_number TEXT DEFAULT '',
+    whatsapp_business_account_id TEXT DEFAULT '',
     FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id TEXT PRIMARY KEY,
+    shop_id TEXT NOT NULL,
+    entry_id TEXT NOT NULL,
+    type TEXT DEFAULT 'whatsapp',
+    status TEXT DEFAULT 'pending',
+    recipient TEXT DEFAULT '',
+    message TEXT DEFAULT '',
+    sent_at TEXT,
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
+    FOREIGN KEY (entry_id) REFERENCES queue_entries(id) ON DELETE CASCADE
   );
 `);
 
@@ -117,6 +144,9 @@ export interface QueueSettings {
   avg_service_minutes: number;
   is_open: number;
   greeting_message: string;
+  whatsapp_enabled: number;
+  whatsapp_number: string;
+  whatsapp_business_account_id: string;
 }
 
 // ─── Shops ────────────────────────────────────────
@@ -359,6 +389,15 @@ export function updateQueueSettings(
 }
 
 // ─── Stats ────────────────────────────────────────
+
+export function getTodayCustomerCount(shopId: string): number {
+  const row = db
+    .prepare(
+      "SELECT COUNT(*) as count FROM queue_entries WHERE shop_id = ? AND date(created_at) = date('now')"
+    )
+    .get(shopId) as { count: number };
+  return row.count;
+}
 
 export function getQueueStats(shopId: string) {
   const waiting = db
