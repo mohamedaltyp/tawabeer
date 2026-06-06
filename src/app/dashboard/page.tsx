@@ -62,22 +62,20 @@ export default function DashboardPage() {
     if (loggingIn) return;
     setError("");
     setLoggingIn(true);
-    fetch("/api/shops", {
-      headers: { "ngrok-skip-browser-warning": "true" }
+    fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+      body: JSON.stringify({ phone, password }),
     })
       .then((r) => r.json())
       .then((d) => {
-        const shops = d.shops || [];
-        const match = shops.find(
-          (s: Shop) => s.owner_phone === phone && s.owner_password === password
-        );
-        if (match) {
-          const data = { phone: match.owner_phone, name: match.owner_name };
+        if (d.success) {
+          const data = { phone: d.owner.phone, name: d.owner.name };
           setLoggedIn(data);
           sessionStorage.setItem("dawer_owner", JSON.stringify(data));
-          fetchShops(data.phone);
+          setShops(d.shops || []);
         } else {
-          setError("رقم الهاتف أو كلمة المرور غير صحيحة");
+          setError(d.error || "رقم الهاتف أو كلمة المرور غير صحيحة");
         }
       })
       .catch(() => setError("حدث خطأ في الاتصال"))

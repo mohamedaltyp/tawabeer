@@ -212,7 +212,42 @@ export function updateShop(id: string, data: Partial<Shop>): Shop | undefined {
   return getShop(id);
 }
 
-// ─── Plans / Subscriptions ───────────────────────
+// ─── Sanitize ────────────────────────────────────
+
+export function sanitizeText(input: string): string {
+  return input
+    .replace(/[<>&"']/g, (char) => {
+      switch (char) {
+        case "<": return "&lt;";
+        case ">": return "&gt;";
+        case "&": return "&amp;";
+        case '"': return "&quot;";
+        case "'": return "&#x27;";
+        default: return char;
+      }
+    })
+    .trim();
+}
+
+export function sanitizeShopInput(body: Record<string, any>): Record<string, any> {
+  const textFields = ["name", "description", "address", "category", "owner_name", "owner_phone", "phone"];
+  const sanitized = { ...body };
+  for (const key of textFields) {
+    if (typeof sanitized[key] === "string") {
+      sanitized[key] = sanitizeText(sanitized[key]);
+    }
+  }
+  return sanitized;
+}
+
+export function sanitizeShop(shop: Shop): Omit<Shop, 'owner_password'> {
+  const { owner_password, ...safe } = shop;
+  return safe;
+}
+
+export function sanitizeShops(shops: Shop[]): Omit<Shop, 'owner_password'>[] {
+  return shops.map(sanitizeShop);
+}
 
 export function getOwnerShopsByPhone(ownerPhone: string): Shop[] {
   return db

@@ -7,8 +7,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { adminToken, shopId, plan, expiresAt } = body;
 
-    // Admin token بسيط — ممكن تغيره لأي حاجة
-    if (adminToken !== "dawer-admin-2026") {
+    // Admin token — مقروء من متغير البيئة
+    const adminPassword = process.env.ADMIN_PASSWORD || "dawer-admin-2026";
+    if (adminToken !== adminPassword) {
       return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
     }
 

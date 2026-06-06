@@ -42,7 +42,6 @@ export default function ShopPage() {
   const [joining, setJoining] = useState(false);
   const [myEntry, setMyEntry] = useState<QueueEntry | null>(null);
   const [error, setError] = useState("");
-  const [pollCount, setPollCount] = useState(0); // debug
 
   // 🔔 صوت التنبيه عند النداء
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -235,7 +234,6 @@ export default function ShopPage() {
         });
         const shopData = await shopRes.json();
         setQueue(shopData.queue || []);
-        setPollCount((c) => c + 1); // debug
         // دايم نشوف لو تمت مناداتنا — للنداء الأول وإعادة النداء
         checkIfCalled(shopData.allQueue || [], myNumberRef.current);
       } catch {}
@@ -327,18 +325,6 @@ export default function ShopPage() {
               >
                 امسح مرة أخرى
               </button>
-              {/* Debug: Polling indicator */}
-              <div className="mt-6 px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 w-full max-w-sm">
-                <div className="text-center text-white text-sm space-y-1">
-                  <div className="flex items-center justify-center gap-3">
-                    <span>📡 <b>{pollCount}</b></span>
-                    <span className="text-white/40">·</span>
-                    <span>🔔 نداء ×<b>{myEntry.recall_count ?? 0}</b></span>
-                    <span className="text-white/40">·</span>
-                    <span>{pollCount > 0 ? "🟢 متصل" : "🔴 منقطع"}</span>
-                  </div>
-                </div>
-              </div>
             </>
           ) : (
             <>
@@ -403,18 +389,6 @@ export default function ShopPage() {
               <p className="mt-4 text-xs text-indigo-300/60">
                 سيتم تحديث موقعك لحظة مناداة كل شخص
               </p>
-              {/* Debug: Polling indicator */}
-              <div className="mt-6 px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 w-full max-w-sm">
-                <div className="text-center text-white text-sm space-y-1">
-                  <div className="flex items-center justify-center gap-3">
-                    <span>📡 <b>{pollCount}</b></span>
-                    <span className="text-white/40">·</span>
-                    <span>🔔 نداء ×<b>{myEntry.recall_count ?? 0}</b></span>
-                    <span className="text-white/40">·</span>
-                    <span>{pollCount > 0 ? "🟢 متصل" : "🔴 منقطع"}</span>
-                  </div>
-                </div>
-              </div>
             </>
           )}
         </div>
