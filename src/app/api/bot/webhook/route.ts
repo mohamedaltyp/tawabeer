@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // ── Phone number detection (starts with 0 or +20, 10+ digits) ──
+    // ── Phone number detection ──
     const isPhone = /^(\+20|0|0020)?1[0-9]{9}$/.test(text.replace(/[^0-9+]/g, ""));
     if (isPhone) {
       const cleanPhone = text.replace(/[^0-9]/g, "").trim();
@@ -100,9 +100,20 @@ export async function POST(req: NextRequest) {
         VALUES (${cleanPhone}, ${String(chatId)})
         ON CONFLICT (phone) DO UPDATE SET chat_id = ${String(chatId)}
       `;
+
+      // 🔄 Auto-update existing waiting queue entries with this phone
+      const updated = await sql`
+        UPDATE queue_entries 
+        SET telegram_chat_id = ${String(chatId)}
+        WHERE customer_phone LIKE ${'%' + cleanPhone.slice(-10)}
+          AND status = 'waiting'
+          AND (telegram_chat_id IS NULL OR telegram_chat_id = '')
+      ` as any;
+      const updatedCount = updated?.count || 0;
+
       await sendTelegram(
         chatId,
-        `✅ <b>تم ربط رقم ${cleanPhone}</b>\n\n🔔 هتوصللك إشعارات تيليجرام لما يجي دورك!\n\n📌 استخدم /unlink لو عايز تلغي الربط.`
+        `✅ <b>تم ربط رقم ${cleanPhone}</b>\n\n🔔 هتوصللك إشعارات تيليجرام لما يجي دورك!\n${updatedCount > 0 ? `\n🔄 تم ربط ${updatedCount} دور في الانتظار — هتوصللك إشعاراتهم فوراً!` : ''}\n\n📌 استخدم /unlink لو عايز تلغي الربط.`
       );
       return NextResponse.json({ ok: true });
     }
