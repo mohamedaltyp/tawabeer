@@ -1,8 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllShops, sanitizeShops } from "@/lib/db";
 
+// Simple in-memory rate limiter
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = loginAttempts.get(ip);
+  if (!record || now > record.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + 15 * 60 * 1000 }); // 15 min window
+    return true;
+  }
+  if (record.count >= 10) return false; // 10 attempts per 15 min
+  record.count++;
+  return true;
+}
+
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
+    }
     const { phone, password } = await req.json();
 
     if (!phone || !password) {

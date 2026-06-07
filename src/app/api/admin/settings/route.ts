@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAppSetting, setAppSetting } from "@/lib/db";
 
-const ADMIN_TOKEN = "dawer-admin-2026";
+const ADMIN_TOKEN = process.env.ADMIN_PASSWORD || "dawer-admin-2026";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const token = searchParams.get("token");
+  const ADMIN_TOKEN = process.env.ADMIN_PASSWORD || "dawer-admin-2026";
+  if (token !== ADMIN_TOKEN) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   return NextResponse.json({
     admin_whatsapp: await getAppSetting("admin_whatsapp"),
   });

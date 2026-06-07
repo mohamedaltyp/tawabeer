@@ -55,6 +55,9 @@ export default function ShopSettingsPage() {
   const handleSave = async () => {
     if (!settings) return;
     setSaving(true);
+    if (settings.greeting_message) {
+      settings.greeting_message = settings.greeting_message.replace(/[<>"']/g, "").trim();
+    }
     setMessage("");
     try {
       const res = await fetch(`/api/shops/${id}/settings`, {
