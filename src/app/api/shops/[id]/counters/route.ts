@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getShop, getCounters, createCounter, deleteCounter } from "@/lib/db";
+import { getShop, getCounters, createCounter, deleteCounter, ensureMigrated } from "@/lib/db";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await ensureMigrated();
   const { id } = await params;
   const shop = await getShop(id);
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
@@ -17,6 +18,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await ensureMigrated();
   const { id } = await params;
   const shop = await getShop(id);
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
@@ -31,6 +33,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await ensureMigrated();
   const { id } = await params;
   const { searchParams } = new URL(req.url);
   const counterId = searchParams.get("counterId");
