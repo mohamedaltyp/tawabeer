@@ -27,7 +27,7 @@ export async function PUT(
   const { id } = await params;
   const body = await req.json();
   
-  // Auth: require owner_password
+  // Auth: require owner_password or admin password
   if (!body.owner_password) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
@@ -35,7 +35,8 @@ export async function PUT(
   const shopRaw = await getShop(id);
   if (!shopRaw) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
   
-  if (shopRaw.owner_password !== body.owner_password) {
+  const isAdmin = body.owner_password === (process.env.ADMIN_PASSWORD || "dawer-admin-2026");
+  if (!isAdmin && shopRaw.owner_password !== body.owner_password) {
     return NextResponse.json({ error: "Invalid password" }, { status: 403 });
   }
   
