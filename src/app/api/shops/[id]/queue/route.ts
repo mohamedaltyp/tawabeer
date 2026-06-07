@@ -28,45 +28,50 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  await ensureMigrated();
-  const { id } = await params;
-  const shop = await getShop(id);
-  if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  try {
+    await ensureMigrated();
+    const { id } = await params;
+    const shop = await getShop(id);
+    if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
-  // ── Closed Mode check ──
-  const settings = await getQueueSettings(id);
-  if (settings && settings.is_open === 0) {
-    return NextResponse.json(
-      {
-        error: "المحل مغلق حالياً. لا يمكن حجز أدوار جديدة.",
-        code: "shop_closed",
-      },
-      { status: 403 }
-    );
+    // ── Closed Mode check ──
+    const settings = await getQueueSettings(id);
+    if (settings && settings.is_open === 0) {
+      return NextResponse.json(
+        {
+          error: "المحل مغلق حالياً. لا يمكن حجز أدوار جديدة.",
+          code: "shop_closed",
+        },
+        { status: 403 }
+      );
+    }
+
+    // ── Plan enforcement: check daily customer limit ──
+    const shopPlan = shop.plan || "free";
+    const todayCount = await getTodayCustomerCount(id);
+    if (!canAcceptCustomer(shopPlan, todayCount)) {
+      const limits = getPlanLimits(shopPlan);
+      return NextResponse.json(
+        {
+          error: `المحل وصل للحد الأقصى من الزبائن اليوم (${limits.maxDailyCustomers}). جرب بكرة أو رقي الباقة.`,
+          code: "daily_limit_reached",
+          upgradeUrl: "/dashboard/pricing",
+        },
+        { status: 403 }
+      );
+    }
+
+    const body = await req.json();
+    // Sanitize customer input
+    if (body.customerName) body.customerName = body.customerName.replace(/[<>&\"']/g, "").trim();
+    if (body.customerPhone) body.customerPhone = body.customerPhone.replace(/[^0-9+\- ]/g, "").trim();
+    const result = await joinQueue({ shopId: id, ...body });
+
+    return NextResponse.json(result, { status: 201 });
+  } catch (e: any) {
+    console.error("POST queue error:", e);
+    return NextResponse.json({ error: e?.message || "Unknown error" }, { status: 500 });
   }
-
-  // ── Plan enforcement: check daily customer limit ──
-  const shopPlan = shop.plan || "free";
-  const todayCount = await getTodayCustomerCount(id);
-  if (!canAcceptCustomer(shopPlan, todayCount)) {
-    const limits = getPlanLimits(shopPlan);
-    return NextResponse.json(
-      {
-        error: `المحل وصل للحد الأقصى من الزبائن اليوم (${limits.maxDailyCustomers}). جرب بكرة أو رقي الباقة.`,
-        code: "daily_limit_reached",
-        upgradeUrl: "/dashboard/pricing",
-      },
-      { status: 403 }
-    );
-  }
-
-  const body = await req.json();
-  // Sanitize customer input
-  if (body.customerName) body.customerName = body.customerName.replace(/[<>&\"']/g, "").trim();
-  if (body.customerPhone) body.customerPhone = body.customerPhone.replace(/[^0-9+\- ]/g, "").trim();
-  const result = await joinQueue({ shopId: id, ...body });
-
-  return NextResponse.json(result, { status: 201 });
 }
 
 // PATCH - Manage queue (call next, complete, cancel, call again)
