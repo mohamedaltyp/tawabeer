@@ -198,9 +198,9 @@ export default function BookingsManagementPage() {
   // Group slots by day
   const slotsByDay = DAY_NAMES.map((_, i) => slots.filter((s) => s.day_of_week === i));
 
-  // Filter bookings
+  // Filter bookings (booking_date may include time suffix like T00:00:00.000Z)
   const filteredBookings = filterDate
-    ? bookings.filter((b) => b.booking_date === filterDate)
+    ? bookings.filter((b) => b.booking_date.startsWith(filterDate))
     : bookings;
 
   if (loading) {
