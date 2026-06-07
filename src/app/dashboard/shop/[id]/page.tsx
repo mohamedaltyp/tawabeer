@@ -220,7 +220,9 @@ export default function ShopDashboard() {
     setActionLoading(null);
   };
 
-  const waiting = queue.filter((e) => e.status === "waiting").sort((a, b) => a.number - b.number);
+  const waiting = counters.length > 1
+    ? queue.filter((e) => e.status === "waiting" && (e.counter_id === selectedCounter || e.counter_id === "")).sort((a, b) => a.number - b.number)
+    : queue.filter((e) => e.status === "waiting").sort((a, b) => a.number - b.number);
   const called = counters.length > 1
     ? queue.filter((e) => e.status === "called" && e.counter_id === selectedCounter).sort((a, b) => a.number - b.number)
     : queue.filter((e) => e.status === "called").sort((a, b) => a.number - b.number);
