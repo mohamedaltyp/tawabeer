@@ -98,6 +98,18 @@ async function runMigrations() {
   `;
 
   await sql`
+    CREATE TABLE IF NOT EXISTS counters (
+      id TEXT PRIMARY KEY,
+      shop_id TEXT NOT NULL,
+      name TEXT NOT NULL DEFAULT 'شباك 1',
+      current_number INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
+    )
+  `;
+
+  await sql`
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL DEFAULT ''
@@ -117,6 +129,7 @@ async function runMigrations() {
     `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS whatsapp_business_account_id TEXT DEFAULT ''`,
     `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS recall_count INTEGER DEFAULT 0`,
     `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT DEFAULT ''`,
+    `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS counter_id TEXT DEFAULT ''`,
   ];
   for (const m of migrations) {
     try { await sql.unsafe(m); } catch { /* column already exists */ }
@@ -173,6 +186,7 @@ export interface QueueEntry {
   estimated_wait: number;
   recall_count: number;
   telegram_chat_id: string;
+  counter_id: string;
   created_at: string;
   called_at: string | null;
   completed_at: string | null;
@@ -196,6 +210,15 @@ export interface PaymentMethod {
   icon: string;
   is_active: number;
   sort_order: number;
+  created_at: string;
+}
+
+export interface Counter {
+  id: string;
+  shop_id: string;
+  name: string;
+  current_number: number;
+  is_active: number;
   created_at: string;
 }
 
@@ -380,13 +403,17 @@ export async function getQueueEntry(id: string): Promise<QueueEntry | undefined>
   return rows[0];
 }
 
-export async function callNext(shopId: string): Promise<QueueEntry | null> {
+export async function callNext(shopId: string, counterId?: string): Promise<QueueEntry | null> {
   const rows = await sql`SELECT * FROM queue_entries WHERE shop_id = ${shopId} AND status = 'waiting' ORDER BY number ASC LIMIT 1` as unknown as QueueEntry[];
   const next = rows[0];
   if (!next) return null;
 
-  await sql`UPDATE queue_entries SET status = 'called', called_at = NOW() WHERE id = ${next.id}`;
+  await sql`UPDATE queue_entries SET status = 'called', called_at = NOW(), counter_id = ${counterId || ''} WHERE id = ${next.id}`;
   await sql`UPDATE shops SET current_number = ${next.number} WHERE id = ${shopId}`;
+  // Update counter current number
+  if (counterId) {
+    await sql`UPDATE counters SET current_number = ${next.number} WHERE id = ${counterId}`;
+  }
 
   const updated = await getQueueEntry(next.id) || null;
 
@@ -451,6 +478,28 @@ export async function updateQueueSettings(
   const query = `UPDATE queue_settings SET ${setClauses.join(", ")} WHERE shop_id = $${keys.length + 1}`;
   const result = await sql.query(query, [...values, shopId]);
   return getQueueSettings(shopId);
+}
+
+// ─── Counters ──────────────────────────────────────
+
+export async function getCounters(shopId: string): Promise<Counter[]> {
+  return await sql`SELECT * FROM counters WHERE shop_id = ${shopId} AND is_active = 1 ORDER BY created_at ASC` as unknown as Counter[];
+}
+
+export async function createCounter(shopId: string, name: string): Promise<Counter | undefined> {
+  const id = uuidv4();
+  await sql`INSERT INTO counters (id, shop_id, name) VALUES (${id}, ${shopId}, ${name})`;
+  const rows = await sql`SELECT * FROM counters WHERE id = ${id}` as unknown as Counter[];
+  return rows[0];
+}
+
+export async function deleteCounter(id: string): Promise<void> {
+  await sql`UPDATE counters SET is_active = 0 WHERE id = ${id}`;
+}
+
+export async function getCounter(id: string): Promise<Counter | undefined> {
+  const rows = await sql`SELECT * FROM counters WHERE id = ${id}` as unknown as Counter[];
+  return rows[0];
 }
 
 // ─── Stats ────────────────────────────────────────

@@ -13,13 +13,23 @@ interface ShopSettings {
   whatsapp_number: string;
 }
 
+interface Counter {
+  id: string;
+  shop_id: string;
+  name: string;
+  current_number: number;
+  is_active: number;
+}
+
 export default function ShopSettingsPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [settings, setSettings] = useState<ShopSettings | null>(null);
   const [shopName, setShopName] = useState("");
+  const [counters, setCounters] = useState<Counter[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [newCounterName, setNewCounterName] = useState("");
 
   useEffect(() => {
     fetch(`/api/shops/${id}/settings`, { headers: { "ngrok-skip-browser-warning": "true" } })
@@ -32,6 +42,12 @@ export default function ShopSettingsPage() {
       .then((r) => r.json())
       .then((d) => {
         if (d.shop) setShopName(d.shop.name);
+      })
+      .catch(() => {});
+    fetch(`/api/shops/${id}/counters`, { headers: { "ngrok-skip-browser-warning": "true" } })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.counters) setCounters(d.counters);
       })
       .catch(() => {});
   }, [id]);
@@ -59,6 +75,40 @@ export default function ShopSettingsPage() {
       setMessage("❌ حدث خطأ أثناء الحفظ");
     }
     setSaving(false);
+  };
+
+  const addCounter = async () => {
+    const name = newCounterName.trim() || `شباك ${counters.length + 1}`;
+    try {
+      const res = await fetch(`/api/shops/${id}/counters`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        body: JSON.stringify({ name }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.counter) {
+          setCounters([...counters, data.counter]);
+          setNewCounterName("");
+          setMessage(`✅ تم إضافة ${name}`);
+          setTimeout(() => setMessage(""), 3000);
+        }
+      }
+    } catch {}
+  };
+
+  const removeCounter = async (counterId: string) => {
+    try {
+      const res = await fetch(`/api/shops/${id}/counters?counterId=${counterId}`, {
+        method: "DELETE",
+        headers: { "ngrok-skip-browser-warning": "true" },
+      });
+      if (res.ok) {
+        setCounters(counters.filter((c) => c.id !== counterId));
+        setMessage("✅ تم حذف الشباك");
+        setTimeout(() => setMessage(""), 3000);
+      }
+    } catch {}
   };
 
   if (!settings) {
@@ -101,6 +151,116 @@ export default function ShopSettingsPage() {
             {message}
           </div>
         )}
+
+        {/* Closed Mode */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
+            <h2 className="font-bold text-gray-900 flex items-center gap-2">
+              <span>🔴</span>
+              <span>حالة المحل</span>
+            </h2>
+          </div>
+          <div className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-medium text-gray-700">
+                  {settings.is_open === 0 ? "🔴 المحل مغلق حالياً" : "🟢 المحل مفتوح"}
+                </span>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  عند إغلاق المحل، لا يمكن للعملاء حجز أدوار جديدة
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  const newVal = settings.is_open === 0 ? 1 : 0;
+                  const res = await fetch(`/api/shops/${id}/settings`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+                    body: JSON.stringify({ is_open: newVal }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.settings) setSettings(data.settings);
+                    setMessage(newVal === 0 ? "🔴 تم إغلاق المحل" : "🟢 تم فتح المحل");
+                    setTimeout(() => setMessage(""), 3000);
+                  }
+                }}
+                className={`relative w-14 h-7 rounded-full transition-colors ${
+                  settings.is_open === 0 ? "bg-red-500" : "bg-green-500"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${
+                    settings.is_open === 0 ? "translate-x-0.5" : "translate-x-7"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Counters Section */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+            <h2 className="font-bold text-gray-900 flex items-center gap-2">
+              <span>🪟</span>
+              <span>الشبابيك</span>
+            </h2>
+            <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-full">
+              {counters.length}
+            </span>
+          </div>
+          <div className="p-5 space-y-3">
+            {counters.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">
+                لا توجد شبابيك — أضف شباكاً واحداً على الأقل
+              </p>
+            ) : (
+              counters.map((counter, i) => (
+                <div key={counter.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
+                      <span className="text-sm font-black text-indigo-600">{i + 1}</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{counter.name}</p>
+                      <p className="text-xs text-gray-400">
+                        آخر رقم: {counter.current_number || 0}
+                      </p>
+                    </div>
+                  </div>
+                  {counters.length > 1 && (
+                    <button
+                      onClick={() => removeCounter(counter.id)}
+                      className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs text-red-500 hover:bg-red-100 transition-colors"
+                      title="حذف"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+
+            {/* Add Counter Form */}
+            <div className="flex gap-2 pt-2">
+              <input
+                type="text"
+                value={newCounterName}
+                onChange={(e) => setNewCounterName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addCounter()}
+                placeholder={`شباك ${counters.length + 1}`}
+                className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+              <button
+                onClick={addCounter}
+                className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 transition-all"
+              >
+                + إضافة
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* General Settings */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">

@@ -35,7 +35,14 @@ interface QueueEntry {
   status: string;
   estimated_wait: number;
   recall_count?: number;
+  counter_id?: string;
   created_at: string;
+}
+
+interface Counter {
+  id: string;
+  name: string;
+  current_number: number;
 }
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -66,6 +73,9 @@ export default function ShopDashboard() {
   const [savingWaitTime, setSavingWaitTime] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
+  const [counters, setCounters] = useState<Counter[]>([]);
+  const [selectedCounter, setSelectedCounter] = useState<string>("");
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
@@ -92,7 +102,22 @@ export default function ShopDashboard() {
     fetch(`/api/shops/${id}/settings`, { headers: { "ngrok-skip-browser-warning": "true" } })
       .then((r) => r.json())
       .then((d) => {
-        if (d.settings) setAvgServiceMinutes(d.settings.avg_service_minutes || 10);
+        if (d.settings) {
+          setAvgServiceMinutes(d.settings.avg_service_minutes || 10);
+          setIsOpen(d.settings.is_open !== 0);
+        }
+      })
+      .catch(() => {});
+  }, [id]);
+
+  useEffect(() => {
+    fetch(`/api/shops/${id}/counters`, { headers: { "ngrok-skip-browser-warning": "true" } })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.counters && d.counters.length > 0) {
+          setCounters(d.counters);
+          if (!selectedCounter) setSelectedCounter(d.counters[0].id);
+        }
       })
       .catch(() => {});
   }, [id]);
@@ -142,13 +167,13 @@ export default function ShopDashboard() {
     } catch {}
   };
 
-  const handleCallNext = async () => {
+  const handleCallNext = async (counterId?: string) => {
     setCalling(true);
     try {
       const res = await fetch(`/api/shops/${id}/queue`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-        body: JSON.stringify({ action: "call-next" }),
+        body: JSON.stringify({ action: "call-next", counterId }),
       });
       const data = await res.json();
       if (data.entry) {
@@ -196,7 +221,12 @@ export default function ShopDashboard() {
   };
 
   const waiting = queue.filter((e) => e.status === "waiting").sort((a, b) => a.number - b.number);
-  const called = queue.filter((e) => e.status === "called").sort((a, b) => a.number - b.number);
+  const called = counters.length > 1
+    ? queue.filter((e) => e.status === "called" && e.counter_id === selectedCounter).sort((a, b) => a.number - b.number)
+    : queue.filter((e) => e.status === "called").sort((a, b) => a.number - b.number);
+  const currentlyServing = counters.length > 1
+    ? called[0] || null
+    : null;
   const completed = queue.filter((e) => e.status === "completed" || e.status === "cancelled").reverse().slice(0, 10);
   const todayTotal = queue.filter((e) => {
     const d = parseDBDate(e.created_at);
@@ -292,6 +322,16 @@ export default function ShopDashboard() {
         </div>
       </header>
 
+      {/* Closed Banner */}
+      {!isOpen && (
+        <div className="bg-gradient-to-r from-red-500 to-rose-600 text-white text-center py-3 px-4">
+          <p className="font-bold text-sm flex items-center justify-center gap-2">
+            <span>🔴</span>
+            <span>المحل مغلق — العملاء لا يستطيعون حجز أدوار جديدة</span>
+          </p>
+        </div>
+      )}
+
       <main className="mx-auto max-w-6xl px-4 py-6">
         {/* Quick Stats */}
         <div className="grid grid-cols-4 gap-3 mb-6">
@@ -313,9 +353,39 @@ export default function ShopDashboard() {
           </div>
         </div>
 
+        {/* Counter Tabs */}
+        {counters.length > 1 && (
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+            {counters.map((counter) => (
+              <button
+                key={counter.id}
+                onClick={() => setSelectedCounter(counter.id)}
+                className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+                  selectedCounter === counter.id
+                    ? "bg-indigo-600 text-white shadow-md"
+                    : "bg-white text-gray-600 border border-gray-200 hover:border-indigo-300"
+                }`}
+              >
+                🪟 {counter.name}
+              </button>
+            ))}
+            <Link
+              href={`/dashboard/shop/${id}/settings`}
+              className="px-3 py-2 rounded-xl text-sm bg-gray-100 text-gray-500 hover:bg-gray-200 whitespace-nowrap"
+            >
+              + إدارة الشبابيك
+            </Link>
+          </div>
+        )}
+        {counters.length === 1 && (
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-sm font-bold text-gray-500">🪟 {counters[0]?.name || "شباك 1"}</span>
+          </div>
+        )}
+
         {/* Call Next Button — Big & Beautiful */}
         <button
-          onClick={handleCallNext}
+          onClick={() => handleCallNext(selectedCounter || undefined)}
           disabled={calling || waiting.length === 0}
           className={`w-full rounded-2xl py-6 text-xl font-black text-white transition-all mb-6 relative overflow-hidden ${
             waiting.length > 0

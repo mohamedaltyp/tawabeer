@@ -8,6 +8,7 @@ import {
   callAgain,
   getShop,
   getTodayCustomerCount,
+  getQueueSettings,
 } from "@/lib/db";
 import { canAcceptCustomer, getPlanLimits } from "@/lib/plans";
 
@@ -29,6 +30,18 @@ export async function POST(
   const { id } = await params;
   const shop = await getShop(id);
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+
+  // ── Closed Mode check ──
+  const settings = await getQueueSettings(id);
+  if (settings && settings.is_open === 0) {
+    return NextResponse.json(
+      {
+        error: "المحل مغلق حالياً. لا يمكن حجز أدوار جديدة.",
+        code: "shop_closed",
+      },
+      { status: 403 }
+    );
+  }
 
   // ── Plan enforcement: check daily customer limit ──
   const shopPlan = shop.plan || "free";
@@ -65,7 +78,7 @@ export async function PATCH(
   let result;
   switch (body.action) {
     case "call-next":
-      result = await callNext(id);
+      result = await callNext(id, body.counterId);
       break;
     case "complete":
       result = await completeEntry(body.entryId);
