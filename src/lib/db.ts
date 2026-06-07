@@ -345,6 +345,9 @@ export async function joinQueue(data: {
   customerPhone?: string;
   counterId?: string;
 }): Promise<{ entry: QueueEntry; position: number; estimatedWait: number; telegram_link_url: string }> {
+  // Ensure counter_id column exists (safe, runs once per connection)
+  try { await sql`ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS counter_id TEXT DEFAULT ''`; } catch {}
+  
   const number = await getNextNumber(data.shopId);
   const id = uuidv4();
 
