@@ -9,6 +9,7 @@ import {
   getShop,
   getTodayCustomerCount,
   getQueueSettings,
+  ensureMigrated,
 } from "@/lib/db";
 import { canAcceptCustomer, getPlanLimits } from "@/lib/plans";
 
@@ -27,6 +28,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await ensureMigrated();
   const { id } = await params;
   const shop = await getShop(id);
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
@@ -72,6 +74,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await ensureMigrated();
   const { id } = await params;
   const body = await req.json();
 
