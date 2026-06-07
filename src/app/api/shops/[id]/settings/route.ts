@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getShop, getQueueSettings, updateQueueSettings } from "@/lib/db";
+import { getShop, getQueueSettings, updateQueueSettings, ensureMigrated } from "@/lib/db";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await ensureMigrated();
   const { id } = await params;
   const shop = await getShop(id);
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
@@ -17,6 +18,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await ensureMigrated();
   const { id } = await params;
   const body = await req.json();
   const settings = await updateQueueSettings(id, body);
