@@ -28,6 +28,7 @@ interface QueueSettings {
   is_open: number;
   greeting_message: string;
   avg_service_minutes: number;
+  booking_enabled: number;
 }
 
 interface Counter {
@@ -643,6 +644,29 @@ export default function ShopPage() {
             <p className="text-amber-700 font-medium text-sm">الطابور مغلق حالياً</p>
             <p className="text-amber-500 text-xs mt-1">يرجى المحاولة لاحقاً</p>
           </div>
+        </div>
+      )}
+
+      {/* Book Appointment Link */}
+      {settings?.booking_enabled === 1 && (
+        <div className="mx-auto max-w-md px-5 mt-4 animate-fade-in">
+          <Link
+            href={`/shop/${id}/book`}
+            className="flex items-center justify-center gap-3 w-full rounded-2xl py-4 px-5 text-white font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              background: "linear-gradient(135deg, rgba(139, 92, 246, 0.9) 0%, rgba(99, 102, 241, 0.9) 100%)",
+              border: "1px solid rgba(139, 92, 246, 0.5)",
+              textDecoration: "none",
+              boxShadow: "0 8px 32px rgba(99, 102, 241, 0.3)",
+            }}
+          >
+            <span className="text-2xl">📅</span>
+            <div className="text-right flex-1">
+              <div className="text-sm font-bold">احجز موعد مسبق</div>
+              <div className="text-xs text-purple-200/70">اختر التاريخ والوقت المناسب ليك</div>
+            </div>
+            <span className="text-lg">←</span>
+          </Link>
         </div>
       )}
 

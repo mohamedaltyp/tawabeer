@@ -318,6 +318,13 @@ export default function ShopDashboard() {
             >
               📊
             </Link>
+            <Link
+              href={`/dashboard/shop/${id}/bookings`}
+              className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center text-sm text-gray-600 hover:bg-gray-200 transition-colors"
+              title="الحجوزات"
+            >
+              📅
+            </Link>
           </div>
         </div>
       </header>

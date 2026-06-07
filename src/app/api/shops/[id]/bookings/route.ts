@@ -1,0 +1,103 @@
+import { NextRequest, NextResponse } from "next/server";
+import {
+  getAvailableSlots,
+  createBooking,
+  getShopBookings,
+  cancelBooking,
+  completeBooking,
+  getBookingStats,
+  getShop,
+  getQueueSettings,
+  ensureMigrated,
+} from "@/lib/db";
+
+// GET - Get available slots for a date OR get shop bookings
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  await ensureMigrated();
+  const { id } = await params;
+  const url = new URL(req.url);
+  const date = url.searchParams.get("date");
+  const action = url.searchParams.get("action");
+
+  const shop = await getShop(id);
+  if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+
+  // Get stats
+  if (action === "stats") {
+    const stats = await getBookingStats(id);
+    return NextResponse.json({ stats });
+  }
+
+  // Get available slots for a specific date
+  if (date) {
+    const slots = await getAvailableSlots(id, date);
+    return NextResponse.json({ slots, date });
+  }
+
+  // Get all upcoming bookings for this shop (owner view)
+  const bookings = await getShopBookings(id);
+  const stats = await getBookingStats(id);
+  return NextResponse.json({ bookings, stats });
+}
+
+// POST - Create a booking
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await ensureMigrated();
+    const { id } = await params;
+
+    const body = await req.json();
+
+    // Sanitize inputs
+    if (body.customerName) body.customerName = body.customerName.replace(/[<>&\"']/g, "").trim();
+    if (body.customerPhone) body.customerPhone = body.customerPhone.replace(/[^0-9+\- ]/g, "").trim();
+
+    const result = await createBooking({
+      shopId: id,
+      slotId: body.slotId,
+      bookingDate: body.bookingDate,
+      customerName: body.customerName,
+      customerPhone: body.customerPhone,
+      notes: body.notes,
+    });
+
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+
+    return NextResponse.json(result, { status: 201 });
+  } catch (e: any) {
+    console.error("POST bookings error:", e);
+    return NextResponse.json({ error: e?.message || "Unknown error" }, { status: 500 });
+  }
+}
+
+// PATCH - Cancel or complete a booking
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  await ensureMigrated();
+  const body = await req.json();
+
+  let result;
+  switch (body.action) {
+    case "cancel":
+      result = await cancelBooking(body.bookingId);
+      break;
+    case "complete":
+      result = await completeBooking(body.bookingId);
+      break;
+    default:
+      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+  }
+
+  if (!result) return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+  return NextResponse.json({ booking: result });
+}

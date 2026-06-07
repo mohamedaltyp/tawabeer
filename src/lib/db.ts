@@ -116,6 +116,36 @@ async function runMigrations() {
     )
   `;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS booking_slots (
+      id TEXT PRIMARY KEY,
+      shop_id TEXT NOT NULL,
+      day_of_week INTEGER NOT NULL,
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      is_active INTEGER DEFAULT 1,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS bookings (
+      id TEXT PRIMARY KEY,
+      shop_id TEXT NOT NULL,
+      slot_id TEXT NOT NULL,
+      booking_date DATE NOT NULL,
+      customer_name TEXT DEFAULT '',
+      customer_phone TEXT DEFAULT '',
+      status TEXT DEFAULT 'confirmed',
+      notes TEXT DEFAULT '',
+      counter_id TEXT DEFAULT '',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
+      FOREIGN KEY (slot_id) REFERENCES booking_slots(id) ON DELETE CASCADE
+    )
+  `;
+
   // Migration: Add plan columns if they don't exist (safe to run multiple times)
   const migrations = [
     `ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free'`,
@@ -130,6 +160,10 @@ async function runMigrations() {
     `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS recall_count INTEGER DEFAULT 0`,
     `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT DEFAULT ''`,
     `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS counter_id TEXT DEFAULT ''`,
+    `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS booking_enabled INTEGER DEFAULT 0`,
+    `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS slot_duration_minutes INTEGER DEFAULT 30`,
+    `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS max_bookings_per_slot INTEGER DEFAULT 5`,
+    `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS booking_advance_days INTEGER DEFAULT 7`,
   ];
   for (const m of migrations) {
     try { await sql.unsafe(m); } catch { /* column already exists */ }
@@ -200,6 +234,10 @@ export interface QueueSettings {
   whatsapp_enabled: number;
   whatsapp_number: string;
   whatsapp_business_account_id: string;
+  booking_enabled: number;
+  slot_duration_minutes: number;
+  max_bookings_per_slot: number;
+  booking_advance_days: number;
 }
 
 export interface PaymentMethod {
@@ -219,6 +257,29 @@ export interface Counter {
   name: string;
   current_number: number;
   is_active: number;
+  created_at: string;
+}
+
+export interface BookingSlot {
+  id: string;
+  shop_id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  is_active: number;
+  created_at: string;
+}
+
+export interface Booking {
+  id: string;
+  shop_id: string;
+  slot_id: string;
+  booking_date: string;
+  customer_name: string;
+  customer_phone: string;
+  status: "confirmed" | "cancelled" | "completed";
+  notes: string;
+  counter_id: string;
   created_at: string;
 }
 
@@ -621,4 +682,179 @@ export async function saveLoginCode(email: string, code: string): Promise<void> 
 export async function verifyLoginCode(email: string, code: string): Promise<boolean> {
   const rows = await sql`SELECT value FROM app_settings WHERE key = ${"login_code_" + email}` as unknown as { value: string }[];
   return rows[0]?.value === code;
+}
+
+// ─── Booking Slots ────────────────────────────
+
+export async function getBookingSlots(shopId: string): Promise<BookingSlot[]> {
+  return await sql`SELECT * FROM booking_slots WHERE shop_id = ${shopId} AND is_active = 1 ORDER BY day_of_week, start_time` as unknown as BookingSlot[];
+}
+
+export async function getBookingSlotsByDay(shopId: string, dayOfWeek: number): Promise<BookingSlot[]> {
+  return await sql`SELECT * FROM booking_slots WHERE shop_id = ${shopId} AND day_of_week = ${dayOfWeek} AND is_active = 1 ORDER BY start_time` as unknown as BookingSlot[];
+}
+
+export async function createBookingSlot(data: {
+  shopId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}): Promise<BookingSlot | undefined> {
+  const id = uuidv4();
+  await sql`INSERT INTO booking_slots (id, shop_id, day_of_week, start_time, end_time) VALUES (${id}, ${data.shopId}, ${data.dayOfWeek}, ${data.startTime}, ${data.endTime})`;
+  const rows = await sql`SELECT * FROM booking_slots WHERE id = ${id}` as unknown as BookingSlot[];
+  return rows[0];
+}
+
+export async function deleteBookingSlot(id: string): Promise<void> {
+  await sql`DELETE FROM booking_slots WHERE id = ${id}`;
+}
+
+// ─── Bookings ────────────────────────────────
+
+export async function getAvailableSlots(shopId: string, date: string): Promise<Array<{
+  slot: BookingSlot;
+  available: number;
+  total: number;
+}>> {
+  // Get day of week for the date (0=Sunday)
+  const dateObj = new Date(date + "T00:00:00");
+  const dayOfWeek = dateObj.getDay();
+
+  // Get active slots for this day
+  const slots = await getBookingSlotsByDay(shopId, dayOfWeek);
+  if (slots.length === 0) return [];
+
+  // Get settings for max bookings per slot
+  const settings = await getQueueSettings(shopId);
+  const maxPerSlot = settings?.max_bookings_per_slot || 5;
+
+  const results: Array<{ slot: BookingSlot; available: number; total: number }> = [];
+
+  for (const slot of slots) {
+    // Count existing bookings for this slot on this date
+    const countRows = await sql`
+      SELECT COUNT(*)::int as count FROM bookings 
+      WHERE slot_id = ${slot.id} AND booking_date = ${date} AND status = 'confirmed'
+    ` as unknown as { count: number }[];
+    const booked = countRows[0]?.count || 0;
+
+    results.push({
+      slot,
+      available: Math.max(0, maxPerSlot - booked),
+      total: maxPerSlot,
+    });
+  }
+
+  return results;
+}
+
+export async function createBooking(data: {
+  shopId: string;
+  slotId: string;
+  bookingDate: string;
+  customerName?: string;
+  customerPhone?: string;
+  notes?: string;
+}): Promise<{ booking: Booking; position: number } | { error: string }> {
+  // Check if shop allows booking
+  const settings = await getQueueSettings(data.shopId);
+  if (!settings || settings.booking_enabled === 0) {
+    return { error: "الحجز غير متاح حالياً في هذا المحل" };
+  }
+
+  // Check if slot exists and is active
+  const slots = await sql`SELECT * FROM booking_slots WHERE id = ${data.slotId} AND is_active = 1` as unknown as BookingSlot[];
+  if (slots.length === 0) {
+    return { error: "هذا الموعد غير متاح" };
+  }
+
+  // Check availability
+  const maxPerSlot = settings.max_bookings_per_slot || 5;
+  const countRows = await sql`
+    SELECT COUNT(*)::int as count FROM bookings 
+    WHERE slot_id = ${data.slotId} AND booking_date = ${data.bookingDate} AND status = 'confirmed'
+  ` as unknown as { count: number }[];
+  const booked = countRows[0]?.count || 0;
+
+  if (booked >= maxPerSlot) {
+    return { error: "هذا الموعد ممتلأ. اختر موعداً آخر." };
+  }
+
+  // Check if phone already booked this slot on same date
+  if (data.customerPhone) {
+    const cleanPhone = data.customerPhone.replace(/[^0-9]/g, "");
+    const existing = await sql`
+      SELECT id FROM bookings 
+      WHERE shop_id = ${data.shopId} AND booking_date = ${data.bookingDate} 
+      AND slot_id = ${data.slotId} AND customer_phone = ${cleanPhone} AND status = 'confirmed'
+    `;
+    if (existing.length > 0) {
+      return { error: "لديك حجز في هذا الموعد بالفعل" };
+    }
+  }
+
+  // Create booking
+  const id = uuidv4();
+  await sql`
+    INSERT INTO bookings (id, shop_id, slot_id, booking_date, customer_name, customer_phone, notes)
+    VALUES (${id}, ${data.shopId}, ${data.slotId}, ${data.bookingDate}, ${data.customerName || ""}, ${data.customerPhone || ""}, ${data.notes || ""})
+  `;
+
+  const booking = await sql`SELECT * FROM bookings WHERE id = ${id}` as unknown as Booking[];
+
+  return {
+    booking: booking[0],
+    position: booked + 1,
+  };
+}
+
+export async function getShopBookings(shopId: string, date?: string): Promise<Booking[]> {
+  if (date) {
+    return await sql`
+      SELECT b.*, bs.start_time, bs.end_time, bs.day_of_week 
+      FROM bookings b 
+      JOIN booking_slots bs ON b.slot_id = bs.id 
+      WHERE b.shop_id = ${shopId} AND b.booking_date = ${date} 
+      AND b.status = 'confirmed'
+      ORDER BY bs.start_time, b.created_at
+    ` as unknown as Booking[];
+  }
+  return await sql`
+    SELECT b.*, bs.start_time, bs.end_time, bs.day_of_week 
+    FROM bookings b 
+    JOIN booking_slots bs ON b.slot_id = bs.id 
+    WHERE b.shop_id = ${shopId} AND b.status = 'confirmed'
+    AND b.booking_date >= CURRENT_DATE
+    ORDER BY b.booking_date, bs.start_time
+  ` as unknown as Booking[];
+}
+
+export async function cancelBooking(id: string): Promise<Booking | undefined> {
+  await sql`UPDATE bookings SET status = 'cancelled' WHERE id = ${id}`;
+  const rows = await sql`SELECT * FROM bookings WHERE id = ${id}` as unknown as Booking[];
+  return rows[0];
+}
+
+export async function completeBooking(id: string): Promise<Booking | undefined> {
+  await sql`UPDATE bookings SET status = 'completed' WHERE id = ${id}`;
+  const rows = await sql`SELECT * FROM bookings WHERE id = ${id}` as unknown as Booking[];
+  return rows[0];
+}
+
+export async function getBookingStats(shopId: string) {
+  const today = await sql`
+    SELECT COUNT(*)::int as count FROM bookings 
+    WHERE shop_id = ${shopId} AND booking_date = CURRENT_DATE AND status = 'confirmed'
+  ` as unknown as { count: number }[];
+
+  const upcoming = await sql`
+    SELECT COUNT(*)::int as count FROM bookings 
+    WHERE shop_id = ${shopId} AND booking_date >= CURRENT_DATE AND status = 'confirmed'
+  ` as unknown as { count: number }[];
+
+  return {
+    today_count: today[0]?.count || 0,
+    upcoming_count: upcoming[0]?.count || 0,
+  };
 }
