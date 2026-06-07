@@ -343,6 +343,7 @@ export async function joinQueue(data: {
   shopId: string;
   customerName?: string;
   customerPhone?: string;
+  counterId?: string;
 }): Promise<{ entry: QueueEntry; position: number; estimatedWait: number; telegram_link_url: string }> {
   const number = await getNextNumber(data.shopId);
   const id = uuidv4();
@@ -367,8 +368,8 @@ export async function joinQueue(data: {
   const estimatedWait = (position + 1) * avgMinutes;
 
   await sql`
-    INSERT INTO queue_entries (id, shop_id, number, customer_name, customer_phone, estimated_wait, telegram_chat_id)
-    VALUES (${id}, ${data.shopId}, ${number}, ${data.customerName || ""}, ${data.customerPhone || ""}, ${estimatedWait}, ${telegramChatId})
+    INSERT INTO queue_entries (id, shop_id, number, customer_name, customer_phone, estimated_wait, telegram_chat_id, counter_id)
+    VALUES (${id}, ${data.shopId}, ${number}, ${data.customerName || ""}, ${data.customerPhone || ""}, ${estimatedWait}, ${telegramChatId}, ${data.counterId || ""})
   `;
 
   // Update shop current number if this is the first entry

@@ -30,6 +30,12 @@ interface QueueSettings {
   avg_service_minutes: number;
 }
 
+interface Counter {
+  id: string;
+  name: string;
+  current_number: number;
+}
+
 const CATEGORY_EMOJI: Record<string, string> = {
   "مطعم": "🍽️",
   "حلاق": "💈",
@@ -70,6 +76,8 @@ export default function ShopPage() {
   const [joining, setJoining] = useState(false);
   const [myEntry, setMyEntry] = useState<QueueEntry | null>(null);
   const [error, setError] = useState("");
+  const [counters, setCounters] = useState<Counter[]>([]);
+  const [selectedCounter, setSelectedCounter] = useState<string>("");
 
   const [telegramLinkUrl, setTelegramLinkUrl] = useState("");
 
@@ -124,6 +132,17 @@ export default function ShopPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    // Fetch counters for customer selection
+    fetch(`/api/shops/${id}/counters`, { headers: { "ngrok-skip-browser-warning": "true" } })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.counters && d.counters.length > 0) {
+          setCounters(d.counters);
+          setSelectedCounter(d.counters[0].id);
+        }
+      })
+      .catch(() => {});
   }, [id]);
 
   const myPosition = useCallback(() => {
@@ -234,7 +253,7 @@ export default function ShopPage() {
       const res = await fetch(`/api/shops/${id}/queue`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-        body: JSON.stringify({ customerName: name, customerPhone: phone }),
+        body: JSON.stringify({ customerName: name, customerPhone: phone, counterId: selectedCounter || undefined }),
       });
       const data = await res.json();
       if (data.error) {
@@ -682,6 +701,34 @@ export default function ShopPage() {
                 </div>
               </div>
             </div>
+
+            {/* Counter Selection - only if multiple counters */}
+            {counters.length > 1 && (
+              <div>
+                <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-2">
+                  <span>🪟</span>
+                  <span>اختر الشباك</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {counters.map((counter) => (
+                    <button
+                      key={counter.id}
+                      type="button"
+                      onClick={() => setSelectedCounter(counter.id)}
+                      disabled={!isQueueOpen}
+                      className={`p-3 rounded-xl text-sm font-medium transition-all border-2 text-center ${
+                        selectedCounter === counter.id
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/50"
+                      }`}
+                    >
+                      <span className="block text-lg mb-0.5">🪟</span>
+                      <span>{counter.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Error */}
             {error && (
