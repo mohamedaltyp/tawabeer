@@ -92,6 +92,7 @@ export default function StatsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [allQueue, setAllQueue] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ratingData, setRatingData] = useState<{ average: number; count: number } | null>(null);
 
   useEffect(() => {
     fetch(`/api/shops/${id}`, { headers: { "ngrok-skip-browser-warning": "true" } })
@@ -105,6 +106,13 @@ export default function StatsPage() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    fetch(`/api/shops/${id}/ratings`, { headers: { "ngrok-skip-browser-warning": "true" } })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.average) setRatingData(d.average);
+      })
+      .catch(() => {});
   }, [id]);
 
   // ─── Computed Statistics ───
@@ -233,7 +241,7 @@ export default function StatsPage() {
         </div>
 
         {/* ─── Today's Key Metrics ─── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
           <div className="card p-4 text-center">
             <span className="text-2xl block mb-1">📅</span>
             <p className="text-2xl font-black text-gray-900">{stats?.today_total || 0}</p>
@@ -253,6 +261,11 @@ export default function StatsPage() {
             <span className="text-2xl block mb-1">❌</span>
             <p className="text-2xl font-black text-red-500">{todayCancelled}</p>
             <p className="text-xs text-gray-400">ملغي</p>
+          </div>
+          <div className="card p-4 text-center">
+            <span className="text-2xl block mb-1">⭐</span>
+            <p className="text-2xl font-black text-amber-500">{ratingData?.average?.toFixed(1) || "—"}</p>
+            <p className="text-xs text-gray-400">تقييم الزبائن {ratingData?.count ? `(${ratingData.count})` : ""}</p>
           </div>
         </div>
 

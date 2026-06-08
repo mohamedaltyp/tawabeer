@@ -119,6 +119,19 @@ async function runMigrations() {
   `;
 
   await sql`
+    CREATE TABLE IF NOT EXISTS ratings (
+      id TEXT PRIMARY KEY,
+      shop_id TEXT NOT NULL,
+      entry_id TEXT,
+      rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+      comment TEXT DEFAULT '',
+      customer_name TEXT DEFAULT '',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
+    )
+  `;
+
+  await sql`
     CREATE TABLE IF NOT EXISTS booking_slots (
       id TEXT PRIMARY KEY,
       shop_id TEXT NOT NULL,
@@ -279,6 +292,16 @@ export interface BookingSlot {
   start_time: string;
   end_time: string;
   is_active: number;
+  created_at: string;
+}
+
+export interface Rating {
+  id: string;
+  shop_id: string;
+  entry_id: string | null;
+  rating: number;
+  comment: string;
+  customer_name: string;
   created_at: string;
 }
 
@@ -634,6 +657,41 @@ export async function getQueueStats(shopId: string) {
     today_total: today[0]?.count || 0,
     avg_wait_minutes: Math.round(avgWait[0]?.avg_min || 0),
     peak_hours: peakHours,
+  };
+}
+
+// ─── Ratings ────────────────────────────────────
+
+export async function addRating(data: {
+  shopId: string;
+  entryId?: string;
+  rating: number;
+  comment?: string;
+  customerName?: string;
+}): Promise<Rating> {
+  const id = uuidv4();
+  await sql`
+    INSERT INTO ratings (id, shop_id, entry_id, rating, comment, customer_name)
+    VALUES (${id}, ${data.shopId}, ${data.entryId || null}, ${data.rating}, ${data.comment || ""}, ${data.customerName || ""})
+  `;
+  const rows = await sql`SELECT * FROM ratings WHERE id = ${id}` as unknown as Rating[];
+  return rows[0];
+}
+
+export async function getShopRatings(shopId: string, limit: number = 50): Promise<Rating[]> {
+  return await sql`
+    SELECT * FROM ratings WHERE shop_id = ${shopId} ORDER BY created_at DESC LIMIT ${limit}
+  ` as unknown as Rating[];
+}
+
+export async function getShopAverageRating(shopId: string): Promise<{ average: number; count: number }> {
+  const rows = await sql`
+    SELECT COALESCE(AVG(rating), 0)::real as average, COUNT(*)::int as count
+    FROM ratings WHERE shop_id = ${shopId}
+  ` as unknown as { average: number; count: number }[];
+  return {
+    average: Math.round((rows[0]?.average || 0) * 10) / 10,
+    count: rows[0]?.count || 0,
   };
 }
 

@@ -28,11 +28,63 @@ export default function HomePage() {
       .catch(() => setLoading(false));
   }, []);
 
+  // Transliteration mapping: common Arabic terms ↔ English
+  const TRANSLITERATION: Record<string, string[]> = {
+    محل: ["mahal", "shop", "store"],
+    مطعم: ["matam", "restaurant", "mat'aam"],
+    حلاق: ["halaq", "barber", "salon"],
+    عيادة: ["clinic", "clayda"],
+    مغسلة: ["maghsala", "laundry"],
+    بنك: ["bank"],
+    صيدلية: ["saydaliya", "pharmacy"],
+    مخبز: ["makhbaz", "bakery"],
+    سوبرماركت: ["supermarket", "super market"],
+    مكتبة: ["maktaba", "bookstore", "library"],
+    مركز: ["markaz", "center"],
+    طبي: ["tibbi", "medical"],
+    صحة: ["sihha", "health"],
+  };
+
+  // Build a bidirectional lookup: Arabic ↔ transliterated/English forms
+  const allTransliterations: Record<string, string[]> = {};
+  for (const [arabic, englishForms] of Object.entries(TRANSLITERATION)) {
+    const key = arabic.toLowerCase();
+    if (!allTransliterations[key]) allTransliterations[key] = [];
+    allTransliterations[key].push(...englishForms);
+    // Reverse: english → arabic + other english forms
+    for (const eng of englishForms) {
+      const engKey = eng.toLowerCase();
+      if (!allTransliterations[engKey]) allTransliterations[engKey] = [];
+      allTransliterations[engKey].push(arabic, ...englishForms.filter(e => e !== eng));
+    }
+  }
+
+  function matchesSearch(field: string, query: string): boolean {
+    if (!field || !query) return false;
+    const fieldLower = field.toLowerCase();
+    const queryLower = query.toLowerCase();
+    // Direct match (Arabic or English)
+    if (fieldLower.includes(queryLower)) return true;
+    // Check transliteration expansion for query
+    const expansions = allTransliterations[queryLower];
+    if (expansions) {
+      return expansions.some(exp => fieldLower.includes(exp.toLowerCase()));
+    }
+    // Check if the field itself has a transliteration that matches the query
+    for (const [key, vals] of Object.entries(allTransliterations)) {
+      if (fieldLower.includes(key)) {
+        if (vals.some(v => v.toLowerCase().includes(queryLower))) return true;
+      }
+    }
+    return false;
+  }
+
   const filtered = shops.filter(
     (s) =>
-      s.name.includes(search) ||
-      s.category.includes(search) ||
-      s.description.includes(search)
+      matchesSearch(s.name, search) ||
+      matchesSearch(s.category, search) ||
+      matchesSearch(s.description, search) ||
+      matchesSearch(s.address, search)
   );
 
   return (
@@ -158,12 +210,20 @@ export default function HomePage() {
         <div className="mx-auto max-w-md mb-8">
           <input
             type="text"
-            placeholder="🔍 ابحث عن محل..."
+            placeholder="🔍 ابحث عن محل... (عربي / English)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-3 text-right text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/30 transition-all"
           />
         </div>
+
+        {!loading && search && (
+          <p className="text-center text-sm text-gray-400 dark:text-gray-500 mb-4">
+            {filtered.length > 0
+              ? `${filtered.length} نتيجة${filtered.length !== 1 ? "" : ""} "${search}"`
+              : `لا توجد نتائج لـ "${search}"`}
+          </p>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-12">

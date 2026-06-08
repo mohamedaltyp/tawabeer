@@ -79,6 +79,12 @@ export default function ShopPage() {
   const [error, setError] = useState("");
   const [counters, setCounters] = useState<Counter[]>([]);
   const [selectedCounter, setSelectedCounter] = useState<string>("");
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingStars, setRatingStars] = useState(0);
+  const [hoverStars, setHoverStars] = useState(0);
+  const [ratingComment, setRatingComment] = useState("");
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [ratingLoading, setRatingLoading] = useState(false);
 
   const [telegramLinkUrl, setTelegramLinkUrl] = useState("");
 
@@ -183,35 +189,43 @@ export default function ShopPage() {
     (allEntries: QueueEntry[], myNum: number | null) => {
       if (!myNum) return;
       const found = allEntries.find((e) => e.number === myNum);
-      if (found && found.status === "called") {
-        const recallCount = found.recall_count ?? 0;
-        if (recallCount !== lastRecallRef.current) {
-          const isRecall = lastRecallRef.current >= 0;
-          lastRecallRef.current = recallCount;
+      if (found) {
+        // Check if entry was just completed
+        if (found.status === "completed" && myEntry && myEntry.status !== "completed") {
           setMyEntry(found);
-          playCallSound();
-          try {
-            navigator.vibrate?.([200, 100, 200, 100, 400]);
-          } catch {}
-          if (!isRecall) {
-            if ("Notification" in window && Notification.permission === "granted") {
-              new Notification("🔔 حان دورك!", {
-                body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
-                tag: "turn-called",
-              });
-            }
-            document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
-          } else {
-            if ("Notification" in window && Notification.permission === "granted") {
-              new Notification("🔔🔔 إعادة نداء!", {
-                body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
-                tag: `turn-called-${Date.now()}`,
-              });
-            }
-            document.title = `🔔🔔 إعادة نداء! رقم ${found.number}`;
-            setTimeout(() => {
+          setShowRatingModal(true);
+          return;
+        }
+        if (found.status === "called") {
+          const recallCount = found.recall_count ?? 0;
+          if (recallCount !== lastRecallRef.current) {
+            const isRecall = lastRecallRef.current >= 0;
+            lastRecallRef.current = recallCount;
+            setMyEntry(found);
+            playCallSound();
+            try {
+              navigator.vibrate?.([200, 100, 200, 100, 400]);
+            } catch {}
+            if (!isRecall) {
+              if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("🔔 حان دورك!", {
+                  body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
+                  tag: "turn-called",
+                });
+              }
               document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
-            }, 3000);
+            } else {
+              if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("🔔🔔 إعادة نداء!", {
+                  body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
+                  tag: `turn-called-${Date.now()}`,
+                });
+              }
+              document.title = `🔔🔔 إعادة نداء! رقم ${found.number}`;
+              setTimeout(() => {
+                document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
+              }, 3000);
+            }
           }
         }
       }
@@ -340,6 +354,37 @@ export default function ShopPage() {
       setError("حدث خطأ، حاول مرة أخرى");
     } finally {
       setJoining(false);
+    }
+  };
+
+  const handleRatingSubmit = async () => {
+    if (ratingStars < 1) return;
+    setRatingLoading(true);
+    try {
+      await fetch(`/api/shops/${id}/ratings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        body: JSON.stringify({
+          rating: ratingStars,
+          comment: ratingComment,
+          customerName: myEntry?.customer_name || "",
+          entryId: myEntry?.id,
+        }),
+      });
+      setRatingSubmitted(true);
+      setTimeout(() => {
+        setShowRatingModal(false);
+        setRatingSubmitted(false);
+        setRatingStars(0);
+        setRatingComment("");
+        setMyEntry(null);
+        setName("");
+        setPhone("");
+      }, 2000);
+    } catch {
+      // silently fail
+    } finally {
+      setRatingLoading(false);
     }
   };
 
@@ -472,6 +517,99 @@ export default function ShopPage() {
           >
             مسح وبدء من جديد
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Completed View (Rating Modal) ───
+  if (myEntry && myEntry.status === "completed" && showRatingModal) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6C3CE1 100%)" }}>
+        <div className="w-full max-w-sm">
+          <div className="card p-8 text-center animate-scale-in">
+            {ratingSubmitted ? (
+              <div className="animate-bounce-in">
+                <span className="text-6xl block mb-4">🎉</span>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">شكراً لتقييمك!</h2>
+                <p className="text-gray-500">تم تسجيل تقييمك بنجاح</p>
+              </div>
+            ) : (
+              <>
+                <span className="text-5xl block mb-4">⭐</span>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">كيف كانت تجربتك؟</h2>
+                <p className="text-gray-500 text-sm mb-6">{shop.name}</p>
+
+                {/* Star Rating */}
+                <div className="flex justify-center gap-2 mb-6">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setRatingStars(star)}
+                      onMouseEnter={() => setHoverStars(star)}
+                      onMouseLeave={() => setHoverStars(0)}
+                      className="text-4xl transition-transform hover:scale-110 active:scale-95"
+                      style={{ cursor: "pointer" }}
+                    >
+                      {star <= (hoverStars || ratingStars) ? "⭐" : "☆"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Rating Label */}
+                <p className="text-sm font-medium mb-4" style={{ color: "#6C3CE1" }}>
+                  {ratingStars === 0 && "اختر تقييمك"}
+                  {ratingStars === 1 && "سيء جداً 😞"}
+                  {ratingStars === 2 && "سيء 😕"}
+                  {ratingStars === 3 && "مقبول 🙂"}
+                  {ratingStars === 4 && "جيد 😊"}
+                  {ratingStars === 5 && "ممتاز! 🤩"}
+                </p>
+
+                {/* Comment */}
+                <textarea
+                  value={ratingComment}
+                  onChange={(e) => setRatingComment(e.target.value.slice(0, 500))}
+                  placeholder="أضف تعليقاً (اختياري)..."
+                  className="input-field w-full mb-6 text-sm"
+                  rows={3}
+                  style={{ resize: "none" }}
+                />
+
+                {/* Submit Button */}
+                <button
+                  onClick={handleRatingSubmit}
+                  disabled={ratingStars < 1 || ratingLoading}
+                  className="btn-primary w-full flex items-center justify-center gap-2"
+                >
+                  {ratingLoading ? (
+                    <>
+                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      <span>جاري الإرسال...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✓</span>
+                      <span>إرسال التقييم</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Skip */}
+                <button
+                  onClick={() => {
+                    setShowRatingModal(false);
+                    setMyEntry(null);
+                    setName("");
+                    setPhone("");
+                  }}
+                  className="mt-3 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  تخطي
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     );

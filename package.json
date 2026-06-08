@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:api": "npx tsx src/__tests__/api.test.ts",
+    "test:integration": "bash scripts/test.sh"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
