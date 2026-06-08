@@ -10,11 +10,12 @@ import {
   getQueueSettings,
   ensureMigrated,
 } from "@/lib/db";
+import { comparePassword } from "@/lib/auth";
 
-// GET - Get available slots for a date OR get shop bookings
+// GET is public (customers need to see available slots and make bookings)
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   await ensureMigrated();
   const { id } = await params;
@@ -23,7 +24,8 @@ export async function GET(
   const action = url.searchParams.get("action");
 
   const shop = await getShop(id);
-  if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  if (!shop)
+    return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
   // Get stats
   if (action === "stats") {
@@ -43,10 +45,10 @@ export async function GET(
   return NextResponse.json({ bookings, stats });
 }
 
-// POST - Create a booking
+// POST - Create a booking (public — customers book without auth)
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await ensureMigrated();
@@ -55,8 +57,14 @@ export async function POST(
     const body = await req.json();
 
     // Sanitize inputs
-    if (body.customerName) body.customerName = body.customerName.replace(/[<>&\"']/g, "").trim();
-    if (body.customerPhone) body.customerPhone = body.customerPhone.replace(/[^0-9+\- ]/g, "").trim();
+    if (body.customerName)
+      body.customerName = body.customerName
+        .replace(/[<>&"']/g, "")
+        .trim();
+    if (body.customerPhone)
+      body.customerPhone = body.customerPhone
+        .replace(/[^0-9+\- ]/g, "")
+        .trim();
 
     const result = await createBooking({
       shopId: id,
@@ -74,30 +82,53 @@ export async function POST(
     return NextResponse.json(result, { status: 201 });
   } catch (e: any) {
     console.error("POST bookings error:", e);
-    return NextResponse.json({ error: e?.message || "Unknown error" }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message || "Unknown error" },
+      { status: 500 },
+    );
   }
 }
 
-// PATCH - Cancel or complete a booking
+// PATCH - Cancel or complete a booking (requires owner auth)
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   await ensureMigrated();
-  const body = await req.json();
+  const { id } = await params;
+  const shop = await getShop(id);
+  if (!shop)
+    return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+
+  // Verify owner password
+  const headerPassword = req.headers.get("x-owner-password");
+  let body: Record<string, unknown> = {};
+
+  try {
+    const parsed = await req.json();
+    body = parsed;
+  } catch {
+    // No body
+  }
+
+  const password = headerPassword || (body.owner_password as string);
+  if (!password || !shop.owner_password || !(await comparePassword(password, shop.owner_password))) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
 
   let result;
   switch (body.action) {
     case "cancel":
-      result = await cancelBooking(body.bookingId);
+      result = await cancelBooking(body.bookingId as string);
       break;
     case "complete":
-      result = await completeBooking(body.bookingId);
+      result = await completeBooking(body.bookingId as string);
       break;
     default:
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }
 
-  if (!result) return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+  if (!result)
+    return NextResponse.json({ error: "Booking not found" }, { status: 404 });
   return NextResponse.json({ booking: result });
 }

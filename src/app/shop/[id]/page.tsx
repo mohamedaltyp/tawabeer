@@ -221,22 +221,95 @@ export default function ShopPage() {
 
   useEffect(() => {
     if (!shop || !myEntry) return;
-    const interval = setInterval(async () => {
-      try {
-        const shopRes = await fetch(`/api/shops/${id}?t=${Date.now()}`, {
-          headers: {
-            "ngrok-skip-browser-warning": "true",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-          },
+
+    let eventSource: EventSource | null = null;
+    let retryCount = 0;
+    let retryTimeout: NodeJS.Timeout | null = null;
+    let isUnmounted = false;
+
+    const connect = () => {
+      if (isUnmounted) return;
+
+      const url = `/api/shops/${id}/events`;
+      eventSource = new EventSource(url);
+
+      eventSource.onopen = () => {
+        retryCount = 0; // Reset retry count on successful connection
+      };
+
+      eventSource.addEventListener("init", (event) => {
+        const data = JSON.parse(event.data);
+        if (data.queue) setQueue(data.queue);
+        if (data.shop) {
+          // Shop data available if needed in future
+        }
+        if (data.queue) checkIfCalled(data.queue, myNumberRef.current);
+      });
+
+      eventSource.addEventListener("entry_added", (event) => {
+        const data = JSON.parse(event.data);
+        setQueue((prev) => {
+          const newQueue = [...prev, data.entry];
+          checkIfCalled(newQueue, myNumberRef.current);
+          return newQueue;
         });
-        const shopData = await shopRes.json();
-        setQueue(shopData.queue || []);
-        if (shopData.settings) setSettings(shopData.settings);
-        checkIfCalled(shopData.allQueue || [], myNumberRef.current);
-      } catch {}
-    }, 3000);
-    return () => clearInterval(interval);
+      });
+
+      eventSource.addEventListener("entry_updated", (event) => {
+        const data = JSON.parse(event.data);
+        setQueue((prev) => {
+          const newQueue = prev.map((entry) =>
+            entry.id === data.entry.id ? data.entry : entry
+          );
+          checkIfCalled(newQueue, myNumberRef.current);
+          return newQueue;
+        });
+      });
+
+      eventSource.addEventListener("entry_removed", (event) => {
+        const data = JSON.parse(event.data);
+        setQueue((prev) => {
+          const newQueue = prev.filter((entry) => entry.id !== data.entryId);
+          checkIfCalled(newQueue, myNumberRef.current);
+          return newQueue;
+        });
+      });
+
+      eventSource.addEventListener("shop_updated", (event) => {
+        const data = JSON.parse(event.data);
+        if (data.currentNumber) {
+          // currentNumber available if needed in future
+        }
+      });
+
+      eventSource.addEventListener("stats_updated", (event) => {
+        const data = JSON.parse(event.data);
+        if (data.stats) {
+          // stats available if needed in future
+        }
+      });
+
+      eventSource.onerror = () => {
+        eventSource?.close();
+        eventSource = null;
+
+        if (isUnmounted) return;
+
+        // Exponential backoff: 1s, 2s, 4s, 8s, ... (max 30s)
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
+        retryCount++;
+
+        retryTimeout = setTimeout(connect, delay);
+      };
+    };
+
+    connect();
+
+    return () => {
+      isUnmounted = true;
+      eventSource?.close();
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
   }, [id, shop, myEntry, checkIfCalled]);
 
   const handleJoin = async () => {

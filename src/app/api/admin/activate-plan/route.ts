@@ -1,17 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getShop, updateShopPlan } from "@/lib/db";
+import { createRateLimiter } from "@/lib/rate-limit";
+
+const limiter = createRateLimiter({ windowMs: 60_000, max: 20 }); // 20 req/min
+
+function verifyAdmin(req: NextRequest): boolean {
+  const token = req.headers.get("x-admin-token");
+  const adminPassword = process.env.ADMIN_PASSWORD || "dawer-admin-2026";
+  return token === adminPassword;
+}
 
 // Simple admin activation — بعد تأكيد استلام الدفع يدوياً
 export async function POST(req: NextRequest) {
+  // Rate limiting
+  const { allowed, remaining, resetAt } = limiter.check(req);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(Math.ceil(resetAt / 1000)),
+        },
+      },
+    );
+  }
+
+  // Admin auth
+  if (!verifyAdmin(req)) {
+    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
-    const { adminToken, shopId, plan, expiresAt } = body;
-
-    // Admin token — مقروء من متغير البيئة
-    const adminPassword = process.env.ADMIN_PASSWORD || "dawer-admin-2026";
-    if (adminToken !== adminPassword) {
-      return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
-    }
+    const { shopId, plan, expiresAt } = body;
 
     const shop = await getShop(shopId);
     if (!shop) {

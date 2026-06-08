@@ -1,52 +1,71 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllShops, sanitizeShops } from "@/lib/db";
+import { createRateLimiter } from "@/lib/rate-limit";
+import { comparePassword } from "@/lib/auth";
 
-// Simple in-memory rate limiter
-const loginAttempts = new Map<string, { count: number; resetAt: number }>();
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const record = loginAttempts.get(ip);
-  if (!record || now > record.resetAt) {
-    loginAttempts.set(ip, { count: 1, resetAt: now + 15 * 60 * 1000 }); // 15 min window
-    return true;
-  }
-  if (record.count >= 10) return false; // 10 attempts per 15 min
-  record.count++;
-  return true;
-}
+const limiter = createRateLimiter({
+  windowMs: 15 * 60_000, // 15 min window
+  max: 10, // 10 attempts per 15 min
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get('x-forwarded-for') || 'unknown';
-    if (!checkRateLimit(ip)) {
-      return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
+    const { allowed, remaining, resetAt } = limiter.check(req);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": String(Math.ceil(resetAt / 1000)),
+          },
+        },
+      );
     }
+
     const { phone, password } = await req.json();
 
     if (!phone || !password) {
-      return NextResponse.json({ error: "يرجى إدخال رقم الهاتف وكلمة المرور" }, { status: 400 });
+      return NextResponse.json(
+        { error: "يرجى إدخال رقم الهاتف وكلمة المرور" },
+        { status: 400 },
+      );
     }
 
     const allShops = await getAllShops();
-    const match = allShops.find(
-      (s) => s.owner_phone === phone && s.owner_password === password
-    );
+    
+    // Find shops matching the phone number
+    const matchingShops = allShops.filter((s) => s.owner_phone === phone);
+    
+    // Verify password against each matching shop's hash
+    let matchedShop = null;
+    for (const shop of matchingShops) {
+      if (shop.owner_password && await comparePassword(password, shop.owner_password)) {
+        matchedShop = shop;
+        break;
+      }
+    }
 
-    if (!match) {
-      return NextResponse.json({ error: "رقم الهاتف أو كلمة المرور غير صحيحة" }, { status: 401 });
+    if (!matchedShop) {
+      return NextResponse.json(
+        { error: "رقم الهاتف أو كلمة المرور غير صحيحة" },
+        { status: 401 },
+      );
     }
 
     // إرجاع جميع محلات هذا المالك (بدون كلمة المرور)
-    const ownerShops = allShops.filter((s) => s.owner_phone === phone);
-    const safeShops = await sanitizeShops(ownerShops);
+    const safeShops = await sanitizeShops(matchingShops);
 
     return NextResponse.json({
       success: true,
-      owner: { phone: match.owner_phone, name: match.owner_name },
+      owner: { phone: matchedShop.owner_phone, name: matchedShop.owner_name },
       shops: safeShops,
     });
   } catch {
-    return NextResponse.json({ error: "حدث خطأ في تسجيل الدخول" }, { status: 500 });
+    return NextResponse.json(
+      { error: "حدث خطأ في تسجيل الدخول" },
+      { status: 500 },
+    );
   }
 }

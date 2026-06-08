@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getShop, updateShop, getActiveQueue, getQueueEntries, getQueueStats, getQueueSettings, sanitizeShop, sanitizeText, ensureMigrated } from "@/lib/db";
+import { comparePassword } from "@/lib/auth";
 
 export async function GET(
   req: NextRequest,
@@ -36,7 +37,7 @@ export async function PUT(
   if (!shopRaw) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
   
   const isAdmin = body.owner_password === (process.env.ADMIN_PASSWORD || "dawer-admin-2026");
-  if (!isAdmin && shopRaw.owner_password !== body.owner_password) {
+  if (!isAdmin && shopRaw.owner_password && !(await comparePassword(body.owner_password, shopRaw.owner_password))) {
     return NextResponse.json({ error: "Invalid password" }, { status: 403 });
   }
   

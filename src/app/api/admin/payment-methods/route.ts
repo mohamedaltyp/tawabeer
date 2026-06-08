@@ -1,49 +1,78 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPaymentMethods, addPaymentMethod, updatePaymentMethod, deletePaymentMethod } from "@/lib/db";
+import {
+  getPaymentMethods,
+  addPaymentMethod,
+  updatePaymentMethod,
+  deletePaymentMethod,
+} from "@/lib/db";
+import { createRateLimiter } from "@/lib/rate-limit";
 
-const ADMIN_TOKEN = "dawer-admin-2026";
+const limiter = createRateLimiter({ windowMs: 60_000, max: 20 }); // 20 req/min
 
-function checkAdmin(req: NextRequest): boolean {
-  const auth = req.headers.get("authorization");
-  if (auth === `Bearer ${ADMIN_TOKEN}`) return true;
-  try {
-    const body = req.clone().json() as any;
-    return body?.adminToken === ADMIN_TOKEN;
-  } catch { return false; }
+function verifyAdmin(req: NextRequest): boolean {
+  const token = req.headers.get("x-admin-token");
+  const adminPassword = process.env.ADMIN_PASSWORD || "dawer-admin-2026";
+  return token === adminPassword;
 }
 
-export async function GET() {
+function rateLimitOrUnauthorized(req: NextRequest): NextResponse | null {
+  const { allowed, resetAt } = limiter.check(req);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(Math.ceil(resetAt / 1000)),
+        },
+      },
+    );
+  }
+  if (!verifyAdmin(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return null;
+}
+
+export async function GET(req: NextRequest) {
+  const err = rateLimitOrUnauthorized(req);
+  if (err) return err;
+
   const methods = await getPaymentMethods();
   return NextResponse.json({ methods });
 }
 
 export async function POST(req: NextRequest) {
+  const err = rateLimitOrUnauthorized(req);
+  if (err) return err;
+
   const body = await req.json();
-  if (body.adminToken !== ADMIN_TOKEN) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
   const method = await addPaymentMethod(body);
   return NextResponse.json({ method }, { status: 201 });
 }
 
 export async function PUT(req: NextRequest) {
+  const err = rateLimitOrUnauthorized(req);
+  if (err) return err;
+
   const body = await req.json();
-  if (body.adminToken !== ADMIN_TOKEN) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const { id, adminToken, ...data } = body;
-  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  const { id, ...data } = body;
+  if (!id)
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
   const method = await updatePaymentMethod(id, data);
-  if (!method) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!method)
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ method });
 }
 
 export async function DELETE(req: NextRequest) {
+  const err = rateLimitOrUnauthorized(req);
+  if (err) return err;
+
   const body = await req.json();
-  if (body.adminToken !== ADMIN_TOKEN) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
   const deleted = await deletePaymentMethod(body.id);
-  if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!deleted)
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ success: true });
 }

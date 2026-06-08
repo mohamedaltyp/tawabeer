@@ -1,6 +1,7 @@
 import { neon, neonConfig } from "@neondatabase/serverless";
 import { v4 as uuidv4 } from "uuid";
 import { notifyCustomerCalled } from "./telegram";
+import { hashPassword } from "./auth";
 
 // Allow HTTP mode (no WebSocket needed) — works on Vercel Edge + Serverless
 neonConfig.poolQueryViaFetch = true;
@@ -169,6 +170,16 @@ async function runMigrations() {
     try { await sql.unsafe(m); } catch { /* column already exists */ }
   }
 
+  // Migration: Hash any existing plain-text owner passwords
+  const shops = await sql`SELECT id, owner_password FROM shops WHERE owner_password IS NOT NULL AND owner_password != ''` as unknown as { id: string; owner_password: string }[];
+  for (const shop of shops) {
+    // Bcrypt hashes start with $2a$, $2b$, or $2y$ — if it doesn't, it's plain text
+    if (!shop.owner_password.startsWith('$2a$') && !shop.owner_password.startsWith('$2b$') && !shop.owner_password.startsWith('$2y$')) {
+      const hashed = await hashPassword(shop.owner_password);
+      await sql`UPDATE shops SET owner_password = ${hashed} WHERE id = ${shop.id}`;
+    }
+  }
+
   // Default payment methods if empty
   const { count: pmCount } = await sql`SELECT COUNT(*)::int as count FROM payment_methods` as unknown as { count: number };
   if (pmCount === 0) {
@@ -296,9 +307,10 @@ export async function createShop(data: {
   owner_password?: string;
 }): Promise<Shop> {
   const id = uuidv4();
+  const hashedPassword = data.owner_password ? await hashPassword(data.owner_password) : "";
   await sql`
     INSERT INTO shops (id, name, description, address, phone, category, owner_name, owner_phone, owner_password)
-    VALUES (${id}, ${data.name}, ${data.description || ""}, ${data.address || ""}, ${data.phone || ""}, ${data.category || ""}, ${data.owner_name || ""}, ${data.owner_phone || ""}, ${data.owner_password || ""})
+    VALUES (${id}, ${data.name}, ${data.description || ""}, ${data.address || ""}, ${data.phone || ""}, ${data.category || ""}, ${data.owner_name || ""}, ${data.owner_phone || ""}, ${hashedPassword})
   `;
   await sql`INSERT INTO queue_settings (shop_id) VALUES (${id})`;
   return getShop(id) as Promise<Shop>;
