@@ -2,6 +2,7 @@ import { neon, neonConfig } from "@neondatabase/serverless";
 import { v4 as uuidv4 } from "uuid";
 import { notifyCustomerCalled } from "./telegram";
 import { hashPassword } from "./auth";
+import { getOrSet, invalidate, invalidatePrefix } from "./cache";
 
 // Allow HTTP mode (no WebSocket needed) — works on Vercel Edge + Serverless
 neonConfig.poolQueryViaFetch = true;
@@ -313,16 +314,21 @@ export async function createShop(data: {
     VALUES (${id}, ${data.name}, ${data.description || ""}, ${data.address || ""}, ${data.phone || ""}, ${data.category || ""}, ${data.owner_name || ""}, ${data.owner_phone || ""}, ${hashedPassword})
   `;
   await sql`INSERT INTO queue_settings (shop_id) VALUES (${id})`;
+  invalidate("shops:all");
   return getShop(id) as Promise<Shop>;
 }
 
 export async function getAllShops(): Promise<Shop[]> {
-  return await sql`SELECT * FROM shops WHERE is_active = 1 ORDER BY name` as unknown as Shop[];
+  return getOrSet("shops:all", 10_000, () =>
+    sql`SELECT * FROM shops WHERE is_active = 1 ORDER BY name` as unknown as Promise<Shop[]>,
+  );
 }
 
 export async function getShop(id: string): Promise<Shop | undefined> {
-  const rows = await sql`SELECT * FROM shops WHERE id = ${id}` as unknown as Shop[];
-  return rows[0];
+  return getOrSet(`shop:${id}`, 10_000, async () => {
+    const rows = await sql`SELECT * FROM shops WHERE id = ${id}` as unknown as Shop[];
+    return rows[0];
+  });
 }
 
 export async function updateShop(id: string, data: Partial<Shop>): Promise<Shop | undefined> {
@@ -333,6 +339,8 @@ export async function updateShop(id: string, data: Partial<Shop>): Promise<Shop 
   const values = keys.map(k => (data as any)[k]);
   const query = `UPDATE shops SET ${setClauses.join(", ")} WHERE id = $${keys.length + 1}`;
   const result = await sql.query(query, [...values, id]);
+  invalidate(`shop:${id}`);
+  invalidate("shops:all");
   return getShop(id);
 }
 
@@ -456,6 +464,9 @@ export async function joinQueue(data: {
 
   const entry = await getQueueEntry(id);
 
+  // Invalidate caches after queue mutation
+  invalidate(`active_queue:${data.shopId}`);
+
   // Generate Telegram deep link URL
   const telegram_link_url = `https://t.me/tawabeer_bot?start=link_${id}`;
 
@@ -472,7 +483,9 @@ export async function getQueueEntries(shopId: string): Promise<QueueEntry[]> {
 }
 
 export async function getActiveQueue(shopId: string): Promise<QueueEntry[]> {
-  return await sql`SELECT * FROM queue_entries WHERE shop_id = ${shopId} AND status = 'waiting' ORDER BY number ASC` as unknown as QueueEntry[];
+  return getOrSet(`active_queue:${shopId}`, 5_000, () =>
+    sql`SELECT * FROM queue_entries WHERE shop_id = ${shopId} AND status = 'waiting' ORDER BY number ASC` as unknown as Promise<QueueEntry[]>,
+  );
 }
 
 export async function getQueueEntry(id: string): Promise<QueueEntry | undefined> {
@@ -539,8 +552,10 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
 // ─── Settings ─────────────────────────────────────
 
 export async function getQueueSettings(shopId: string): Promise<QueueSettings | undefined> {
-  const rows = await sql`SELECT * FROM queue_settings WHERE shop_id = ${shopId}` as unknown as QueueSettings[];
-  return rows[0];
+  return getOrSet(`queue_settings:${shopId}`, 10_000, async () => {
+    const rows = await sql`SELECT * FROM queue_settings WHERE shop_id = ${shopId}` as unknown as QueueSettings[];
+    return rows[0];
+  });
 }
 
 export async function updateQueueSettings(
@@ -554,6 +569,7 @@ export async function updateQueueSettings(
   const values = keys.map(k => (data as any)[k]);
   const query = `UPDATE queue_settings SET ${setClauses.join(", ")} WHERE shop_id = $${keys.length + 1}`;
   const result = await sql.query(query, [...values, shopId]);
+  invalidate(`queue_settings:${shopId}`);
   return getQueueSettings(shopId);
 }
 

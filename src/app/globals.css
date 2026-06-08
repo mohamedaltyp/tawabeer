@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --primary: #6C3CE1;
   --primary-light: #8B5CF6;
@@ -23,6 +25,18 @@
   --radius-md: 16px;
   --radius-lg: 24px;
   --radius-xl: 32px;
+}
+
+.dark {
+  --bg-warm: #0F0D1A;
+  --bg-card: #1A1825;
+  --text-primary: #E8E4F0;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+  --border-light: #2D2A3A;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 10px 40px rgba(0,0,0,0.5);
 }
 
 * {

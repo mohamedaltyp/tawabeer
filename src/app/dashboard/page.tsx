@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTheme } from "@/lib/theme";
 
 interface Shop {
   id: string;
@@ -41,6 +42,7 @@ const PLAN_LABELS: Record<string, { label: string; color: string; bg: string }> 
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { isDark, toggleTheme } = useTheme();
   const [view, setView] = useState<"login" | "register">("login");
   const [shops, setShops] = useState<Shop[]>([]);
   const [phone, setPhone] = useState("");
