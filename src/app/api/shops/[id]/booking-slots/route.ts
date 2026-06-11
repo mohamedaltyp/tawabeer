@@ -13,15 +13,23 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  await ensureMigrated();
-  const { id } = await params;
+  try {
+    await ensureMigrated();
+    const { id } = await params;
 
-  const shop = await getShop(id);
-  if (!shop)
-    return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+    const shop = await getShop(id);
+    if (!shop)
+      return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
-  const slots = await getBookingSlots(id);
-  return NextResponse.json({ slots });
+    const slots = await getBookingSlots(id);
+    return NextResponse.json({ slots });
+  } catch (e: any) {
+    console.error("GET booking-slots error:", e);
+    return NextResponse.json(
+      { error: e?.message || "Unknown error" },
+      { status: 500 },
+    );
+  }
 }
 
 // POST requires shop owner password
