@@ -47,7 +47,6 @@ export async function PUT(
   }
 
   const password = headerPassword || bodyPassword;
-  console.log("PW_DEBUG:", JSON.stringify({ id, hasHeaderPw: !!headerPassword, headerPw: headerPassword ? String(headerPassword).slice(0, 3) + "..." : null, hasBodyPw: !!bodyPassword, bodyPw: bodyPassword ? String(bodyPassword).slice(0, 3) + "..." : null, hasShopPw: !!shop.owner_password }));
   if (!password || !shop.owner_password || !(await comparePassword(password, shop.owner_password))) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
