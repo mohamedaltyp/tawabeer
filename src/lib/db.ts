@@ -944,3 +944,30 @@ export async function getBookingStats(shopId: string) {
     upcoming_count: upcoming[0]?.count || 0,
   };
 }
+
+// ─── SSE Event Bus ──────────────────────────────
+
+type ShopCallback = (message: string) => void;
+const shopSubscribers = new Map<string, Set<ShopCallback>>();
+
+export function subscribeToShop(shopId: string, callback: ShopCallback): () => void {
+  if (!shopSubscribers.has(shopId)) {
+    shopSubscribers.set(shopId, new Set());
+  }
+  shopSubscribers.get(shopId)!.add(callback);
+  return () => {
+    shopSubscribers.get(shopId)?.delete(callback);
+    if (shopSubscribers.get(shopId)?.size === 0) {
+      shopSubscribers.delete(shopId);
+    }
+  };
+}
+
+export function publishToShop(shopId: string, event: string, data: unknown) {
+  const subs = shopSubscribers.get(shopId);
+  if (!subs || subs.size === 0) return;
+  const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  subs.forEach((cb) => {
+    try { cb(message); } catch { /* subscriber disconnected */ }
+  });
+}
