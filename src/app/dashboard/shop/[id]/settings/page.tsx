@@ -21,6 +21,14 @@ interface Counter {
   is_active: number;
 }
 
+function getOwnerPassword(): string {
+  try {
+    return JSON.parse(sessionStorage.getItem("dawer_owner") || "{}").password || "";
+  } catch {
+    return "";
+  }
+}
+
 export default function ShopSettingsPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -30,14 +38,8 @@ export default function ShopSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [newCounterName, setNewCounterName] = useState("");
-  const [ownerPassword, setOwnerPassword] = useState("");
 
   useEffect(() => {
-    // Read owner password from sessionStorage
-    try {
-      const stored = JSON.parse(sessionStorage.getItem("dawer_owner") || "{}");
-      if (stored.password) setOwnerPassword(stored.password);
-    } catch {}
     fetch(`/api/shops/${id}/settings`, { headers: { "ngrok-skip-browser-warning": "true" } })
       .then((r) => r.json())
       .then((d) => {
@@ -65,10 +67,11 @@ export default function ShopSettingsPage() {
       settings.greeting_message = settings.greeting_message.replace(/[<>"']/g, "").trim();
     }
     setMessage("");
+    const pw = getOwnerPassword();
     try {
       const res = await fetch(`/api/shops/${id}/settings`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", "x-owner-password": ownerPassword },
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", "x-owner-password": pw },
         body: JSON.stringify({
           avg_service_minutes: settings.avg_service_minutes,
           greeting_message: settings.greeting_message,
@@ -88,10 +91,11 @@ export default function ShopSettingsPage() {
 
   const addCounter = async () => {
     const name = newCounterName.trim() || `شباك ${counters.length + 1}`;
+    const pw = getOwnerPassword();
     try {
       const res = await fetch(`/api/shops/${id}/counters`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", "x-owner-password": ownerPassword },
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", "x-owner-password": pw },
         body: JSON.stringify({ name }),
       });
       if (res.ok) {
@@ -107,10 +111,11 @@ export default function ShopSettingsPage() {
   };
 
   const removeCounter = async (counterId: string) => {
+    const pw = getOwnerPassword();
     try {
       const res = await fetch(`/api/shops/${id}/counters?counterId=${counterId}`, {
         method: "DELETE",
-        headers: { "ngrok-skip-browser-warning": "true", "x-owner-password": ownerPassword },
+        headers: { "ngrok-skip-browser-warning": "true", "x-owner-password": pw },
       });
       if (res.ok) {
         setCounters(counters.filter((c) => c.id !== counterId));
@@ -182,9 +187,10 @@ export default function ShopSettingsPage() {
               <button
                 onClick={async () => {
                   const newVal = settings.is_open === 0 ? 1 : 0;
+                  const pw = getOwnerPassword();
                   const res = await fetch(`/api/shops/${id}/settings`, {
                     method: "PUT",
-                    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", "x-owner-password": ownerPassword },
+                    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", "x-owner-password": pw },
                     body: JSON.stringify({ is_open: newVal }),
                   });
                   if (res.ok) {
