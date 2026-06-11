@@ -218,6 +218,7 @@ async function runMigrations() {
 export interface Shop {
   id: string;
   name: string;
+  slug: string;
   description: string;
   address: string;
   phone: string;
@@ -332,10 +333,15 @@ export async function createShop(data: {
   owner_password?: string;
 }): Promise<Shop> {
   const id = uuidv4();
+  const slug = data.name
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/^-+|-+$/g, "") || `shop-${id.slice(0, 8)}`;
   const hashedPassword = data.owner_password ? await hashPassword(data.owner_password) : "";
   await sql`
-    INSERT INTO shops (id, name, description, address, phone, category, owner_name, owner_phone, owner_password)
-    VALUES (${id}, ${data.name}, ${data.description || ""}, ${data.address || ""}, ${data.phone || ""}, ${data.category || ""}, ${data.owner_name || ""}, ${data.owner_phone || ""}, ${hashedPassword})
+    INSERT INTO shops (id, name, slug, description, address, phone, category, owner_name, owner_phone, owner_password)
+    VALUES (${id}, ${data.name}, ${slug}, ${data.description || ""}, ${data.address || ""}, ${data.phone || ""}, ${data.category || ""}, ${data.owner_name || ""}, ${data.owner_phone || ""}, ${hashedPassword})
   `;
   await sql`INSERT INTO queue_settings (shop_id) VALUES (${id})`;
   invalidate("shops:all");
@@ -344,7 +350,7 @@ export async function createShop(data: {
 
 export async function getAllShops(): Promise<Shop[]> {
   return getOrSet("shops:all", 10_000, () =>
-    sql`SELECT * FROM shops WHERE is_active = 1 ORDER BY name` as unknown as Promise<Shop[]>,
+    sql`SELECT * FROM shops WHERE is_active = true ORDER BY name` as unknown as Promise<Shop[]>,
   );
 }
 
@@ -600,7 +606,7 @@ export async function updateQueueSettings(
 // ─── Counters ──────────────────────────────────────
 
 export async function getCounters(shopId: string): Promise<Counter[]> {
-  return await sql`SELECT * FROM counters WHERE shop_id = ${shopId} AND is_active = 1 ORDER BY created_at ASC` as unknown as Counter[];
+  return await sql`SELECT * FROM counters WHERE shop_id = ${shopId} AND is_active = true ORDER BY created_at ASC` as unknown as Counter[];
 }
 
 export async function createCounter(shopId: string, name: string): Promise<Counter | undefined> {
@@ -703,7 +709,7 @@ export async function getPaymentMethods(): Promise<PaymentMethod[]> {
 }
 
 export async function getActivePaymentMethods(): Promise<PaymentMethod[]> {
-  return await sql`SELECT * FROM payment_methods WHERE is_active = 1 ORDER BY sort_order ASC` as unknown as PaymentMethod[];
+  return await sql`SELECT * FROM payment_methods WHERE is_active = true ORDER BY sort_order ASC` as unknown as PaymentMethod[];
 }
 
 export async function addPaymentMethod(data: { name: string; type: string; details: string; icon?: string }): Promise<PaymentMethod> {
@@ -774,11 +780,11 @@ export async function verifyLoginCode(email: string, code: string): Promise<bool
 // ─── Booking Slots ────────────────────────────
 
 export async function getBookingSlots(shopId: string): Promise<BookingSlot[]> {
-  return await sql`SELECT * FROM booking_slots WHERE shop_id = ${shopId} AND is_active = 1 ORDER BY day_of_week, start_time` as unknown as BookingSlot[];
+  return await sql`SELECT * FROM booking_slots WHERE shop_id = ${shopId} AND is_active = true ORDER BY day_of_week, start_time` as unknown as BookingSlot[];
 }
 
 export async function getBookingSlotsByDay(shopId: string, dayOfWeek: number): Promise<BookingSlot[]> {
-  return await sql`SELECT * FROM booking_slots WHERE shop_id = ${shopId} AND day_of_week = ${dayOfWeek} AND is_active = 1 ORDER BY start_time` as unknown as BookingSlot[];
+  return await sql`SELECT * FROM booking_slots WHERE shop_id = ${shopId} AND day_of_week = ${dayOfWeek} AND is_active = true ORDER BY start_time` as unknown as BookingSlot[];
 }
 
 export async function createBookingSlot(data: {
@@ -851,7 +857,7 @@ export async function createBooking(data: {
   }
 
   // Check if slot exists and is active
-  const slots = await sql`SELECT * FROM booking_slots WHERE id = ${data.slotId} AND is_active = 1` as unknown as BookingSlot[];
+  const slots = await sql`SELECT * FROM booking_slots WHERE id = ${data.slotId} AND is_active = true` as unknown as BookingSlot[];
   if (slots.length === 0) {
     return { error: "هذا الموعد غير متاح" };
   }
