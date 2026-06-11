@@ -47,6 +47,7 @@ export async function PUT(
   }
 
   const password = headerPassword || bodyPassword;
+  console.log("DEBUG settings PUT:", { id, hasHeaderPw: !!headerPassword, hasBodyPw: !!bodyPassword, pwLen: password?.length, hasShopPw: !!shop.owner_password, shopPwLen: shop.owner_password?.length });
   if (!password || !shop.owner_password || !(await comparePassword(password, shop.owner_password))) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
