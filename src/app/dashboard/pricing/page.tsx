@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -166,19 +167,45 @@ export default function PricingPage() {
 
         {/* Payment Info */}
         <div className="mt-12 rounded-2xl bg-white border border-gray-100 p-6 text-center max-w-lg mx-auto">
-          <h3 className="font-bold text-gray-900 mb-2">💳 طرق الدفع المتاحة</h3>
-          <p className="text-sm text-gray-500 mb-4">
-            حالياً: فودافون كاش والتحويل البنكي — الدفع الالكتروني قريباً
-          </p>
-          <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
-            <p><strong>📱 فودافون كاش:</strong> ٠١٠٠٠٠٠٠٠٠ (محمد)</p>
-            <p className="mt-1"><strong>🏦 بنك مصر:</strong> ١٠٠٠-٢٠٠٠٠٠-٣٠٠ (دورك لتكنولوجيا المعلومات)</p>
-            <p className="mt-3 text-xs text-gray-400">
-              * بعد التحويل، تواصل معانا عشان نفعل الباقة فوراً
-            </p>
-          </div>
+          <h3 className="font-bold text-gray-900 mb-4">💳 طرق الدفع المتاحة</h3>
+          <PaymentMethodsList />
         </div>
       </section>
     </div>
+  );
+}
+
+// ─── Payment Methods List ───
+function PaymentMethodsList() {
+  const [methods, setMethods] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/payment-methods", { headers: { "ngrok-skip-browser-warning": "true" } })
+      .then((r) => r.json())
+      .then((d) => setMethods(d.methods || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <p className="text-sm text-gray-400">جاري التحميل...</p>;
+
+  return (
+    <>
+      <div className="space-y-2 text-right">
+        {methods.map((m) => (
+          <div key={m.id} className="rounded-xl bg-gray-50 p-3 border border-gray-100 flex items-center gap-3">
+            <span className="text-2xl">{m.icon || "💳"}</span>
+            <div className="flex-1">
+              <p className="font-bold text-sm text-gray-900">{m.name}</p>
+              <p className="text-xs text-gray-500">{m.details}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-gray-400 mt-4">
+        * بعد التحويل، تواصل معانا عشان نفعل الباقة فوراً
+      </p>
+    </>
   );
 }

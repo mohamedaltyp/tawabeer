@@ -44,6 +44,11 @@ data.db*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+<<<<<<< HEAD
 .hermes/
 AGENTS.md
 CLAUDE.md
+=======
+
+.vercel
+>>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92

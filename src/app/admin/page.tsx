@@ -281,7 +281,290 @@ function AdminPanel() {
             ))}
           </div>
         )}
+
+        {/* ─── 💳 إدارة طرق الدفع ─── */}
+        <details className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden mt-6">
+          <summary className="px-5 py-3 font-bold text-gray-700 cursor-pointer hover:bg-gray-50 flex items-center gap-2">
+            <span>💳</span> طرق الدفع
+            <span className="text-xs text-gray-400 font-normal">(إضافة / تعديل / حذف)</span>
+          </summary>
+          <div className="px-5 py-4 border-t border-gray-100">
+            <PaymentMethodsManager />
+          </div>
+        </details>
+
+        {/* ─── ⚙️ إعدادات عامة ─── */}
+        <details className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden mt-6">
+          <summary className="px-5 py-3 font-bold text-gray-700 cursor-pointer hover:bg-gray-50 flex items-center gap-2">
+            <span>⚙️</span> إعدادات عامة
+          </summary>
+          <div className="px-5 py-4 border-t border-gray-100">
+            <AdminSettings />
+          </div>
+        </details>
       </main>
+    </div>
+  );
+}
+
+// ─── Payment Methods Manager ───
+function PaymentMethodsManager() {
+  const [methods, setMethods] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: "", type: "vodafone_cash", details: "", icon: "💳" });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const ADMIN_TOKEN = "dawer-admin-2026";
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/payment-methods", {
+        headers: { "ngrok-skip-browser-warning": "true" },
+      });
+      const d = await res.json();
+      setMethods(d.methods || []);
+    } catch {}
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const resetForm = () => {
+    setForm({ name: "", type: "vodafone_cash", details: "", icon: "💳" });
+    setEditId(null);
+    setShowForm(false);
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { setMsg("❌ الاسم مطلوب"); return; }
+    setSaving(true);
+    setMsg("");
+    try {
+      const url = "/api/admin/payment-methods";
+      const method = editId ? "PUT" : "POST";
+      const body = editId ? { adminToken: ADMIN_TOKEN, id: editId, ...form } : { adminToken: ADMIN_TOKEN, ...form };
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        body: JSON.stringify(body),
+      });
+      const d = await res.json();
+      if (d.method) {
+        setMsg(editId ? "✅ تم التعديل" : "✅ تمت الإضافة");
+        resetForm();
+        load();
+      } else {
+        setMsg("❌ " + (d.error || "فشل"));
+      }
+    } catch { setMsg("❌ خطأ"); }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("متأكد من الحذف؟")) return;
+    try {
+      const res = await fetch("/api/admin/payment-methods", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        body: JSON.stringify({ adminToken: ADMIN_TOKEN, id }),
+      });
+      const d = await res.json();
+      if (d.success) { load(); setMsg("✅ تم الحذف"); }
+    } catch {}
+  };
+
+  const startEdit = (m: any) => {
+    setForm({ name: m.name, type: m.type, details: m.details, icon: m.icon || "💳" });
+    setEditId(m.id);
+    setShowForm(true);
+    setMsg("");
+  };
+
+  const toggleActive = async (m: any) => {
+    try {
+      await fetch("/api/admin/payment-methods", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        body: JSON.stringify({ adminToken: ADMIN_TOKEN, id: m.id, is_active: m.is_active ? 0 : 1 }),
+      });
+      load();
+    } catch {}
+  };
+
+  const types: Record<string, string> = {
+    vodafone_cash: "📱 فودافون كاش",
+    instapay: "💳 إنستا باي",
+    bank_transfer: "🏦 تحويل بنكي",
+    wallet: "📱 محفظة إلكترونية",
+    other: "💳 أخرى",
+  };
+
+  return (
+    <div className="space-y-4">
+      {msg && (
+        <div className={`rounded-lg p-3 text-sm font-medium ${msg.startsWith("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+          {msg}
+        </div>
+      )}
+
+      {/* قائمة طرق الدفع */}
+      {loading ? (
+        <div className="text-center py-4 text-gray-400">جاري التحميل...</div>
+      ) : methods.length === 0 ? (
+        <div className="text-center py-4 text-gray-400">لا توجد طرق دفع بعد</div>
+      ) : (
+        <div className="space-y-2">
+          {methods.map((m) => (
+            <div key={m.id} className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3 border border-gray-100">
+              <div className="flex items-center gap-3 flex-1">
+                <span className="text-2xl">{m.icon || "💳"}</span>
+                <div>
+                  <p className={`font-medium ${m.is_active ? "text-gray-900" : "text-gray-400 line-through"}`}>
+                    {m.name}
+                  </p>
+                  <p className="text-xs text-gray-400">{m.details}</p>
+                </div>
+              </div>
+              <div className="flex gap-1">
+                <button onClick={() => toggleActive(m)}
+                  className={`rounded-lg px-2 py-1 text-xs ${m.is_active ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"}`}>
+                  {m.is_active ? "🟢" : "🔴"}
+                </button>
+                <button onClick={() => startEdit(m)}
+                  className="rounded-lg bg-indigo-50 px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-100">
+                  ✏️
+                </button>
+                <button onClick={() => handleDelete(m.id)}
+                  className="rounded-lg bg-red-50 px-2 py-1 text-xs text-red-500 hover:bg-red-100">
+                  🗑️
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* زر الإضافة */}
+      {!showForm && (
+        <button onClick={() => { resetForm(); setShowForm(true); setMsg(""); }}
+          className="w-full rounded-xl border-2 border-dashed border-gray-200 py-3 text-sm text-gray-400 hover:border-indigo-300 hover:text-indigo-600 transition-all">
+          ➕ إضافة طريقة دفع جديدة
+        </button>
+      )}
+
+      {/* فورم الإضافة/التعديل */}
+      {showForm && (
+        <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">الاسم</label>
+              <input type="text" value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="مثال: فودافون كاش"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-right"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">النوع</label>
+              <select value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+              >
+                {Object.entries(types).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">التفاصيل (رقم الحساب / الهاتف / ...)</label>
+            <input type="text" value={form.details}
+              onChange={(e) => setForm({ ...form, details: e.target.value })}
+              placeholder="مثال: 0100xxxxxxx (محمد)"
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-right"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">الأيقونة</label>
+            <input type="text" value={form.icon}
+              onChange={(e) => setForm({ ...form, icon: e.target.value })}
+              placeholder="💳"
+              className="w-20 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-center"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleSave} disabled={saving}
+              className="flex-1 rounded-lg bg-indigo-600 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50">
+              {saving ? "جاري الحفظ..." : editId ? "💾 حفظ التعديلات" : "💾 إضافة"}
+            </button>
+            <button onClick={resetForm}
+              className="rounded-lg bg-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-300">
+              إلغاء
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Admin Settings ───
+function AdminSettings() {
+  const [whatsapp, setWhatsapp] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const ADMIN_TOKEN = "dawer-admin-2026";
+
+  useEffect(() => {
+    fetch("/api/admin/settings", { headers: { "ngrok-skip-browser-warning": "true" } })
+      .then((r) => r.json())
+      .then((d) => { if (d.admin_whatsapp) setWhatsapp(d.admin_whatsapp); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMsg("");
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        body: JSON.stringify({ adminToken: ADMIN_TOKEN, admin_whatsapp: whatsapp }),
+      });
+      const d = await res.json();
+      if (d.success) setMsg("✅ تم الحفظ");
+      else setMsg("❌ " + (d.error || "فشل"));
+    } catch { setMsg("❌ خطأ"); }
+    setSaving(false);
+  };
+
+  if (loading) return <p className="text-sm text-gray-400">جاري التحميل...</p>;
+
+  return (
+    <div className="space-y-3">
+      {msg && (
+        <div className={`rounded-lg p-3 text-sm font-medium ${msg.startsWith("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+          {msg}
+        </div>
+      )}
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">📱 رقم واتساب المشرف (لتواصل الزبائن عند الدفع)</label>
+        <input type="tel" value={whatsapp}
+          onChange={(e) => setWhatsapp(e.target.value)}
+          placeholder="مثال: 0100xxxxxxx"
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-right"
+        />
+      </div>
+      <button onClick={handleSave} disabled={saving}
+        className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50">
+        {saving ? "جاري الحفظ..." : "💾 حفظ الإعدادات"}
+      </button>
     </div>
   );
 }

@@ -6,10 +6,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const shop = getShop(id);
+  const shop = await getShop(id);
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
-  const settings = getQueueSettings(id);
+  const settings = await getQueueSettings(id);
   return NextResponse.json({
     whatsapp_enabled: settings?.whatsapp_enabled || 0,
     whatsapp_number: settings?.whatsapp_number || "",
@@ -21,7 +21,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const shop = getShop(id);
+  const shop = await getShop(id);
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
   const body = await req.json();
@@ -39,7 +39,7 @@ export async function PATCH(
     );
   }
 
-  const updated = updateQueueSettings(id, {
+  const updated = await updateQueueSettings(id, {
     whatsapp_enabled: whatsapp_enabled ? 1 : 0,
     whatsapp_number: whatsapp_number || "",
   });

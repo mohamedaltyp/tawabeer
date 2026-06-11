@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/lib/theme";
 
 interface Shop {
   id: string;
@@ -15,6 +16,7 @@ interface Shop {
 
 export default function HomePage() {
   const router = useRouter();
+  const { isDark, toggleTheme } = useTheme();
   const [shops, setShops] = useState<Shop[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -26,26 +28,93 @@ export default function HomePage() {
       .catch(() => setLoading(false));
   }, []);
 
+  // Transliteration mapping: common Arabic terms ↔ English
+  const TRANSLITERATION: Record<string, string[]> = {
+    محل: ["mahal", "shop", "store"],
+    مطعم: ["matam", "restaurant", "mat'aam"],
+    حلاق: ["halaq", "barber", "salon"],
+    عيادة: ["clinic", "clayda"],
+    مغسلة: ["maghsala", "laundry"],
+    بنك: ["bank"],
+    صيدلية: ["saydaliya", "pharmacy"],
+    مخبز: ["makhbaz", "bakery"],
+    سوبرماركت: ["supermarket", "super market"],
+    مكتبة: ["maktaba", "bookstore", "library"],
+    مركز: ["markaz", "center"],
+    طبي: ["tibbi", "medical"],
+    صحة: ["sihha", "health"],
+  };
+
+  // Build a bidirectional lookup: Arabic ↔ transliterated/English forms
+  const allTransliterations: Record<string, string[]> = {};
+  for (const [arabic, englishForms] of Object.entries(TRANSLITERATION)) {
+    const key = arabic.toLowerCase();
+    if (!allTransliterations[key]) allTransliterations[key] = [];
+    allTransliterations[key].push(...englishForms);
+    // Reverse: english → arabic + other english forms
+    for (const eng of englishForms) {
+      const engKey = eng.toLowerCase();
+      if (!allTransliterations[engKey]) allTransliterations[engKey] = [];
+      allTransliterations[engKey].push(arabic, ...englishForms.filter(e => e !== eng));
+    }
+  }
+
+  function matchesSearch(field: string, query: string): boolean {
+    if (!field || !query) return false;
+    const fieldLower = field.toLowerCase();
+    const queryLower = query.toLowerCase();
+    // Direct match (Arabic or English)
+    if (fieldLower.includes(queryLower)) return true;
+    // Check transliteration expansion for query
+    const expansions = allTransliterations[queryLower];
+    if (expansions) {
+      return expansions.some(exp => fieldLower.includes(exp.toLowerCase()));
+    }
+    // Check if the field itself has a transliteration that matches the query
+    for (const [key, vals] of Object.entries(allTransliterations)) {
+      if (fieldLower.includes(key)) {
+        if (vals.some(v => v.toLowerCase().includes(queryLower))) return true;
+      }
+    }
+    return false;
+  }
+
   const filtered = shops.filter(
     (s) =>
-      s.name.includes(search) ||
-      s.category.includes(search) ||
-      s.description.includes(search)
+      matchesSearch(s.name, search) ||
+      matchesSearch(s.category, search) ||
+      matchesSearch(s.description, search) ||
+      matchesSearch(s.address, search)
   );
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0F0D1A] dark:text-gray-100" dir="rtl">
       {/* ─── Navbar ─── */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 h-16">
           <Link href="/" className="flex items-center gap-2">
             <span className="text-2xl">🔢</span>
             <span className="text-xl font-bold text-indigo-700">دورك</span>
           </Link>
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              className="rounded-xl p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+              aria-label="Toggle theme"
+            >
+              {isDark ? (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                  <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                  <path fillRule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
             <Link
               href="/dashboard"
-              className="text-sm text-gray-600 hover:text-indigo-600 transition-colors"
+              className="text-sm text-gray-600 dark:text-gray-300 hover:text-indigo-600 transition-colors"
             >
               تسجيل الدخول
             </Link>
@@ -89,26 +158,26 @@ export default function HomePage() {
 
       {/* ─── How it Works ─── */}
       <section className="mx-auto max-w-6xl px-4 py-20">
-        <h2 className="text-center text-3xl font-bold text-gray-900 mb-12">كيف يعمل النظام؟</h2>
+        <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white mb-12">كيف يعمل النظام؟</h2>
         <div className="grid gap-8 sm:grid-cols-3">
           {[
             { icon: "📱", title: "1. امسح QR", desc: "الزبون يمسح QR الخاص بمحلك" },
             { icon: "🔢", title: "2. خذ رقمك", desc: "يحصل على رقم دوره ووقت الانتظار التقديري" },
             { icon: "✅", title: "3. انتظر دورك", desc: "يصل له إشعار لحظة قدوم دوره" },
           ].map((item) => (
-            <div key={item.title} className="rounded-2xl bg-white p-8 text-center shadow-sm hover:shadow-md transition-all border border-gray-100">
+            <div key={item.title} className="rounded-2xl bg-white dark:bg-gray-800 p-8 text-center shadow-sm hover:shadow-md transition-all border border-gray-100 dark:border-gray-700">
               <div className="text-5xl mb-4">{item.icon}</div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{item.title}</h3>
-              <p className="text-gray-500">{item.desc}</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{item.title}</h3>
+              <p className="text-gray-500 dark:text-gray-400">{item.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* ─── Features ─── */}
-      <section className="bg-white py-20 border-t border-gray-100">
+      <section className="bg-white dark:bg-gray-900 py-20 border-t border-gray-100 dark:border-gray-800">
         <div className="mx-auto max-w-6xl px-4">
-          <h2 className="text-center text-3xl font-bold text-gray-900 mb-12">مزايا النظام</h2>
+          <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white mb-12">مزايا النظام</h2>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[
               { icon: "⚡", title: "وقت حقيقي", desc: "تحديثات لحظية عبر Server-Sent Events" },
@@ -118,11 +187,11 @@ export default function HomePage() {
               { icon: "🔔", title: "إشعارات فورية", desc: "الزبون يعرف لحظة قدوم دوره" },
               { icon: "📈", title: "تقارير", desc: "إحصائيات يومية وأسبوعية وشهرية" },
             ].map((f) => (
-              <div key={f.title} className="flex items-start gap-4 rounded-xl border border-gray-100 bg-gray-50 p-5">
+              <div key={f.title} className="flex items-start gap-4 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-5">
                 <span className="text-2xl shrink-0">{f.icon}</span>
                 <div>
-                  <h3 className="font-bold text-gray-900">{f.title}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{f.desc}</p>
+                  <h3 className="font-bold text-gray-900 dark:text-white">{f.title}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{f.desc}</p>
                 </div>
               </div>
             ))}
@@ -133,27 +202,35 @@ export default function HomePage() {
       {/* ─── Shops ─── */}
       <section id="shops" className="mx-auto max-w-6xl px-4 py-20">
         <div className="mb-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900">المحلات المتاحة</h2>
-          <p className="mt-2 text-gray-500">اختر المحل اللي عايز تروح له</p>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">المحلات المتاحة</h2>
+          <p className="mt-2 text-gray-500 dark:text-gray-400">اختر المحل اللي عايز تروح له</p>
         </div>
 
         {/* Search */}
         <div className="mx-auto max-w-md mb-8">
           <input
             type="text"
-            placeholder="🔍 ابحث عن محل..."
+            placeholder="🔍 ابحث عن محل... (عربي / English)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 bg-white px-5 py-3 text-right text-gray-900 placeholder-gray-400 shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+            className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-3 text-right text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/30 transition-all"
           />
         </div>
+
+        {!loading && search && (
+          <p className="text-center text-sm text-gray-400 dark:text-gray-500 mb-4">
+            {filtered.length > 0
+              ? `${filtered.length} نتيجة${filtered.length !== 1 ? "" : ""} "${search}"`
+              : `لا توجد نتائج لـ "${search}"`}
+          </p>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
+          <div className="text-center py-12 text-gray-400 dark:text-gray-500">
             {search ? "لا توجد محلات بهذا الاسم" : "لا توجد محلات بعد — كن أول من يفتح محله!"}
           </div>
         ) : (
@@ -162,15 +239,15 @@ export default function HomePage() {
               <button
                 key={shop.id}
                 onClick={() => router.push(`/shop/${shop.id}`)}
-                className="group rounded-2xl bg-white p-6 text-right shadow-sm hover:shadow-lg border border-gray-100 hover:border-indigo-200 transition-all animate-fade-in"
+                className="group rounded-2xl bg-white dark:bg-gray-800 p-6 text-right shadow-sm hover:shadow-lg border border-gray-100 dark:border-gray-700 hover:border-indigo-200 transition-all animate-fade-in"
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 transition-colors">
                       {shop.name}
                     </h3>
                     {shop.category && (
-                      <span className="mt-1 inline-block rounded-full bg-indigo-50 px-3 py-0.5 text-xs font-medium text-indigo-600">
+                      <span className="mt-1 inline-block rounded-full bg-indigo-50 dark:bg-indigo-900/40 px-3 py-0.5 text-xs font-medium text-indigo-600 dark:text-indigo-400">
                         {shop.category}
                       </span>
                     )}
@@ -178,16 +255,16 @@ export default function HomePage() {
                   <span className="text-2xl">🏪</span>
                 </div>
                 {shop.description && (
-                  <p className="mt-2 text-sm text-gray-500 line-clamp-2">{shop.description}</p>
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{shop.description}</p>
                 )}
                 {shop.address && (
-                  <p className="mt-1 text-xs text-gray-400">📍 {shop.address}</p>
+                  <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">📍 {shop.address}</p>
                 )}
                 <div className="mt-4 flex items-center justify-between">
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
                     يحصل على رقمه الآن
                   </span>
-                  <span className="rounded-lg bg-indigo-50 px-3 py-1 text-sm font-bold text-indigo-600">
+                  <span className="rounded-lg bg-indigo-50 dark:bg-indigo-900/40 px-3 py-1 text-sm font-bold text-indigo-600 dark:text-indigo-400">
                     ادخل المحل ←
                   </span>
                 </div>
@@ -198,9 +275,9 @@ export default function HomePage() {
       </section>
 
       {/* ─── Footer ─── */}
-      <footer className="border-t border-gray-100 bg-white py-8 text-center text-sm text-gray-400">
+      <footer className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
         <p>© 2026 دورك — كل الحقوق محفوظة</p>
-        <Link href="/admin" className="mt-2 inline-block text-xs text-gray-300 hover:text-indigo-400 transition-colors">
+        <Link href="/admin" className="mt-2 inline-block text-xs text-gray-300 dark:text-gray-600 hover:text-indigo-400 transition-colors">
           👑 المشرف
         </Link>
       </footer>

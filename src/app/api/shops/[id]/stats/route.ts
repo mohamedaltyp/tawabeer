@@ -6,9 +6,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const shop = getShop(id);
+  const shop = await getShop(id);
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
-  const stats = getQueueStats(id);
+  const stats = await getQueueStats(id);
   return NextResponse.json({ stats });
 }

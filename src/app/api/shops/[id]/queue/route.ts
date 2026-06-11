@@ -8,7 +8,8 @@ import {
   callAgain,
   getShop,
   getTodayCustomerCount,
-  emitShopEvent,
+  getQueueSettings,
+  ensureMigrated,
 } from "@/lib/db";
 import { canAcceptCustomer, getPlanLimits } from "@/lib/plans";
 
@@ -18,7 +19,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const queue = getActiveQueue(id);
+  const queue = await getActiveQueue(id);
   return NextResponse.json({ queue });
 }
 
@@ -27,24 +28,51 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const shop = getShop(id);
-  if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  try {
+    await ensureMigrated();
+    const { id } = await params;
+    const shop = await getShop(id);
+    if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
-  // ── Plan enforcement: check daily customer limit ──
-  const shopPlan = shop.plan || "free";
-  const todayCount = getTodayCustomerCount(id);
-  if (!canAcceptCustomer(shopPlan, todayCount)) {
-    const limits = getPlanLimits(shopPlan);
-    return NextResponse.json(
-      {
-        error: `المحل وصل للحد الأقصى من الزبائن اليوم (${limits.maxDailyCustomers}). جرب بكرة أو رقي الباقة.`,
-        code: "daily_limit_reached",
-        upgradeUrl: "/dashboard/pricing",
-      },
-      { status: 403 }
-    );
+    // ── Closed Mode check ──
+    const settings = await getQueueSettings(id);
+    if (settings && settings.is_open === 0) {
+      return NextResponse.json(
+        {
+          error: "المحل مغلق حالياً. لا يمكن حجز أدوار جديدة.",
+          code: "shop_closed",
+        },
+        { status: 403 }
+      );
+    }
+
+    // ── Plan enforcement: check daily customer limit ──
+    const shopPlan = shop.plan || "free";
+    const todayCount = await getTodayCustomerCount(id);
+    if (!canAcceptCustomer(shopPlan, todayCount)) {
+      const limits = getPlanLimits(shopPlan);
+      return NextResponse.json(
+        {
+          error: `المحل وصل للحد الأقصى من الزبائن اليوم (${limits.maxDailyCustomers}). جرب بكرة أو رقي الباقة.`,
+          code: "daily_limit_reached",
+          upgradeUrl: "/dashboard/pricing",
+        },
+        { status: 403 }
+      );
+    }
+
+    const body = await req.json();
+    // Sanitize customer input
+    if (body.customerName) body.customerName = body.customerName.replace(/[<>&\"']/g, "").trim();
+    if (body.customerPhone) body.customerPhone = body.customerPhone.replace(/[^0-9+\- ]/g, "").trim();
+    const result = await joinQueue({ shopId: id, ...body });
+
+    return NextResponse.json(result, { status: 201 });
+  } catch (e: any) {
+    console.error("POST queue error:", e);
+    return NextResponse.json({ error: e?.message || "Unknown error" }, { status: 500 });
   }
+<<<<<<< HEAD
 
   const body = await req.json();
   // Sanitize customer input
@@ -55,6 +83,8 @@ export async function POST(
   emitShopEvent(id, "queue-update", { action: "join", entry: result.entry });
 
   return NextResponse.json(result, { status: 201 });
+=======
+>>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
 }
 
 // PATCH - Manage queue (call next, complete, cancel, call again)
@@ -62,26 +92,28 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await ensureMigrated();
   const { id } = await params;
   const body = await req.json();
 
   let result;
   switch (body.action) {
     case "call-next":
-      result = callNext(id);
-      if (result) emitShopEvent(id, "queue-update", { action: "called", entry: result });
+      result = await callNext(id, body.counterId);
       break;
     case "complete":
-      result = completeEntry(body.entryId);
-      if (result) emitShopEvent(id, "queue-update", { action: "completed", entry: result });
+      result = await completeEntry(body.entryId);
       break;
     case "cancel":
-      result = cancelEntry(body.entryId);
-      if (result) emitShopEvent(id, "queue-update", { action: "cancelled", entry: result });
+      result = await cancelEntry(body.entryId);
       break;
     case "call-again":
+<<<<<<< HEAD
       result = callAgain(body.entryId);
       if (result) emitShopEvent(id, "queue-update", { action: "called", entry: result, recall: true });
+=======
+      result = await callAgain(body.entryId);
+>>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
       break;
     default:
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
