@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllShops, getShop, createShop, getOwnerShopsByPhone } from "@/lib/db";
+import { getAllShops, getShop, createShop, getOwnerShopsByPhone, sanitizeShops, sanitizeShop, sanitizeShopInput } from "@/lib/db";
 import { canCreateShop, getPlanLimits } from "@/lib/plans";
 
 export async function GET() {
-  const shops = getAllShops();
+  const shops = sanitizeShops(getAllShops());
   return NextResponse.json({ shops });
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const rawBody = await req.json();
+    const body = sanitizeShopInput(rawBody) as Parameters<typeof createShop>[0];
     const { owner_phone } = body;
 
     // ── Plan enforcement: check max shops ──
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const shop = createShop(body);
+    const shop = sanitizeShop(createShop(body));
     return NextResponse.json({ shop }, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

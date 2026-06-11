@@ -8,12 +8,23 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = () => {
-    if (token === "dawer-admin-2026") {
-      sessionStorage.setItem("dawer_admin", "true");
-      onLogin();
-    } else {
-      setError("❌ كلمة المرور غير صحيحة");
+  const handleLogin = async () => {
+    setError("");
+    try {
+      const res = await fetch("/api/auth/admin-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        sessionStorage.setItem("dawer_admin", "true");
+        onLogin();
+      } else {
+        setError("❌ كلمة المرور غير صحيحة");
+      }
+    } catch {
+      setError("❌ حدث خطأ في الاتصال");
     }
   };
 

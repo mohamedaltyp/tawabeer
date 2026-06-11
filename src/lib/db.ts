@@ -39,6 +39,10 @@ function runMigrations() {
   try {
     db.exec("ALTER TABLE queue_settings ADD COLUMN whatsapp_business_account_id TEXT DEFAULT ''");
   } catch {}
+  // recall_count for queue_entries
+  try {
+    db.exec("ALTER TABLE queue_entries ADD COLUMN recall_count INTEGER DEFAULT 0");
+  } catch {}
 }
 runMigrations();
 
@@ -73,6 +77,7 @@ db.exec(`
     customer_phone TEXT DEFAULT '',
     status TEXT DEFAULT 'waiting',
     estimated_wait INTEGER DEFAULT 0,
+    recall_count INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     called_at TEXT,
     completed_at TEXT,
@@ -134,6 +139,7 @@ export interface QueueEntry {
   customer_phone: string;
   status: "waiting" | "called" | "completed" | "cancelled";
   estimated_wait: number;
+  recall_count: number;
   created_at: string;
   called_at: string | null;
   completed_at: string | null;
@@ -206,7 +212,42 @@ export function updateShop(id: string, data: Partial<Shop>): Shop | undefined {
   return getShop(id);
 }
 
-// ─── Plans / Subscriptions ───────────────────────
+// ─── Sanitize ────────────────────────────────────
+
+export function sanitizeText(input: string): string {
+  return input
+    .replace(/[<>&"']/g, (char) => {
+      switch (char) {
+        case "<": return "&lt;";
+        case ">": return "&gt;";
+        case "&": return "&amp;";
+        case '"': return "&quot;";
+        case "'": return "&#x27;";
+        default: return char;
+      }
+    })
+    .trim();
+}
+
+export function sanitizeShopInput(body: Record<string, any>): Record<string, any> {
+  const textFields = ["name", "description", "address", "category", "owner_name", "owner_phone", "phone"];
+  const sanitized = { ...body };
+  for (const key of textFields) {
+    if (typeof sanitized[key] === "string") {
+      sanitized[key] = sanitizeText(sanitized[key]);
+    }
+  }
+  return sanitized;
+}
+
+export function sanitizeShop(shop: Shop): Omit<Shop, 'owner_password'> {
+  const { owner_password, ...safe } = shop;
+  return safe;
+}
+
+export function sanitizeShops(shops: Shop[]): Omit<Shop, 'owner_password'>[] {
+  return shops.map(sanitizeShop);
+}
 
 export function getOwnerShopsByPhone(ownerPhone: string): Shop[] {
   return db
@@ -354,9 +395,13 @@ export function cancelEntry(id: string): QueueEntry | undefined {
 }
 
 export function callAgain(id: string): QueueEntry | undefined {
+  const entry = getQueueEntry(id);
+  if (!entry) return undefined;
   db.prepare(
-    "UPDATE queue_entries SET status = 'called', called_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?"
+    "UPDATE queue_entries SET status = 'called', called_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), recall_count = recall_count + 1 WHERE id = ?"
   ).run(id);
+  // نحدث رقم الخدمة الحالي في المحل
+  db.prepare("UPDATE shops SET current_number = ? WHERE id = ?").run(entry.number, entry.shop_id);
   return getQueueEntry(id);
 }
 

@@ -47,6 +47,9 @@ export async function POST(
   }
 
   const body = await req.json();
+  // Sanitize customer input
+  if (body.customerName) body.customerName = body.customerName.replace(/[<>&"']/g, "").trim();
+  if (body.customerPhone) body.customerPhone = body.customerPhone.replace(/[^0-9+\- ]/g, "").trim();
   const result = joinQueue({ shopId: id, ...body });
 
   emitShopEvent(id, "queue-update", { action: "join", entry: result.entry });
@@ -78,7 +81,7 @@ export async function PATCH(
       break;
     case "call-again":
       result = callAgain(body.entryId);
-      if (result) emitShopEvent(id, "queue-update", { action: "called", entry: result });
+      if (result) emitShopEvent(id, "queue-update", { action: "called", entry: result, recall: true });
       break;
     default:
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });

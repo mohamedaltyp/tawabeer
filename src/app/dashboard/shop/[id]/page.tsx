@@ -53,6 +53,7 @@ export default function ShopDashboard() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [calling, setCalling] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [notification, setNotification] = useState<{ number: number; name: string } | null>(null);
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
@@ -125,6 +126,11 @@ export default function ShopDashboard() {
       });
       const data = await res.json();
       if (data.entry) {
+        // تحديث محلي فوري — مش نستنى SSE (عشان التونل أحياناً بيقطع SSE)
+        setQueue((prev) =>
+          prev.map((e) => (e.id === data.entry.id ? { ...e, status: "called" } : e))
+        );
+        setShop((prev) => prev ? { ...prev, current_number: data.entry.number } : prev);
         setNotification({ number: data.entry.number, name: data.entry.customer_name });
         setTimeout(() => setNotification(null), 5000);
       }
@@ -133,11 +139,28 @@ export default function ShopDashboard() {
   };
 
   const handleAction = async (entryId: string, action: string) => {
-    await fetch(`/api/shops/${id}/queue`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-      body: JSON.stringify({ action, entryId }),
-    });
+    setActionLoading(entryId);
+    try {
+      const res = await fetch(`/api/shops/${id}/queue`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        body: JSON.stringify({ action, entryId }),
+      });
+      const data = await res.json();
+      if (data.entry && action === "call-again") {
+        // نعرض الإشعار فوراً مش نستنى SSE
+        setNotification({ number: data.entry.number, name: data.entry.customer_name });
+        setTimeout(() => setNotification(null), 5000);
+        playNotificationSound();
+      } else if (data.error) {
+        setNotification({ number: 0, name: data.error });
+        setTimeout(() => setNotification(null), 3000);
+      }
+    } catch {
+      setNotification({ number: 0, name: "❌ حدث خطأ" });
+      setTimeout(() => setNotification(null), 3000);
+    }
+    setActionLoading(null);
   };
 
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -355,8 +378,23 @@ export default function ShopDashboard() {
                     <p className="font-medium text-gray-900">{entry.customer_name || "بدون اسم"}</p>
                   </div>
                   <div className="flex gap-1">
-                    <button onClick={() => handleAction(entry.id, "call-again")} className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-100">نادِ مرة أخرى</button>
-                    <button onClick={() => handleAction(entry.id, "complete")} className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-100">تم</button>
+                    <button
+                      onClick={() => handleAction(entry.id, "call-again")}
+                      disabled={actionLoading === entry.id}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                        actionLoading === entry.id
+                          ? "bg-gray-200 text-gray-400 cursor-wait"
+                          : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                      }`}>
+                      {actionLoading === entry.id ? "..." : "نادِ مرة أخرى"}
+                    </button>
+                    <button
+                      onClick={() => handleAction(entry.id, "complete")}
+                      disabled={actionLoading === entry.id}
+                      className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-100"
+                    >
+                      تم
+                    </button>
                   </div>
                 </div>
               ))}

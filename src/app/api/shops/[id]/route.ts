@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getShop, updateShop, getActiveQueue, getQueueEntries, getQueueStats, getQueueSettings, updateQueueSettings } from "@/lib/db";
+import { getShop, updateShop, getActiveQueue, getQueueEntries, getQueueStats, getQueueSettings, updateQueueSettings, sanitizeShop } from "@/lib/db";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const shop = getShop(id);
-  if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  const shopRaw = getShop(id);
+  if (!shopRaw) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  const shop = sanitizeShop(shopRaw);
 
   const settings = getQueueSettings(id);
   const stats = getQueueStats(id);
@@ -23,7 +24,8 @@ export async function PUT(
 ) {
   const { id } = await params;
   const body = await req.json();
-  const shop = updateShop(id, body);
-  if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  const shopRaw = updateShop(id, body);
+  if (!shopRaw) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
+  const shop = sanitizeShop(shopRaw);
   return NextResponse.json({ shop });
 }

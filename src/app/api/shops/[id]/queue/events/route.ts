@@ -1,5 +1,8 @@
 import { NextRequest } from "next/server";
-import { subscribeToShop, getShop, getActiveQueue } from "@/lib/db";
+import { subscribeToShop, getShop, getActiveQueue, getQueueEntries } from "@/lib/db";
+
+const sseConnectionCount = new Map<string, number>();
+const MAX_SSE_PER_SHOP = 10;
 
 export async function GET(
   req: NextRequest,
@@ -9,13 +12,22 @@ export async function GET(
   const shop = getShop(id);
   if (!shop) return new Response("Shop not found", { status: 404 });
 
+  // Rate limit: حد أقصى لاتصالات SSE لكل محل
+  const current = sseConnectionCount.get(id) || 0;
+  if (current >= MAX_SSE_PER_SHOP) {
+    return new Response("Too many connections", { status: 429 });
+  }
+  sseConnectionCount.set(id, current + 1);
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
-      // Send initial queue state
-      const queue = getActiveQueue(id);
+      // Send initial queue state — نبعث كل الانترت عشان العميل يعرف لو اتنادى
+      const waiting = getActiveQueue(id);
+      const all = getQueueEntries(id);
+      const called = all.filter((e) => e.status === "called");
       controller.enqueue(
-        encoder.encode(`event: init\ndata: ${JSON.stringify({ queue })}\n\n`)
+        encoder.encode(`event: init\ndata: ${JSON.stringify({ queue: waiting, all, called })}\n\n`)
       );
 
       // Subscribe to new events
@@ -41,6 +53,8 @@ export async function GET(
       req.signal.addEventListener("abort", () => {
         clearInterval(keepAlive);
         unsub();
+        const count = sseConnectionCount.get(id) || 1;
+        sseConnectionCount.set(id, Math.max(0, count - 1));
       });
     },
   });
