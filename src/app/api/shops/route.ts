@@ -3,8 +3,13 @@ import { getAllShops, getShop, createShop, getOwnerShopsByPhone, sanitizeShops, 
 import { canCreateShop, getPlanLimits } from "@/lib/plans";
 
 export async function GET() {
-  const shops = await sanitizeShops(await getAllShops());
-  return NextResponse.json({ shops });
+  try {
+    const shops = await sanitizeShops(await getAllShops());
+    return NextResponse.json({ shops });
+  } catch (e: any) {
+    console.error("GET /api/shops error:", e);
+    return NextResponse.json({ error: e.message, stack: e.stack?.split("\n").slice(0, 5).join("\n") }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
