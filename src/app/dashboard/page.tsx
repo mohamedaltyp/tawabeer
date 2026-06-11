@@ -49,7 +49,7 @@ export default function DashboardPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
-  const [loggedIn, setLoggedIn] = useState<{ phone: string; name: string } | null>(null);
+  const [loggedIn, setLoggedIn] = useState<{ phone: string; name: string; password: string } | null>(null);
 
   const [newShop, setNewShop] = useState({
     name: "", description: "", category: "", address: "",
@@ -83,7 +83,7 @@ export default function DashboardPage() {
       .then((r) => r.json())
       .then((d) => {
         if (d.success) {
-          const data = { phone: d.owner.phone, name: d.owner.name };
+          const data = { phone: d.owner.phone, name: d.owner.name, password };
           setLoggedIn(data);
           sessionStorage.setItem("dawer_owner", JSON.stringify(data));
           setShops(d.shops || []);
@@ -109,7 +109,7 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (data.error) { setError(data.error); return; }
-      const loginData = { phone: newShop.owner_phone, name: newShop.owner_name };
+      const loginData = { phone: newShop.owner_phone, name: newShop.owner_name, password: newShop.owner_password };
       setLoggedIn(loginData);
       sessionStorage.setItem("dawer_owner", JSON.stringify(loginData));
       fetchShops(loginData.phone);

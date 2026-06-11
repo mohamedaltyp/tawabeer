@@ -63,6 +63,7 @@ export default function BookingsManagementPage() {
   const [slotStart, setSlotStart] = useState("09:00");
   const [slotEnd, setSlotEnd] = useState("09:30");
   const [addingSlot, setAddingSlot] = useState(false);
+  const [ownerPassword, setOwnerPassword] = useState("");
 
   // Filter
   const [filterDate, setFilterDate] = useState(() => {
@@ -71,6 +72,11 @@ export default function BookingsManagementPage() {
   });
 
   useEffect(() => {
+    // Read owner password from sessionStorage
+    try {
+      const stored = JSON.parse(sessionStorage.getItem("dawer_owner") || "{}");
+      if (stored.password) setOwnerPassword(stored.password);
+    } catch {}
     fetchData();
   }, [id]);
 
@@ -130,7 +136,7 @@ export default function BookingsManagementPage() {
     try {
       const res = await fetch(`/api/shops/${id}/booking-slots`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", "x-owner-password": ownerPassword },
         body: JSON.stringify({
           dayOfWeek: selectedDay,
           startTime: slotStart,
@@ -155,7 +161,7 @@ export default function BookingsManagementPage() {
     try {
       const res = await fetch(`/api/shops/${id}/booking-slots?slotId=${slotId}`, {
         method: "DELETE",
-        headers: { "ngrok-skip-browser-warning": "true" },
+        headers: { "ngrok-skip-browser-warning": "true", "x-owner-password": ownerPassword },
       });
       if (res.ok) {
         setSlots(slots.filter((s) => s.id !== slotId));
