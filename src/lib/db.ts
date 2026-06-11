@@ -155,6 +155,7 @@ async function runMigrations() {
       status TEXT DEFAULT 'confirmed',
       notes TEXT DEFAULT '',
       counter_id TEXT DEFAULT '',
+      queue_number INTEGER DEFAULT 1,
       created_at TIMESTAMPTZ DEFAULT NOW(),
       FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
       FOREIGN KEY (slot_id) REFERENCES booking_slots(id) ON DELETE CASCADE
@@ -889,16 +890,17 @@ export async function createBooking(data: {
 
   // Create booking
   const id = uuidv4();
+  const queueNumber = booked + 1;
   await sql`
-    INSERT INTO bookings (id, shop_id, slot_id, booking_date, customer_name, customer_phone, notes)
-    VALUES (${id}, ${data.shopId}, ${data.slotId}, ${data.bookingDate}, ${data.customerName || ""}, ${data.customerPhone || ""}, ${data.notes || ""})
+    INSERT INTO bookings (id, shop_id, slot_id, booking_date, customer_name, customer_phone, notes, queue_number)
+    VALUES (${id}, ${data.shopId}, ${data.slotId}, ${data.bookingDate}, ${data.customerName || ""}, ${data.customerPhone || ""}, ${data.notes || ""}, ${queueNumber})
   `;
 
   const booking = await sql`SELECT * FROM bookings WHERE id = ${id}` as unknown as Booking[];
 
   return {
     booking: booking[0],
-    position: booked + 1,
+    position: queueNumber,
   };
 }
 
