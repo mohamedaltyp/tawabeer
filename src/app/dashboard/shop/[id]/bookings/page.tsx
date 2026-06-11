@@ -52,6 +52,12 @@ function formatTime(time: string) {
   return `${hour}:${m.toString().padStart(2, "0")} ${period}`;
 }
 
+// Convert "1" or "true" or 1 → 1; anything else → 0
+function toInt(v: any): number {
+  if (v === 1 || v === "1" || v === true) return 1;
+  return 0;
+}
+
 function getOwnerPassword(): string {
   try {
     return JSON.parse(sessionStorage.getItem("dawer_owner") || "{}").password || "";
@@ -258,6 +264,19 @@ export default function BookingsManagementPage() {
             <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>⚙️</span><span>إعدادات الحجز</span></h2>
           </div>
           <div className="p-5 space-y-5">
+            {/* Toggle for enabling/disabling online booking */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
+              <div>
+                <p className="text-sm font-bold text-gray-900">🟢 الحجز المسبق (أونلاين)</p>
+                <p className="text-xs text-gray-500 mt-0.5">السماح للعملاء بحجز مواعيد من الموقع</p>
+              </div>
+              <button
+                onClick={() => setSettings({ ...settings, booking_enabled: toInt(settings.booking_enabled) === 1 ? 0 : 1 })}
+                className={`relative w-14 h-7 rounded-full transition-colors ${toInt(settings.booking_enabled) === 1 ? "bg-green-500" : "bg-gray-300"}`}
+                type="button">
+                <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${toInt(settings.booking_enabled) === 1 ? "translate-x-7" : "translate-x-0.5"}`} />
+              </button>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 ⏱️ مدة كل موعد: <span className="font-bold text-indigo-600">{settings.slot_duration_minutes} دقيقة</span>
