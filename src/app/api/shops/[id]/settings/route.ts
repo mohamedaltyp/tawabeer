@@ -51,6 +51,9 @@ export async function PUT(
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 
+  // Remove auth fields before passing to DB
+  delete body.owner_password;
+
   const settings = await updateQueueSettings(id, body);
   return NextResponse.json({ settings });
 }
