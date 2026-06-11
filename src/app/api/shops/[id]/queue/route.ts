@@ -72,19 +72,6 @@ export async function POST(
     console.error("POST queue error:", e);
     return NextResponse.json({ error: e?.message || "Unknown error" }, { status: 500 });
   }
-<<<<<<< HEAD
-
-  const body = await req.json();
-  // Sanitize customer input
-  if (body.customerName) body.customerName = body.customerName.replace(/[<>&"']/g, "").trim();
-  if (body.customerPhone) body.customerPhone = body.customerPhone.replace(/[^0-9+\- ]/g, "").trim();
-  const result = joinQueue({ shopId: id, ...body });
-
-  emitShopEvent(id, "queue-update", { action: "join", entry: result.entry });
-
-  return NextResponse.json(result, { status: 201 });
-=======
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
 }
 
 // PATCH - Manage queue (call next, complete, cancel, call again)
@@ -108,12 +95,7 @@ export async function PATCH(
       result = await cancelEntry(body.entryId);
       break;
     case "call-again":
-<<<<<<< HEAD
-      result = callAgain(body.entryId);
-      if (result) emitShopEvent(id, "queue-update", { action: "called", entry: result, recall: true });
-=======
       result = await callAgain(body.entryId);
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
       break;
     default:
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });

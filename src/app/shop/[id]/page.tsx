@@ -89,34 +89,6 @@ export default function ShopPage() {
   const [telegramLinkUrl, setTelegramLinkUrl] = useState("");
 
   const audioCtxRef = useRef<AudioContext | null>(null);
-<<<<<<< HEAD
-  async function playCallSound() {
-    try {
-      // نستخدم AudioContext موجود أو نعمل واحد جديد
-      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
-      const ctx = audioCtxRef.current;
-      // نستنى الـ resume لو السياق معلق
-      if (ctx.state === "suspended") await ctx.resume();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      // نغمتين متتاليتين عشان يكون الصوت واضح
-      osc.frequency.setValueAtTime(660, ctx.currentTime);
-      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.2);
-      osc.type = "sine";
-      gain.gain.setValueAtTime(0.4, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 1);
-    } catch {
-      // لو فشل الصوت، نعتمد على الإشعار والمؤقت
-    }
-  }
-
-  // المتغير المرجعي لرقم العميل — عشان الـ SSE يقدر يوصل للرقم من غير ما يحتاج useEffect
-=======
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
   const myNumberRef = useRef<number | null>(null);
   const lastRecallRef = useRef<number>(-1);
 
@@ -193,114 +165,6 @@ export default function ShopPage() {
     (e) => e.status === "called" && e.number < (myEntry?.number || 0)
   ).length;
 
-<<<<<<< HEAD
-  // المتغير المرجعي لآخر recall_count — عشان نكتشف إعادة النداء بدقة
-  const lastRecallRef = useRef<number>(-1);
-
-  // 🔄 دالة مساعدة: تشوف لو الـ entry بتاع العميل اتنادى من البيانات
-  const checkIfCalled = useCallback((allEntries: QueueEntry[], myNum: number | null) => {
-    if (!myNum) return;
-    const found = allEntries.find((e) => e.number === myNum);
-    if (found && found.status === "called") {
-      const recallCount = found.recall_count ?? 0;
-      // لو recall_count اتغير عن آخر مرة شفناها — يبقى فيه نداء جديد
-      if (recallCount !== lastRecallRef.current) {
-        const isRecall = lastRecallRef.current >= 0;
-        lastRecallRef.current = recallCount;
-        // نحدث myEntry
-        setMyEntry(found);
-        playCallSound();
-        try { navigator.vibrate?.([200, 100, 200, 100, 400]); } catch {}
-        if (!isRecall) {
-          // أول نداء
-          if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("🔔 حان دورك!", {
-              body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
-              tag: "turn-called",
-            });
-          }
-          document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
-        } else {
-          // إعادة نداء
-          if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("🔔🔔 إعادة نداء!", {
-              body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
-              tag: `turn-called-${Date.now()}`,
-            });
-          }
-          document.title = `🔔🔔 إعادة نداء! رقم ${found.number} - ${shop?.name || "المحل"}`;
-          setTimeout(() => {
-            document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
-          }, 3000);
-        }
-      }
-    }
-  }, [shop]);
-
-  // SSE for real-time updates — باستخدام useRef عشان ما يتقطعش الاتصال
-  useEffect(() => {
-    if (!shop) return;
-    const evtSource = new EventSource(`/api/shops/${id}/queue/events`);
-
-    evtSource.addEventListener("queue-update", (e) => {
-      const data = JSON.parse(e.data);
-      if (data.action === "called" && myNumberRef.current === data.entry.number) {
-        // تحديث حالة myEntry إلى called
-        setMyEntry((prev) => {
-          if (!prev) return null;
-          return { ...prev, status: "called" };
-        });
-        // 🔔 تشغيل الصوت فوراً — بنستخدم async عشان نستنى resume لو السياق معلق
-        playCallSound();
-        // 🔊 اهتزاز للموبايل
-        try { navigator.vibrate?.([200, 100, 200, 100, 400]); } catch {}
-        // 🔔 إشعار المتصفح — tag مختلف عشان يظهر حتى لو موجود قبله
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification(data.recall ? "🔔🔔 حان دورك! (إعادة نداء)" : "🔔 حان دورك!", {
-            body: `رقم ${data.entry.number} — تفضل إلى ${shop?.name || "المحل"}`,
-            tag: data.recall ? `turn-called-${Date.now()}` : "turn-called",
-          });
-        }
-        // تغيير عنوان الصفحة — نضيف recall indicator
-        document.title = data.recall
-          ? `🔔🔔 إعادة نداء! رقم ${data.entry.number} - ${shop?.name || "المحل"}`
-          : `🔔 حان دورك! - ${shop?.name || "المحل"}`;
-        // بعد 3 ثوان نرجع العنوان العادي
-        setTimeout(() => {
-          document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
-        }, 3000);
-      }
-      // تحديث قائمة الانتظار الحية
-      fetch(`/api/shops/${id}/queue`, { headers: { "ngrok-skip-browser-warning": "true" } }).then(r => r.json()).then(d => setQueue(d.queue || []));
-    });
-
-    evtSource.addEventListener("init", (e) => {
-      const data = JSON.parse(e.data);
-      setQueue(data.queue || []);
-      // ✅ التحقق من حالة العميل عند إعادة الاتصال
-      // لو الاتصال انقطع واتجدد، نتأكد إن رقمنا مش موجود في "called"
-      if (myNumberRef.current && data.called) {
-        const calledEntry = data.called.find(
-          (ce: QueueEntry) => ce.number === myNumberRef.current
-        );
-        if (calledEntry) {
-          setMyEntry(calledEntry);
-          playCallSound();
-          if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("🔔 حان دورك!", {
-              body: `رقم ${calledEntry.number} — تفضل إلى ${shop?.name || "المحل"}`,
-              tag: "turn-called",
-            });
-          }
-          document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
-        }
-      }
-    });
-
-    return () => evtSource.close();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, shop]);
-=======
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!myEntry?.called_at) return;
@@ -461,29 +325,6 @@ export default function ShopPage() {
       if (retryTimeout) clearTimeout(retryTimeout);
     };
   }, [id, shop, myEntry, checkIfCalled]);
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
-
-  // ⏱️ Polling مستمر — كل 3 ثوان عشان نكتشف إعادة النداء (حتى لو SSE انقطع من التونل)
-  useEffect(() => {
-    if (!shop || !myEntry) return;
-    const interval = setInterval(async () => {
-      try {
-        // جلب كل حاجة في طلب واحد — مع منع التخزين المؤقت
-        const shopRes = await fetch(`/api/shops/${id}?t=${Date.now()}`, {
-          headers: {
-            "ngrok-skip-browser-warning": "true",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-          },
-        });
-        const shopData = await shopRes.json();
-        setQueue(shopData.queue || []);
-        // دايم نشوف لو تمت مناداتنا — للنداء الأول وإعادة النداء
-        checkIfCalled(shopData.allQueue || [], myNumberRef.current);
-      } catch {}
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [id, shop, myEntry, checkIfCalled]);
 
   const handleJoin = async () => {
     if (!name.trim()) {
@@ -492,15 +333,6 @@ export default function ShopPage() {
     }
     setJoining(true);
     setError("");
-    // نشغل AudioContext من أول تفاعل عشان المتصفح يسمح بالصوت بعدين
-    try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new AudioContext();
-      }
-      if (audioCtxRef.current.state === "suspended") {
-        await audioCtxRef.current.resume();
-      }
-    } catch {}
     try {
       if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
       if (audioCtxRef.current.state === "suspended") await audioCtxRef.current.resume();

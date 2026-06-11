@@ -36,17 +36,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { shopId, plan, expiresAt } = body;
 
-<<<<<<< HEAD
-    // Admin token — مقروء من متغير البيئة
-    const adminPassword = process.env.ADMIN_PASSWORD || "dawer-admin-2026";
-    if (adminToken !== adminPassword) {
-      return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
-    }
-
-    const shop = getShop(shopId);
-=======
     const shop = await getShop(shopId);
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
     if (!shop) {
       return NextResponse.json({ error: "المحل غير موجود" }, { status: 404 });
     }

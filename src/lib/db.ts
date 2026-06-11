@@ -10,43 +10,6 @@ neonConfig.poolQueryViaFetch = true;
 const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL || "";
 const sql = neon(DATABASE_URL);
 
-<<<<<<< HEAD
-// Run migrations for existing tables
-function runMigrations() {
-  // Add plan columns to shops table if they don't exist
-  try {
-    db.exec("ALTER TABLE shops ADD COLUMN plan TEXT DEFAULT 'free'");
-  } catch {} // already exists
-  try {
-    db.exec("ALTER TABLE shops ADD COLUMN plan_status TEXT DEFAULT 'active'");
-  } catch {}
-  try {
-    db.exec("ALTER TABLE shops ADD COLUMN plan_started_at TEXT");
-  } catch {}
-  try {
-    db.exec("ALTER TABLE shops ADD COLUMN plan_expires_at TEXT");
-  } catch {}
-  try {
-    db.exec("ALTER TABLE shops ADD COLUMN stripe_customer_id TEXT DEFAULT ''");
-  } catch {}
-  try {
-    db.exec("ALTER TABLE shops ADD COLUMN stripe_subscription_id TEXT DEFAULT ''");
-  } catch {}
-  // WhatsApp columns in queue_settings
-  try {
-    db.exec("ALTER TABLE queue_settings ADD COLUMN whatsapp_enabled INTEGER DEFAULT 0");
-  } catch {}
-  try {
-    db.exec("ALTER TABLE queue_settings ADD COLUMN whatsapp_number TEXT DEFAULT ''");
-  } catch {}
-  try {
-    db.exec("ALTER TABLE queue_settings ADD COLUMN whatsapp_business_account_id TEXT DEFAULT ''");
-  } catch {}
-  // recall_count for queue_entries
-  try {
-    db.exec("ALTER TABLE queue_entries ADD COLUMN recall_count INTEGER DEFAULT 0");
-  } catch {}
-=======
 // ─── Schema Setup ────────────────────────────
 
 async function runMigrations() {
@@ -247,76 +210,9 @@ async function runMigrations() {
   if (stCount === 0) {
     await sql`INSERT INTO app_settings (key, value) VALUES ('admin_whatsapp', '01000000000')`;
   }
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
 }
 
-<<<<<<< HEAD
-// Create tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS shops (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT DEFAULT '',
-    address TEXT DEFAULT '',
-    phone TEXT DEFAULT '',
-    category TEXT DEFAULT '',
-    current_number INTEGER DEFAULT 0,
-    is_active INTEGER DEFAULT 1,
-    owner_name TEXT DEFAULT '',
-    owner_phone TEXT DEFAULT '',
-    owner_password TEXT DEFAULT '',
-    plan TEXT DEFAULT 'free',
-    plan_status TEXT DEFAULT 'active',
-    plan_started_at TEXT,
-    plan_expires_at TEXT,
-    stripe_customer_id TEXT DEFAULT '',
-    stripe_subscription_id TEXT DEFAULT '',
-    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-  );
-
-  CREATE TABLE IF NOT EXISTS queue_entries (
-    id TEXT PRIMARY KEY,
-    shop_id TEXT NOT NULL,
-    number INTEGER NOT NULL,
-    customer_name TEXT DEFAULT '',
-    customer_phone TEXT DEFAULT '',
-    status TEXT DEFAULT 'waiting',
-    estimated_wait INTEGER DEFAULT 0,
-    recall_count INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-    called_at TEXT,
-    completed_at TEXT,
-    FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
-  );
-
-  CREATE TABLE IF NOT EXISTS queue_settings (
-    shop_id TEXT PRIMARY KEY,
-    avg_service_minutes REAL DEFAULT 10,
-    is_open INTEGER DEFAULT 1,
-    greeting_message TEXT DEFAULT 'مرحباً بك!',
-    whatsapp_enabled INTEGER DEFAULT 0,
-    whatsapp_number TEXT DEFAULT '',
-    whatsapp_business_account_id TEXT DEFAULT '',
-    FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
-  );
-
-  CREATE TABLE IF NOT EXISTS notifications (
-    id TEXT PRIMARY KEY,
-    shop_id TEXT NOT NULL,
-    entry_id TEXT NOT NULL,
-    type TEXT DEFAULT 'whatsapp',
-    status TEXT DEFAULT 'pending',
-    recipient TEXT DEFAULT '',
-    message TEXT DEFAULT '',
-    sent_at TEXT,
-    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-    FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
-    FOREIGN KEY (entry_id) REFERENCES queue_entries(id) ON DELETE CASCADE
-  );
-`);
-=======
 // ─── Types ────────────────────────────────────
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
 
 export interface Shop {
   id: string;
@@ -348,11 +244,8 @@ export interface QueueEntry {
   status: "waiting" | "called" | "completed" | "cancelled";
   estimated_wait: number;
   recall_count: number;
-<<<<<<< HEAD
-=======
   telegram_chat_id: string;
   counter_id: string;
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
   created_at: string;
   called_at: string | null;
   completed_at: string | null;
@@ -474,17 +367,9 @@ export async function updateShop(id: string, data: Partial<Shop>): Promise<Shop 
   return getShop(id);
 }
 
-<<<<<<< HEAD
-// ─── Sanitize ────────────────────────────────────
-
-export function sanitizeText(input: string): string {
-  return input
-    .replace(/[<>&"']/g, (char) => {
-=======
 export function sanitizeText(input: string): string {
   return input
     .replace(/[<>&\"']/g, (char) => {
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
       switch (char) {
         case "<": return "&lt;";
         case ">": return "&gt;";
@@ -495,35 +380,6 @@ export function sanitizeText(input: string): string {
       }
     })
     .trim();
-<<<<<<< HEAD
-}
-
-export function sanitizeShopInput(body: Record<string, any>): Record<string, any> {
-  const textFields = ["name", "description", "address", "category", "owner_name", "owner_phone", "phone"];
-  const sanitized = { ...body };
-  for (const key of textFields) {
-    if (typeof sanitized[key] === "string") {
-      sanitized[key] = sanitizeText(sanitized[key]);
-    }
-  }
-  return sanitized;
-}
-
-export function sanitizeShop(shop: Shop): Omit<Shop, 'owner_password'> {
-  const { owner_password, ...safe } = shop;
-  return safe;
-}
-
-export function sanitizeShops(shops: Shop[]): Omit<Shop, 'owner_password'>[] {
-  return shops.map(sanitizeShop);
-}
-
-export function getOwnerShopsByPhone(ownerPhone: string): Shop[] {
-  return db
-    .prepare("SELECT * FROM shops WHERE owner_phone = ? ORDER BY created_at DESC")
-    .all(ownerPhone) as Shop[];
-=======
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
 }
 
 export function sanitizeShopInput(body: Record<string, any>): Record<string, any> {
@@ -696,17 +552,6 @@ export async function cancelEntry(id: string): Promise<QueueEntry | undefined> {
   return getQueueEntry(id);
 }
 
-<<<<<<< HEAD
-export function callAgain(id: string): QueueEntry | undefined {
-  const entry = getQueueEntry(id);
-  if (!entry) return undefined;
-  db.prepare(
-    "UPDATE queue_entries SET status = 'called', called_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), recall_count = recall_count + 1 WHERE id = ?"
-  ).run(id);
-  // نحدث رقم الخدمة الحالي في المحل
-  db.prepare("UPDATE shops SET current_number = ? WHERE id = ?").run(entry.number, entry.shop_id);
-  return getQueueEntry(id);
-=======
 export async function callAgain(id: string): Promise<QueueEntry | undefined> {
   const entry = await getQueueEntry(id);
   if (!entry) return undefined;
@@ -725,7 +570,6 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
   }
 
   return updated;
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
 }
 
 // ─── Settings ─────────────────────────────────────

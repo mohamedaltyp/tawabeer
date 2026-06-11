@@ -1,9 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-<<<<<<< HEAD
-
-export async function POST(req: NextRequest) {
-  try {
-=======
 import { createRateLimiter } from "@/lib/rate-limit";
 
 const limiter = createRateLimiter({
@@ -27,18 +22,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
     const { token } = await req.json();
     const adminPassword = process.env.ADMIN_PASSWORD || "dawer-admin-2026";
 
     if (token === adminPassword) {
       return NextResponse.json({ success: true });
     }
-<<<<<<< HEAD
-    return NextResponse.json({ success: false, error: "كلمة المرور غير صحيحة" }, { status: 401 });
-  } catch {
-    return NextResponse.json({ success: false, error: "حدث خطأ" }, { status: 500 });
-=======
     return NextResponse.json(
       { success: false, error: "كلمة المرور غير صحيحة" },
       { status: 401 },
@@ -48,6 +37,5 @@ export async function POST(req: NextRequest) {
       { success: false, error: "حدث خطأ" },
       { status: 500 },
     );
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
   }
 }

@@ -177,20 +177,12 @@ export default function ShopDashboard() {
       });
       const data = await res.json();
       if (data.entry) {
-<<<<<<< HEAD
-        // تحديث محلي فوري — مش نستنى SSE (عشان التونل أحياناً بيقطع SSE)
-=======
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
         setQueue((prev) =>
           prev.map((e) => (e.id === data.entry.id ? { ...e, status: "called" } : e))
         );
         setShop((prev) => prev ? { ...prev, current_number: data.entry.number } : prev);
-<<<<<<< HEAD
-        setNotification({ number: data.entry.number, name: data.entry.customer_name });
-=======
         setNotification({ number: data.entry.number, name: data.entry.customer_name, type: "call" });
         if (soundEnabled) playNotificationSound();
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
         setTimeout(() => setNotification(null), 5000);
       }
     } catch {}
@@ -199,34 +191,6 @@ export default function ShopDashboard() {
 
   const handleAction = async (entryId: string, action: string) => {
     setActionLoading(entryId);
-<<<<<<< HEAD
-    try {
-      const res = await fetch(`/api/shops/${id}/queue`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-        body: JSON.stringify({ action, entryId }),
-      });
-      const data = await res.json();
-      if (data.entry && action === "call-again") {
-        // نعرض الإشعار فوراً مش نستنى SSE
-        setNotification({ number: data.entry.number, name: data.entry.customer_name });
-        setTimeout(() => setNotification(null), 5000);
-        playNotificationSound();
-      } else if (data.error) {
-        setNotification({ number: 0, name: data.error });
-        setTimeout(() => setNotification(null), 3000);
-      }
-    } catch {
-      setNotification({ number: 0, name: "❌ حدث خطأ" });
-      setTimeout(() => setNotification(null), 3000);
-    }
-    setActionLoading(null);
-  };
-
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const playNotificationSound = () => {
-=======
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
     try {
       const res = await fetch(`/api/shops/${id}/queue`, {
         method: "PATCH",
@@ -624,11 +588,7 @@ export default function ShopDashboard() {
                       </div>
                     </div>
                   </div>
-<<<<<<< HEAD
-                  <div className="flex gap-1">
-=======
                   <div className="flex gap-1.5">
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
                     <button
                       onClick={() => handleAction(entry.id, "call-again")}
                       disabled={actionLoading === entry.id}
@@ -636,27 +596,16 @@ export default function ShopDashboard() {
                         actionLoading === entry.id
                           ? "bg-gray-200 text-gray-400 cursor-wait"
                           : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-<<<<<<< HEAD
-                      }`}>
-                      {actionLoading === entry.id ? "..." : "نادِ مرة أخرى"}
-=======
                       }`}
                     >
                       {actionLoading === entry.id ? "..." : "🔄 نادِ مرة أخرى"}
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
                     </button>
                     <button
                       onClick={() => handleAction(entry.id, "complete")}
                       disabled={actionLoading === entry.id}
-<<<<<<< HEAD
-                      className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-100"
-                    >
-                      تم
-=======
                       className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-100 transition-colors"
                     >
                       ✅ تم
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
                     </button>
                   </div>
                 </div>

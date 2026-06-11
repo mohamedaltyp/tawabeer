@@ -3,22 +3,14 @@ import { getAllShops, getShop, createShop, getOwnerShopsByPhone, sanitizeShops, 
 import { canCreateShop, getPlanLimits } from "@/lib/plans";
 
 export async function GET() {
-<<<<<<< HEAD
-  const shops = sanitizeShops(getAllShops());
-=======
   const shops = await sanitizeShops(await getAllShops());
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
   return NextResponse.json({ shops });
 }
 
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.json();
-<<<<<<< HEAD
-    const body = sanitizeShopInput(rawBody) as Parameters<typeof createShop>[0];
-=======
     const body = await sanitizeShopInput(rawBody) as Parameters<typeof createShop>[0];
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
     const { owner_phone } = body;
 
     // ── Plan enforcement: check max shops ──
@@ -39,11 +31,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-<<<<<<< HEAD
-    const shop = sanitizeShop(createShop(body));
-=======
     const shop = await sanitizeShop(await createShop(body));
->>>>>>> 950f47a91a6abddc2e5ad58f7ab5dc80aafb1e92
     return NextResponse.json({ shop }, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
