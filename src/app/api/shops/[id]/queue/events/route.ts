@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const shop = getShop(id);
+  const shop = await getShop(id);
   if (!shop) return new Response("Shop not found", { status: 404 });
 
   // Rate limit: حد أقصى لاتصالات SSE لكل محل
@@ -21,10 +21,10 @@ export async function GET(
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
       // Send initial queue state — نبعث كل الانترت عشان العميل يعرف لو اتنادى
-      const waiting = getActiveQueue(id);
-      const all = getQueueEntries(id);
+      const waiting = await getActiveQueue(id);
+      const all = await getQueueEntries(id);
       const called = all.filter((e) => e.status === "called");
       controller.enqueue(
         encoder.encode(`event: init\ndata: ${JSON.stringify({ queue: waiting, all, called })}\n\n`)
