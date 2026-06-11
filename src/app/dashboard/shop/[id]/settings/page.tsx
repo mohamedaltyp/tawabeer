@@ -30,8 +30,14 @@ export default function ShopSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [newCounterName, setNewCounterName] = useState("");
+  const [ownerPassword, setOwnerPassword] = useState("");
 
   useEffect(() => {
+    // Read owner password from sessionStorage
+    try {
+      const stored = JSON.parse(sessionStorage.getItem("dawer_owner") || "{}");
+      if (stored.password) setOwnerPassword(stored.password);
+    } catch {}
     fetch(`/api/shops/${id}/settings`, { headers: { "ngrok-skip-browser-warning": "true" } })
       .then((r) => r.json())
       .then((d) => {
@@ -62,7 +68,7 @@ export default function ShopSettingsPage() {
     try {
       const res = await fetch(`/api/shops/${id}/settings`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", "x-owner-password": ownerPassword },
         body: JSON.stringify({
           avg_service_minutes: settings.avg_service_minutes,
           greeting_message: settings.greeting_message,
@@ -85,7 +91,7 @@ export default function ShopSettingsPage() {
     try {
       const res = await fetch(`/api/shops/${id}/counters`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", "x-owner-password": ownerPassword },
         body: JSON.stringify({ name }),
       });
       if (res.ok) {
@@ -104,7 +110,7 @@ export default function ShopSettingsPage() {
     try {
       const res = await fetch(`/api/shops/${id}/counters?counterId=${counterId}`, {
         method: "DELETE",
-        headers: { "ngrok-skip-browser-warning": "true" },
+        headers: { "ngrok-skip-browser-warning": "true", "x-owner-password": ownerPassword },
       });
       if (res.ok) {
         setCounters(counters.filter((c) => c.id !== counterId));
@@ -178,7 +184,7 @@ export default function ShopSettingsPage() {
                   const newVal = settings.is_open === 0 ? 1 : 0;
                   const res = await fetch(`/api/shops/${id}/settings`, {
                     method: "PUT",
-                    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+                    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", "x-owner-password": ownerPassword },
                     body: JSON.stringify({ is_open: newVal }),
                   });
                   if (res.ok) {
