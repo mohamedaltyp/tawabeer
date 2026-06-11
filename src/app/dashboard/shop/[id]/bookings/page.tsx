@@ -37,23 +37,12 @@ interface ShopSettings {
 }
 
 const DAY_NAMES: Record<number, string> = {
-  0: "الأحد",
-  1: "الاثنين",
-  2: "الثلاثاء",
-  3: "الأربعاء",
-  4: "الخميس",
-  5: "الجمعة",
-  6: "السبت",
+  0: "الأحد", 1: "الاثنين", 2: "الثلاثاء", 3: "الأربعاء",
+  4: "الخميس", 5: "الجمعة", 6: "السبت",
 };
 
 const DAY_EMOJIS: Record<number, string> = {
-  0: "🌞",
-  1: "🌙",
-  2: "⭐",
-  3: "🌟",
-  4: "💫",
-  5: "☀️",
-  6: "🌙",
+  0: "🌞", 1: "🌙", 2: "⭐", 3: "🌟", 4: "💫", 5: "☀️", 6: "🌙",
 };
 
 function formatTime(time: string) {
@@ -82,13 +71,11 @@ export default function BookingsManagementPage() {
   const [addingSlot, setAddingSlot] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Filter
   const [filterDate, setFilterDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split("T")[0];
   });
 
-  // Add slot form
   const [selectedDay, setSelectedDay] = useState(0);
   const [slotStart, setSlotStart] = useState("09:00");
   const [slotEnd, setSlotEnd] = useState("17:00");
@@ -106,11 +93,9 @@ export default function BookingsManagementPage() {
           headers: { "ngrok-skip-browser-warning": "true" },
         }),
       ]);
-
       const settingsData = await settingsRes.json();
       const slotsData = await slotsRes.json();
       const shopData = await shopRes.json();
-
       if (settingsData.settings) setSettings(settingsData.settings);
       if (slotsData.slots) setSlots(slotsData.slots);
       if (shopData.shop) setShopName(shopData.shop.name);
@@ -131,19 +116,21 @@ export default function BookingsManagementPage() {
     try {
       const res = await fetch(`/api/shops/${id}/settings`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", "x-owner-password": pw },
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
         body: JSON.stringify({
           booking_enabled: settings.booking_enabled,
           slot_duration_minutes: settings.slot_duration_minutes,
           max_bookings_per_slot: settings.max_bookings_per_slot,
           booking_advance_days: settings.booking_advance_days,
+          owner_password: pw,
         }),
       });
       if (res.ok) {
         setMessage("✅ تم الحفظ بنجاح");
         setTimeout(() => setMessage(""), 3000);
       } else {
-        setMessage("❌ حدث خطأ أثناء الحفظ");
+        const err = await res.json().catch(() => ({}));
+        setMessage("❌ " + (err.error || "حدث خطأ أثناء الحفظ"));
       }
     } catch {
       setMessage("❌ حدث خطأ أثناء الحفظ");
@@ -158,20 +145,21 @@ export default function BookingsManagementPage() {
     try {
       const res = await fetch(`/api/shops/${id}/booking-slots`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", "x-owner-password": pw },
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
         body: JSON.stringify({
           dayOfWeek: selectedDay,
           startTime: slotStart,
           endTime: slotEnd,
+          owner_password: pw,
         }),
       });
       const data = await res.json();
       if (data.slot) {
         setSlots([...slots, data.slot]);
-        setMessage(`✅ تم إضافة موعد ${DAY_NAMES[selectedDay]} من ${formatTime(slotStart)} إلى ${formatTime(slotEnd)}`);
+        setMessage("✅ تم إضافة موعد " + DAY_NAMES[selectedDay] + " من " + formatTime(slotStart) + " إلى " + formatTime(slotEnd));
         setTimeout(() => setMessage(""), 3000);
       } else if (data.error) {
-        setMessage(`❌ ${data.error}`);
+        setMessage("❌ " + data.error);
       }
     } catch {
       setMessage("❌ حدث خطأ");
@@ -182,9 +170,9 @@ export default function BookingsManagementPage() {
   const handleDeleteSlot = async (slotId: string) => {
     const pw = getOwnerPassword();
     try {
-      const res = await fetch(`/api/shops/${id}/booking-slots?slotId=${slotId}`, {
+      const res = await fetch(`/api/shops/${id}/booking-slots?slotId=${slotId}&owner_password=${encodeURIComponent(pw)}`, {
         method: "DELETE",
-        headers: { "ngrok-skip-browser-warning": "true", "x-owner-password": pw },
+        headers: { "ngrok-skip-browser-warning": "true" },
       });
       if (res.ok) {
         setSlots(slots.filter((s) => s.id !== slotId));
@@ -195,15 +183,12 @@ export default function BookingsManagementPage() {
   };
 
   const handleCancelBooking = async (bookingId: string) => {
+    const pw = getOwnerPassword();
     try {
       const res = await fetch(`/api/shops/${id}/bookings?bookingId=${bookingId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-          "x-owner-password": getOwnerPassword(),
-        },
-        body: JSON.stringify({ status: "cancelled" }),
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        body: JSON.stringify({ status: "cancelled", owner_password: pw }),
       });
       if (res.ok) {
         setBookings(bookings.filter((b) => b.id !== bookingId));
@@ -227,7 +212,6 @@ export default function BookingsManagementPage() {
     if (filterDate) fetchBookings(filterDate);
   }, [filterDate]);
 
-  // Group slots by day
   const slotsByDay: Record<number, BookingSlot[]> = {};
   for (let i = 0; i < 7; i++) slotsByDay[i] = [];
   for (const slot of slots) {
@@ -249,16 +233,11 @@ export default function BookingsManagementPage() {
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
-      {/* Header */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
         <div className="mx-auto max-w-4xl flex items-center justify-between px-4 h-16">
           <div className="flex items-center gap-3">
-            <Link
-              href={`/dashboard/shop/${id}`}
-              className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors"
-            >
-              →
-            </Link>
+            <Link href={`/dashboard/shop/${id}`}
+              className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors">→</Link>
             <div>
               <h1 className="text-base font-bold text-gray-900">📅 إدارة الحجوزات</h1>
               <p className="text-xs text-gray-400">{shopName}</p>
@@ -268,108 +247,57 @@ export default function BookingsManagementPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-6 space-y-6">
-        {/* Success/Error Message */}
         {message && (
           <div className={`rounded-xl p-4 text-center font-medium text-sm ${
             message.startsWith("✅") ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
-          }`}>
-            {message}
-          </div>
+          }`}>{message}</div>
         )}
 
-        {/* Booking Settings */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2">
-              <span>⚙️</span>
-              <span>إعدادات الحجز</span>
-            </h2>
+            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>⚙️</span><span>إعدادات الحجز</span></h2>
           </div>
           <div className="p-5 space-y-5">
-            {/* Slot Duration */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                ⏱️ مدة كل موعد:{" "}
-                <span className="font-bold text-indigo-600">{settings.slot_duration_minutes} دقيقة</span>
+                ⏱️ مدة كل موعد: <span className="font-bold text-indigo-600">{settings.slot_duration_minutes} دقيقة</span>
               </label>
-              <input
-                type="range"
-                min="15"
-                max="120"
-                step="5"
+              <input type="range" min="15" max="120" step="5"
                 value={settings.slot_duration_minutes}
-                onChange={(e) =>
-                  setSettings({ ...settings, slot_duration_minutes: Number(e.target.value) })
-                }
-                className="w-full h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer"
-              />
-              <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>15 د</span>
-                <span>120 د</span>
-              </div>
+                onChange={(e) => setSettings({ ...settings, slot_duration_minutes: Number(e.target.value) })}
+                className="w-full h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer" />
+              <div className="flex justify-between text-xs text-gray-400 mt-1"><span>15 د</span><span>120 د</span></div>
             </div>
-
-            {/* Max Bookings Per Slot */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                👥 أقصى عدد حجوزات لكل موعد:{" "}
-                <span className="font-bold text-indigo-600">{settings.max_bookings_per_slot}</span>
+                👥 أقصى عدد حجوزات لكل موعد: <span className="font-bold text-indigo-600">{settings.max_bookings_per_slot}</span>
               </label>
-              <input
-                type="range"
-                min="1"
-                max="20"
+              <input type="range" min="1" max="20"
                 value={settings.max_bookings_per_slot}
-                onChange={(e) =>
-                  setSettings({ ...settings, max_bookings_per_slot: Number(e.target.value) })
-                }
-                className="w-full h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer"
-              />
+                onChange={(e) => setSettings({ ...settings, max_bookings_per_slot: Number(e.target.value) })}
+                className="w-full h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer" />
             </div>
-
-            {/* Advance Booking Days */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                📅 الحجز المسبق:{" "}
-                <span className="font-bold text-indigo-600">{settings.booking_advance_days} يوم</span>
+                📅 الحجز المسبق: <span className="font-bold text-indigo-600">{settings.booking_advance_days} يوم</span>
               </label>
-              <input
-                type="range"
-                min="1"
-                max="30"
+              <input type="range" min="1" max="30"
                 value={settings.booking_advance_days}
-                onChange={(e) =>
-                  setSettings({ ...settings, booking_advance_days: Number(e.target.value) })
-                }
-                className="w-full h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer"
-              />
-              <div className="flex justify-between text-xs text-gray-400 mt-1">
-                <span>يوم</span>
-                <span>30 يوم</span>
-              </div>
+                onChange={(e) => setSettings({ ...settings, booking_advance_days: Number(e.target.value) })}
+                className="w-full h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer" />
+              <div className="flex justify-between text-xs text-gray-400 mt-1"><span>يوم</span><span>30 يوم</span></div>
             </div>
-
-            {/* Save Button */}
-            <button
-              onClick={handleSaveSettings}
-              disabled={saving}
-              className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50 transition-all"
-            >
+            <button onClick={handleSaveSettings} disabled={saving}
+              className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50 transition-all">
               {saving ? "جاري الحفظ..." : "💾 حفظ الإعدادات"}
             </button>
           </div>
         </div>
 
-        {/* Working Hours */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2">
-              <span>🕐</span>
-              <span>مواعيد العمل</span>
-            </h2>
-            <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-full">
-              {slots.length}
-            </span>
+            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>🕐</span><span>مواعيد العمل</span></h2>
+            <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-full">{slots.length}</span>
           </div>
           <div className="p-5 space-y-3">
             {[0, 1, 2, 3, 4, 5, 6].map((day) => (
@@ -377,28 +305,18 @@ export default function BookingsManagementPage() {
                 <div className="flex items-center gap-3">
                   <span className="text-lg">{DAY_EMOJIS[day]}</span>
                   <span className="text-sm font-medium text-gray-700">{DAY_NAMES[day]}</span>
-                  <span className="text-xs text-gray-400">
-                    ({slotsByDay[day]?.length || 0} موعد)
-                  </span>
+                  <span className="text-xs text-gray-400">({slotsByDay[day]?.length || 0} موعد)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {slotsByDay[day]?.length > 0 ? (
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-600">
-                        {slotsByDay[day]
-                          .sort((a, b) => (a.start_time > b.start_time ? 1 : -1))
-                          .map((s) => `${formatTime(s.start_time)} - ${formatTime(s.end_time)}`)
-                          .join(" | ")}
+                        {slotsByDay[day].sort((a, b) => (a.start_time > b.start_time ? 1 : -1)).map((s) => `${formatTime(s.start_time)} - ${formatTime(s.end_time)}`).join(" | ")}
                       </span>
                       {slotsByDay[day].map((slot) => (
-                        <button
-                          key={slot.id}
-                          onClick={() => handleDeleteSlot(slot.id)}
+                        <button key={slot.id} onClick={() => handleDeleteSlot(slot.id)}
                           className="w-6 h-6 rounded-full bg-red-50 flex items-center justify-center text-xs text-red-500 hover:bg-red-100 transition-colors"
-                          title="حذف"
-                        >
-                          ✕
-                        </button>
+                          title="حذف">✕</button>
                       ))}
                     </div>
                   ) : (
@@ -410,27 +328,16 @@ export default function BookingsManagementPage() {
           </div>
         </div>
 
-        {/* Add Slot Form */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2">
-              <span>➕</span>
-              <span>إضافة موعد جديد</span>
-            </h2>
+            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>➕</span><span>إضافة موعد جديد</span></h2>
           </div>
           <div className="p-5">
             <div className="flex flex-wrap gap-2 mb-4">
               <span className="text-sm font-medium text-gray-500 w-full mb-1">اليوم</span>
               {[0, 1, 2, 3, 4, 5, 6].map((day) => (
-                <button
-                  key={day}
-                  onClick={() => setSelectedDay(day)}
-                  className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
-                    selectedDay === day
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
+                <button key={day} onClick={() => setSelectedDay(day)}
+                  className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${selectedDay === day ? "bg-indigo-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                   {DAY_EMOJIS[day]} {DAY_NAMES[day]}
                 </button>
               ))}
@@ -438,82 +345,48 @@ export default function BookingsManagementPage() {
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">من</label>
-                <input
-                  type="time"
-                  value={slotStart}
-                  onChange={(e) => setSlotStart(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <input type="time" value={slotStart} onChange={(e) => setSlotStart(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">إلى</label>
-                <input
-                  type="time"
-                  value={slotEnd}
-                  onChange={(e) => setSlotEnd(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <input type="time" value={slotEnd} onChange={(e) => setSlotEnd(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
-              <button
-                onClick={handleAddSlot}
-                disabled={addingSlot}
-                className="mt-5 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50 transition-all whitespace-nowrap"
-              >
+              <button onClick={handleAddSlot} disabled={addingSlot}
+                className="mt-5 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50 transition-all whitespace-nowrap">
                 {addingSlot ? "..." : `+ إضافة موعد ${DAY_NAMES[selectedDay]}`}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Bookings */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2">
-              <span>📋</span>
-              <span>الحجوزات</span>
-            </h2>
+            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>📋</span><span>الحجوزات</span></h2>
           </div>
           <div className="p-5">
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">التاريخ</label>
-              <input
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                className="w-full max-w-xs rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+              <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)}
+                className="w-full max-w-xs rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
-
             {bookings.length === 0 ? (
               <p className="text-center text-gray-400 py-8 text-sm">لا توجد حجوزات في هذا التاريخ</p>
             ) : (
               <div className="space-y-2">
                 {bookings.map((booking) => (
-                  <div
-                    key={booking.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-gray-50"
-                  >
+                  <div key={booking.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
                     <div>
                       <p className="font-medium text-sm text-gray-900">{booking.customer_name}</p>
                       <p className="text-xs text-gray-400">{booking.customer_phone}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        booking.status === "confirmed"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : booking.status === "cancelled"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-gray-100 text-gray-600"
-                      }`}>
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${booking.status === "confirmed" ? "bg-emerald-100 text-emerald-700" : booking.status === "cancelled" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"}`}>
                         {booking.status === "confirmed" ? "مؤكد" : booking.status === "cancelled" ? "ملغي" : booking.status}
                       </span>
                       {booking.status !== "cancelled" && (
-                        <button
-                          onClick={() => handleCancelBooking(booking.id)}
-                          className="text-xs text-red-500 hover:text-red-700"
-                        >
-                          إلغاء
-                        </button>
+                        <button onClick={() => handleCancelBooking(booking.id)} className="text-xs text-red-500 hover:text-red-700">إلغاء</button>
                       )}
                     </div>
                   </div>
