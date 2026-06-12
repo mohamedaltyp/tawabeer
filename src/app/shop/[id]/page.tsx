@@ -29,6 +29,7 @@ interface QueueSettings {
   greeting_message: string;
   avg_service_minutes: number;
   booking_enabled: number;
+  whatsapp_number?: string;
 }
 
 interface Counter {
