@@ -1,7 +1,7 @@
 import { neon, neonConfig } from "@neondatabase/serverless";
 import { v4 as uuidv4 } from "uuid";
 import { notifyCustomerCalled } from "./telegram";
-import { notifyCustomerCalledWhatsApp } from "./whatsapp";
+import { generateWaMeLink, generateMyTurnMessage } from "./whatsapp";
 import { hashPassword } from "./auth";
 import { getOrSet, invalidate, invalidatePrefix } from "./cache";
 
@@ -541,27 +541,17 @@ export async function callNext(shopId: string, counterId?: string): Promise<Queu
 
   const updated = await getQueueEntry(next.id) || null;
 
-  // Send notifications (Telegram + WhatsApp)
+  // Send notifications (Telegram + WhatsApp link)
   if (updated) {
     const shop = await getShop(shopId);
     const shopName = shop?.name || "المحل";
     const settings = await getQueueSettings(shopId);
 
-    // Telegram notification
+    // Telegram notification (includes WhatsApp link if available)
     if (updated.telegram_chat_id) {
       try {
-        await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, 0, updated.customer_phone || undefined);
-      } catch {}
-    }
-
-    // WhatsApp notification (if enabled and customer has phone)
-    if (settings?.whatsapp_enabled && updated.customer_phone) {
-      try {
-        await notifyCustomerCalledWhatsApp(
-          updated.customer_phone, shopName, updated.number, 0,
-          settings.whatsapp_access_token || undefined,
-          settings.whatsapp_business_account_id || undefined
-        );
+        const waLink = settings?.whatsapp_number ? generateWaMeLink(settings.whatsapp_number, generateMyTurnMessage(shopName, updated.number)) : undefined;
+        await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, 0, updated.customer_phone || undefined, waLink);
       } catch {}
     }
   }
@@ -593,21 +583,11 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
     const shopName = shop?.name || "المحل";
     const settings = await getQueueSettings(entry.shop_id);
 
-    // Telegram notification
+    // Telegram notification (includes WhatsApp link if available)
     if (updated.telegram_chat_id) {
       try {
-        await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, updated.recall_count, updated.customer_phone || undefined);
-      } catch {}
-    }
-
-    // WhatsApp notification (if enabled and customer has phone)
-    if (settings?.whatsapp_enabled && updated.customer_phone) {
-      try {
-        await notifyCustomerCalledWhatsApp(
-          updated.customer_phone, shopName, updated.number, updated.recall_count,
-          settings.whatsapp_access_token || undefined,
-          settings.whatsapp_business_account_id || undefined
-        );
+        const waLink = settings?.whatsapp_number ? generateWaMeLink(settings.whatsapp_number, generateMyTurnMessage(shopName, updated.number)) : undefined;
+        await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, updated.recall_count, updated.customer_phone || undefined, waLink);
       } catch {}
     }
   }

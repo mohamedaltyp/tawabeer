@@ -806,6 +806,19 @@ export default function ShopPage() {
               📞 {shop.phone}
             </p>
           )}
+
+          {/* WhatsApp Button */}
+          {settings?.whatsapp_number && (
+            <a
+              href={`https://wa.me/20${settings.whatsapp_number.replace(/^0/, '').replace(/\D/g, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-green-500/90 hover:bg-green-600 text-white text-sm font-bold rounded-full transition-all animate-fade-in shadow-lg"
+              style={{ animationDelay: "0.3s" }}
+            >
+              💬 تواصل معنا عبر واتساب
+            </a>
+          )}
         </div>
       </div>
 

@@ -42,7 +42,8 @@ export async function notifyCustomerCalled(
   shopName: string,
   entryNumber: number,
   recallCount: number = 0,
-  customerPhone?: string
+  customerPhone?: string,
+  waLink?: string
 ): Promise<TelegramResult> {
   const isRecall = recallCount > 0;
 
@@ -50,16 +51,22 @@ export async function notifyCustomerCalled(
   let message: string;
 
   if (isRecall) {
-    message = `🔔🔔 <b>إعادة نداء!</b>\n\nرقم <b>${entryNumber}</b> — تفضل إلى <b>${shopName}</b> 🏪\n\n📌 تمت مناداتك ${recallCount + 1} مرات`;
+    message = `🔔🔔 <b>إعادة نداء!</b>\\n\\nرقم <b>${entryNumber}</b> — تفضل إلى <b>${shopName}</b> 🏪\\n\\n📌 تمت مناداتك ${recallCount + 1} مرات`;
   } else {
-    message = `🔔 <b>حان دورك!</b>\n\nرقم <b>${entryNumber}</b> — تفضل إلى <b>${shopName}</b> 🏪\n\n🎉 دورك جه!`;
+    message = `🔔 <b>حان دورك!</b>\\n\\nرقم <b>${entryNumber}</b> — تفضل إلى <b>${shopName}</b> 🏪\\n\\n🎉 دورك جه!`;
   }
 
   // إضافة رقم التليفون للربط لو موجود
   if (customerPhone) {
-    message += `\n\n📱 <b>رقمك:</b> <code>${customerPhone}</code>`;
-    message += `\n\n💡 <i>لو التليفون ده بتاعك، ابعته للبوت ده عشان تربط رقمك وتوصلك إشعارات تلقائيًا في كل مرة:</i>`;
-    message += `\n👉 @tawabeer_bot`;
+    message += `\\n\\n📱 <b>رقمك:</b> <code>${customerPhone}</code>`;
+    message += `\\n\\n💡 <i>لو التليفون ده بتاعك، ابعته للبوت ده عشان تربط رقمك وتوصلك إشعارات تلقائيًا في كل مرة:</i>`;
+    message += `\\n👉 @tawabeer_bot`;
+  }
+
+  // إضافة رابط واتساب لو موجود
+  if (waLink) {
+    message += `\\n\\n💬 <b>تواصل مع المحل عبر واتساب:</b>`;
+    message += `\\n👉 <a href="${waLink}">فتح واتساب</a>`;
   }
 
   return sendTelegramNotification(chatId, message);
