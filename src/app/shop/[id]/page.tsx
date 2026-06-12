@@ -356,9 +356,14 @@ export default function ShopPage() {
       if (data.entry?.id && "serviceWorker" in navigator && "PushManager" in window) {
         try {
           const reg = await navigator.serviceWorker.ready;
+          // Fetch VAPID key from server
+          const vapidRes = await fetch("/api/push/vapid");
+          const vapidData = await vapidRes.json();
+          if (!vapidData.publicKey) return;
+          
           const sub = await reg.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+            applicationServerKey: vapidData.publicKey,
           });
           await fetch("/api/push", {
             method: "POST",
