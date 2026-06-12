@@ -19,7 +19,10 @@ export async function GET(
     return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
   const settings = await getQueueSettings(id);
-  return NextResponse.json({ settings });
+  return NextResponse.json({ 
+    settings,
+    vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ""
+  });
 }
 
 // PUT requires shop owner password
