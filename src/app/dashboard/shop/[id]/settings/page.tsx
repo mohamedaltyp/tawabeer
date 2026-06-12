@@ -11,6 +11,8 @@ interface ShopSettings {
   greeting_message: string;
   whatsapp_enabled: number;
   whatsapp_number: string;
+  whatsapp_access_token?: string;
+  whatsapp_business_account_id?: string;
 }
 
 interface Counter {
@@ -259,9 +261,13 @@ export default function ShopSettingsPage() {
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
             <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>💬</span><span>إعدادات واتساب</span></h2>
           </div>
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-gray-700">إشعارات واتساب</span>
+          <div className="p-5 space-y-4">
+            {/* Toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-medium text-gray-700">إشعارات واتساب</span>
+                <p className="text-xs text-gray-400 mt-0.5">فعّل عشان الزبائن يتواصلوا معاك عبر واتساب</p>
+              </div>
               <button onClick={async () => {
                   const newVal = settings.whatsapp_enabled === 1 ? 0 : 1;
                   const res = await fetch(`/api/shops/${id}/whatsapp-settings`, {
@@ -275,18 +281,64 @@ export default function ShopSettingsPage() {
                 <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${settings.whatsapp_enabled === 1 ? "translate-x-6" : "translate-x-0.5"}`} />
               </button>
             </div>
+
             {settings.whatsapp_enabled === 1 && (
-              <input type="tel" value={settings.whatsapp_number}
-                onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
-                onBlur={async () => {
-                  await fetch(`/api/shops/${id}/whatsapp-settings`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-                    body: JSON.stringify({ whatsapp_enabled: settings.whatsapp_enabled, whatsapp_number: settings.whatsapp_number }),
-                  });
-                }}
-                placeholder="20100xxxxxxx"
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+              <>
+                {/* Phone Number */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">📱 رقم الواتساب</label>
+                  <input type="tel" value={settings.whatsapp_number}
+                    onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
+                    onBlur={async () => {
+                      await fetch(`/api/shops/${id}/whatsapp-settings`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+                        body: JSON.stringify({ whatsapp_enabled: settings.whatsapp_enabled, whatsapp_number: settings.whatsapp_number }),
+                      });
+                    }}
+                    placeholder="01012345678"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
+                  <p className="text-xs text-gray-400 mt-1">ادخل الرقم من غير كود الدولة — هيتضاف تلقائياً</p>
+                </div>
+
+                {/* Access Token (for Cloud API) */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">🔑 توكن الواتساب (اختياري — للـ Cloud API)</label>
+                  <input type="password" value={settings.whatsapp_access_token || ""}
+                    onChange={(e) => setSettings({ ...settings, whatsapp_access_token: e.target.value })}
+                    onBlur={async () => {
+                      if (settings.whatsapp_access_token && !settings.whatsapp_access_token.startsWith("•••")) {
+                        await fetch(`/api/shops/${id}/whatsapp-settings`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+                          body: JSON.stringify({ whatsapp_access_token: settings.whatsapp_access_token }),
+                        });
+                      }
+                    }}
+                    placeholder="EAAxxxxxxxxxxxxxxx"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono" />
+                  <p className="text-xs text-gray-400 mt-1">من Meta Business Suite — مطلوب لإشعارات واتساب التلقائية</p>
+                </div>
+
+                {/* Phone Number ID (for Cloud API) */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">📞 Phone Number ID (اختياري — للـ Cloud API)</label>
+                  <input type="text" value={settings.whatsapp_business_account_id || ""}
+                    onChange={(e) => setSettings({ ...settings, whatsapp_business_account_id: e.target.value })}
+                    onBlur={async () => {
+                      if (settings.whatsapp_business_account_id) {
+                        await fetch(`/api/shops/${id}/whatsapp-settings`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+                          body: JSON.stringify({ whatsapp_business_account_id: settings.whatsapp_business_account_id }),
+                        });
+                      }
+                    }}
+                    placeholder="1234567890"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono" />
+                  <p className="text-xs text-gray-400 mt-1">من Meta App → WhatsApp → API Configuration</p>
+                </div>
+              </>
             )}
           </div>
         </div>
