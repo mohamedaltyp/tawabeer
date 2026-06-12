@@ -918,7 +918,7 @@ export async function getShopBookings(shopId: string, date?: string): Promise<Bo
       SELECT b.*, bs.start_time, bs.end_time, bs.day_of_week 
       FROM bookings b 
       JOIN booking_slots bs ON b.slot_id = bs.id 
-      WHERE b.shop_id = ${shopId} AND b.booking_date = ${date} 
+      WHERE b.shop_id = ${shopId} AND b.booking_date::date = ${date}::date
       AND b.status IN ('confirmed', 'pending', 'waiting')
       ORDER BY bs.start_time, b.created_at
     ` as unknown as Booking[];
