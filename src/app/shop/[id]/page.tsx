@@ -351,6 +351,22 @@ export default function ShopPage() {
       }
       setMyEntry(data.entry);
       setTelegramLinkUrl(data.telegram_link_url || "");
+
+      // Subscribe to push notifications
+      if (data.entry?.id && "serviceWorker" in navigator && "PushManager" in window) {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+          });
+          await fetch("/api/push", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ entryId: data.entry.id, subscription: sub }),
+          });
+        } catch {}
+      }
     } catch {
       setError("حدث خطأ، حاول مرة أخرى");
     } finally {

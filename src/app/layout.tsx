@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import NgrokBypass from "./NgrokBypass";
 import OfflineIndicator from "./OfflineIndicator";
+import ServiceWorkerRegister from "./ServiceWorkerRegister";
 import { ThemeProvider } from "@/lib/theme";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen bg-gray-50 dark:bg-[#0F0D1A] font-sans antialiased dark:text-gray-100">
         <ThemeProvider>
+          <ServiceWorkerRegister />
           <NgrokBypass />
           <OfflineIndicator />
           {children}

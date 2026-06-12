@@ -183,6 +183,7 @@ async function runMigrations() {
     `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS max_bookings_per_slot INTEGER DEFAULT 5`,
     `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS booking_advance_days INTEGER DEFAULT 7`,
     `ALTER TABLE shops ADD COLUMN IF NOT EXISTS owner_password TEXT DEFAULT ''`,
+    `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS push_subscription TEXT DEFAULT ''`,
   ];
   for (const m of migrations) {
     try { await sql.unsafe(m); } catch { /* column already exists */ }
@@ -251,6 +252,7 @@ export interface QueueEntry {
   recall_count: number;
   telegram_chat_id: string;
   counter_id: string;
+  push_subscription: string;
   created_at: string;
   called_at: string | null;
   completed_at: string | null;
@@ -541,13 +543,23 @@ export async function callNext(shopId: string, counterId?: string): Promise<Queu
 
   const updated = await getQueueEntry(next.id) || null;
 
-  // Send notifications (Telegram + WhatsApp link)
+  // Send notifications: Browser Push → Telegram → WhatsApp (fallback chain)
   if (updated) {
     const shop = await getShop(shopId);
     const shopName = shop?.name || "المحل";
     const settings = await getQueueSettings(shopId);
 
-    // Telegram notification (includes WhatsApp link if available)
+    // 1️⃣ Browser Push Notification (PRIMARY)
+    if (updated.push_subscription) {
+      try {
+        const { notifyCustomerPush } = await import("./push");
+        const sub = JSON.parse(updated.push_subscription);
+        const result = await notifyCustomerPush(sub, shopName, updated.number, 0);
+        if (result.sent) return updated; // ✅ Push succeeded — no need for fallbacks
+      } catch {}
+    }
+
+    // 2️⃣ Telegram (FALLBACK)
     if (updated.telegram_chat_id) {
       try {
         const waLink = settings?.whatsapp_number ? generateWaMeLink(settings.whatsapp_number, generateMyTurnMessage(shopName, updated.number)) : undefined;
@@ -555,7 +567,7 @@ export async function callNext(shopId: string, counterId?: string): Promise<Queu
       } catch {}
     }
 
-    // WhatsApp API notification (if token + phone number ID configured)
+    // 3️⃣ WhatsApp API (FALLBACK)
     if (settings?.whatsapp_enabled && settings?.whatsapp_access_token && settings?.whatsapp_business_account_id && updated.customer_phone) {
       try {
         const { sendWhatsAppMessage } = await import("./whatsapp");
