@@ -1,6 +1,7 @@
 import { neon, neonConfig } from "@neondatabase/serverless";
 import { v4 as uuidv4 } from "uuid";
 import { notifyCustomerCalled } from "./telegram";
+import { notifyCustomerCalledWhatsApp } from "./whatsapp";
 import { hashPassword } from "./auth";
 import { getOrSet, invalidate, invalidatePrefix } from "./cache";
 
@@ -173,6 +174,7 @@ async function runMigrations() {
     `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS whatsapp_enabled INTEGER DEFAULT 0`,
     `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS whatsapp_number TEXT DEFAULT ''`,
     `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS whatsapp_business_account_id TEXT DEFAULT ''`,
+    `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS whatsapp_access_token TEXT DEFAULT ''`,
     `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS recall_count INTEGER DEFAULT 0`,
     `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT DEFAULT ''`,
     `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS counter_id TEXT DEFAULT ''`,
@@ -262,6 +264,7 @@ export interface QueueSettings {
   whatsapp_enabled: number;
   whatsapp_number: string;
   whatsapp_business_account_id: string;
+  whatsapp_access_token: string;
   booking_enabled: number;
   slot_duration_minutes: number;
   max_bookings_per_slot: number;
@@ -538,13 +541,29 @@ export async function callNext(shopId: string, counterId?: string): Promise<Queu
 
   const updated = await getQueueEntry(next.id) || null;
 
-  // Send Telegram notification if customer provided a chat ID
-  if (updated && updated.telegram_chat_id) {
+  // Send notifications (Telegram + WhatsApp)
+  if (updated) {
     const shop = await getShop(shopId);
     const shopName = shop?.name || "المحل";
-    try {
-      await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, 0, updated.customer_phone || undefined);
-    } catch {}
+    const settings = await getQueueSettings(shopId);
+
+    // Telegram notification
+    if (updated.telegram_chat_id) {
+      try {
+        await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, 0, updated.customer_phone || undefined);
+      } catch {}
+    }
+
+    // WhatsApp notification (if enabled and customer has phone)
+    if (settings?.whatsapp_enabled && updated.customer_phone) {
+      try {
+        await notifyCustomerCalledWhatsApp(
+          updated.customer_phone, shopName, updated.number, 0,
+          settings.whatsapp_access_token || undefined,
+          settings.whatsapp_business_account_id || undefined
+        );
+      } catch {}
+    }
   }
 
   return updated;
@@ -568,13 +587,29 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
 
   const updated = await getQueueEntry(id);
 
-  // Send Telegram notification for recall
-  if (updated && updated.telegram_chat_id) {
+  // Send notifications (Telegram + WhatsApp)
+  if (updated) {
     const shop = await getShop(entry.shop_id);
     const shopName = shop?.name || "المحل";
-    try {
-      await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, updated.recall_count, updated.customer_phone || undefined);
-    } catch {}
+    const settings = await getQueueSettings(entry.shop_id);
+
+    // Telegram notification
+    if (updated.telegram_chat_id) {
+      try {
+        await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, updated.recall_count, updated.customer_phone || undefined);
+      } catch {}
+    }
+
+    // WhatsApp notification (if enabled and customer has phone)
+    if (settings?.whatsapp_enabled && updated.customer_phone) {
+      try {
+        await notifyCustomerCalledWhatsApp(
+          updated.customer_phone, shopName, updated.number, updated.recall_count,
+          settings.whatsapp_access_token || undefined,
+          settings.whatsapp_business_account_id || undefined
+        );
+      } catch {}
+    }
   }
 
   return updated;
