@@ -186,7 +186,7 @@ async function runMigrations() {
     `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS push_subscription TEXT DEFAULT ''`,
   ];
   for (const m of migrations) {
-    try { await sql.unsafe(m); } catch { /* column already exists */ }
+    try { await sql.query(m); } catch { /* column already exists */ }
   }
 
   // Migration: Hash any existing plain-text owner passwords
