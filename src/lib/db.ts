@@ -661,12 +661,29 @@ export async function updateQueueSettings(
   const keys = Object.keys(data).filter(k => k !== "shop_id");
   if (keys.length === 0) return getQueueSettings(shopId);
 
-  // Update each field individually using Neon tagged template
+  // Map of allowed columns to prevent SQL injection
+  const allowedColumns: Record<string, string> = {
+    avg_service_minutes: "avg_service_minutes",
+    is_open: "is_open",
+    greeting_message: "greeting_message",
+    whatsapp_enabled: "whatsapp_enabled",
+    whatsapp_number: "whatsapp_number",
+    whatsapp_business_account_id: "whatsapp_business_account_id",
+    whatsapp_access_token: "whatsapp_access_token",
+    booking_enabled: "booking_enabled",
+    slot_duration_minutes: "slot_duration_minutes",
+    max_bookings_per_slot: "max_bookings_per_slot",
+    booking_advance_days: "booking_advance_days",
+  };
+
   for (const key of keys) {
+    if (!(key in allowedColumns)) continue;
     const value = (data as any)[key];
-    // Use string interpolation to build the column name safely
-    const colName = key.replace(/[^a-z0-9_]/gi, "");
-    await sql`UPDATE queue_settings SET ${sql.unsafe(colName)} = ${value} WHERE shop_id = ${shopId}`;
+    const col = allowedColumns[key];
+    // Build raw SQL with properly escaped value
+    const escapedValue = typeof value === "string" ? value.replace(/'/g, "''") : value;
+    const query = `UPDATE queue_settings SET ${col} = '${escapedValue}' WHERE shop_id = '${shopId}'`;
+    await sql`${query}`;
   }
   invalidate(`queue_settings:${shopId}`);
   return getQueueSettings(shopId);
