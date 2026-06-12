@@ -356,22 +356,33 @@ export default function ShopPage() {
       if (data.entry?.id && "serviceWorker" in navigator && "PushManager" in window) {
         try {
           const reg = await navigator.serviceWorker.ready;
-          // Fetch VAPID key from shop settings
-          const settingsRes = await fetch(`/api/shops/${id}/settings`);
-          const settingsData = await settingsRes.json();
-          const vapidKey = settingsData.vapidPublicKey;
+          // Fetch VAPID key from dedicated endpoint
+          const vapidRes = await fetch("/api/push/vapid");
+          const vapidData = await vapidRes.json();
+          const vapidKey = vapidData.publicKey;
           if (!vapidKey) return;
-          
+
+          // Convert VAPID key to Uint8Array for Push API
+          const padding = "=".repeat((4 - (vapidKey.length % 4)) % 4);
+          const base64 = (vapidKey + padding).replace(/-/g, "+").replace(/_/g, "/");
+          const rawData = atob(base64);
+          const applicationServerKey = new Uint8Array(rawData.length);
+          for (let i = 0; i < rawData.length; ++i) {
+            applicationServerKey[i] = rawData.charCodeAt(i);
+          }
+
           const sub = await reg.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: vapidKey,
+            applicationServerKey,
           });
           await fetch("/api/push", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ entryId: data.entry.id, subscription: sub }),
           });
-        } catch {}
+        } catch (e) {
+          console.error("Push subscription failed:", e);
+        }
       }
     } catch {
       setError("حدث خطأ، حاول مرة أخرى");

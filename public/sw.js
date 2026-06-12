@@ -1,41 +1,130 @@
 // Service Worker for Push Notifications
-self.addEventListener("push", (event) => {
-  const data = event.data?.json() || {};
-  const title = data.title || "🔔 دورك";
-  const body = data.body || "";
-  const url = data.url || "/";
+const CACHE_NAME = 'tawabeer-v1-cache-v1';
 
+const APP_SHELL = [
+  '/',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
+];
+
+// Install: cache app shell
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon: data.icon || "/icon-192.png",
-      badge: data.badge || "/icon-192.png",
-      vibrate: [200, 100, 200],
-      data: { url },
-      actions: [
-        { action: "open", title: "فتح" },
-        { action: "dismiss", title: "إغلاق" },
-      ],
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(APP_SHELL);
     })
+  );
+  self.skipWaiting();
+});
+
+// Activate: clean old caches
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// Fetch: network-first, fallback to cache
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+  if (event.request.url.includes('/api/')) return;
+  if (event.request.url.includes('/events')) return;
+
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          return new Response('Offline', { status: 503 });
+        });
+      })
   );
 });
 
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  if (event.action === "dismiss") return;
+// ==========================================
+// PUSH NOTIFICATION HANDLERS
+// ==========================================
 
-  const url = event.notification.data?.url || "/";
+// Handle incoming push notification
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push received:', event);
+
+  let data = {
+    title: '🔔 إشعار من دورك',
+    body: 'لديك إشعار جديد',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    url: '/',
+    tag: 'dawreek-notification',
+  };
+
+  if (event.data) {
+    try {
+      data = { ...data, ...event.data.json() };
+    } catch {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon,
+    badge: data.badge,
+    vibrate: [200, 100, 200, 100, 200],
+    tag: data.tag,
+    requireInteraction: true,
+    data: { url: data.url },
+    actions: [
+      { action: 'open', title: 'فتح' },
+    ],
+  };
+
   event.waitUntil(
-    clients.matchAll({ type: "window" }).then((windowClients) => {
-      // Focus existing window if open
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event);
+  event.notification.close();
+
+  const url = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Check if there's already a window open
       for (const client of windowClients) {
-        if (client.url.includes(self.location.origin) && "focus" in client) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.focus();
           client.navigate(url);
-          return client.focus();
+          return;
         }
       }
       // Open new window
       return clients.openWindow(url);
     })
   );
+});
+
+// Handle notification close (dismiss)
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] Notification closed:', event);
 });

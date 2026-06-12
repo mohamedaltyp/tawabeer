@@ -598,13 +598,23 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
 
   const updated = await getQueueEntry(id);
 
-  // Send notifications (Telegram + WhatsApp)
+  // Send notifications: Browser Push → Telegram → WhatsApp (fallback chain)
   if (updated) {
     const shop = await getShop(entry.shop_id);
     const shopName = shop?.name || "المحل";
     const settings = await getQueueSettings(entry.shop_id);
 
-    // Telegram notification (includes WhatsApp link if available)
+    // 1️⃣ Browser Push Notification (PRIMARY)
+    if (updated.push_subscription) {
+      try {
+        const { notifyCustomerPush } = await import("./push");
+        const sub = JSON.parse(updated.push_subscription);
+        const result = await notifyCustomerPush(sub, shopName, updated.number, updated.recall_count);
+        if (result.sent) return updated; // ✅ Push succeeded — no need for fallbacks
+      } catch {}
+    }
+
+    // 2️⃣ Telegram notification (FALLBACK)
     if (updated.telegram_chat_id) {
       try {
         const waLink = settings?.whatsapp_number ? generateWaMeLink(settings.whatsapp_number, generateMyTurnMessage(shopName, updated.number)) : undefined;
@@ -612,12 +622,11 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
       } catch {}
     }
 
-    // WhatsApp API notification (if token + phone number ID configured)
+    // 3️⃣ WhatsApp API notification (FALLBACK)
     if (settings?.whatsapp_enabled && settings?.whatsapp_access_token && settings?.whatsapp_business_account_id && updated.customer_phone) {
       try {
         const { sendWhatsAppMessage } = await import("./whatsapp");
-        const isRecall = updated.recall_count > 0;
-        const msg = isRecall
+        const msg = updated.recall_count > 0
           ? `🔔🔔 إعادة نداء!\n\nرقم ${updated.number} — تفضل إلى ${shopName} 🏪\n\n📌 تمت مناداتك ${updated.recall_count + 1} مرات`
           : `🔔 حان دورك!\n\nرقم ${updated.number} — تفضل إلى ${shopName} 🏪\n\n🎉 دورك جه! يرجى التوجه الآن`;
         await sendWhatsAppMessage(updated.customer_phone, msg, settings.whatsapp_access_token, settings.whatsapp_business_account_id);
