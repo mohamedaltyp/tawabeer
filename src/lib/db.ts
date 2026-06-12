@@ -680,10 +680,8 @@ export async function updateQueueSettings(
     if (!(key in allowedColumns)) continue;
     const value = (data as any)[key];
     const col = allowedColumns[key];
-    // Build raw SQL with properly escaped value
-    const escapedValue = typeof value === "string" ? value.replace(/'/g, "''") : value;
-    const query = `UPDATE queue_settings SET ${col} = '${escapedValue}' WHERE shop_id = '${shopId}'`;
-    await sql`${query}`;
+    // Use neon's query() method with parameterized query
+    await sql.query(`UPDATE queue_settings SET ${col} = $1 WHERE shop_id = $2`, [value, shopId]);
   }
   invalidate(`queue_settings:${shopId}`);
   return getQueueSettings(shopId);
