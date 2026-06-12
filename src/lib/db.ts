@@ -554,6 +554,15 @@ export async function callNext(shopId: string, counterId?: string): Promise<Queu
         await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, 0, updated.customer_phone || undefined, waLink);
       } catch {}
     }
+
+    // WhatsApp API notification (if token + phone number ID configured)
+    if (settings?.whatsapp_enabled && settings?.whatsapp_access_token && settings?.whatsapp_business_account_id && updated.customer_phone) {
+      try {
+        const { sendWhatsAppMessage } = await import("./whatsapp");
+        const msg = `🔔 حان دورك!\n\nرقم ${updated.number} — تفضل إلى ${shopName} 🏪\n\n🎉 دورك جه! يرجى التوجه الآن`;
+        await sendWhatsAppMessage(updated.customer_phone, msg, settings.whatsapp_access_token, settings.whatsapp_business_account_id);
+      } catch {}
+    }
   }
 
   return updated;
@@ -588,6 +597,18 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
       try {
         const waLink = settings?.whatsapp_number ? generateWaMeLink(settings.whatsapp_number, generateMyTurnMessage(shopName, updated.number)) : undefined;
         await notifyCustomerCalled(updated.telegram_chat_id, shopName, updated.number, updated.recall_count, updated.customer_phone || undefined, waLink);
+      } catch {}
+    }
+
+    // WhatsApp API notification (if token + phone number ID configured)
+    if (settings?.whatsapp_enabled && settings?.whatsapp_access_token && settings?.whatsapp_business_account_id && updated.customer_phone) {
+      try {
+        const { sendWhatsAppMessage } = await import("./whatsapp");
+        const isRecall = updated.recall_count > 0;
+        const msg = isRecall
+          ? `🔔🔔 إعادة نداء!\n\nرقم ${updated.number} — تفضل إلى ${shopName} 🏪\n\n📌 تمت مناداتك ${updated.recall_count + 1} مرات`
+          : `🔔 حان دورك!\n\nرقم ${updated.number} — تفضل إلى ${shopName} 🏪\n\n🎉 دورك جه! يرجى التوجه الآن`;
+        await sendWhatsAppMessage(updated.customer_phone, msg, settings.whatsapp_access_token, settings.whatsapp_business_account_id);
       } catch {}
     }
   }
