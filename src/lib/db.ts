@@ -661,10 +661,13 @@ export async function updateQueueSettings(
   const keys = Object.keys(data).filter(k => k !== "shop_id");
   if (keys.length === 0) return getQueueSettings(shopId);
 
-  const setClauses = keys.map((k, i) => `${k} = $${i + 1}`);
-  const values = keys.map(k => (data as any)[k]);
-  const query = `UPDATE queue_settings SET ${setClauses.join(", ")} WHERE shop_id = $${keys.length + 1}`;
-  const result = await sql.query(query, [...values, shopId]);
+  // Update each field individually using Neon tagged template
+  for (const key of keys) {
+    const value = (data as any)[key];
+    // Use string interpolation to build the column name safely
+    const colName = key.replace(/[^a-z0-9_]/gi, "");
+    await sql`UPDATE queue_settings SET ${sql.unsafe(colName)} = ${value} WHERE shop_id = ${shopId}`;
+  }
   invalidate(`queue_settings:${shopId}`);
   return getQueueSettings(shopId);
 }
