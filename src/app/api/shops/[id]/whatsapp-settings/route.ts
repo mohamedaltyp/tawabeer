@@ -27,18 +27,6 @@ export async function PATCH(
   const body = await req.json();
   const { whatsapp_enabled, whatsapp_number } = body;
 
-  // WhatsApp ميزة مدفوعة — متاحة فقط للباقات basic+
-  if (whatsapp_enabled && shop.plan === "free") {
-    return NextResponse.json(
-      {
-        error: "إشعارات واتساب متاحة فقط للباقات المدفوعة. رقي باقتك أولاً.",
-        code: "plan_upgrade_required",
-        upgradeUrl: "/dashboard/pricing",
-      },
-      { status: 403 }
-    );
-  }
-
   // Validate: if enabling, need a phone number
   if (whatsapp_enabled && (!whatsapp_number || whatsapp_number.trim() === "")) {
     return NextResponse.json(
