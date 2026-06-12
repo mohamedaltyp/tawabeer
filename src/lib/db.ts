@@ -585,7 +585,15 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
 export async function getQueueSettings(shopId: string): Promise<QueueSettings | undefined> {
   return getOrSet(`queue_settings:${shopId}`, 10_000, async () => {
     const rows = await sql`SELECT * FROM queue_settings WHERE shop_id = ${shopId}` as unknown as QueueSettings[];
-    return rows[0];
+    if (rows.length > 0) return rows[0];
+    // Auto-create default settings if missing
+    try {
+      await sql`INSERT INTO queue_settings (shop_id) VALUES (${shopId})`;
+      const created = await sql`SELECT * FROM queue_settings WHERE shop_id = ${shopId}` as unknown as QueueSettings[];
+      return created[0];
+    } catch {
+      return undefined;
+    }
   });
 }
 
