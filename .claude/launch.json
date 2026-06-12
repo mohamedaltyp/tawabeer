@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tawabeer-v3",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-Command",
+        "Set-Location 'C:\\Users\\admin\\Documents\\Claude\\Projects\\tawabeer -v3'; npm run dev"
+      ],
+      "port": 3002,
+      "autoPort": true
+    }
+  ]
+}
