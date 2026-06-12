@@ -33,10 +33,11 @@ export async function GET(
     return NextResponse.json({ stats });
   }
 
-  // Get available slots for a specific date
+  // Get available slots AND bookings for a specific date
   if (date) {
     const slots = await getAvailableSlots(id, date);
-    return NextResponse.json({ slots, date });
+    const bookings = await getShopBookings(id, date);
+    return NextResponse.json({ slots, bookings, date });
   }
 
   // Get all upcoming bookings for this shop (owner view)
