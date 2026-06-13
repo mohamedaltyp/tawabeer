@@ -5,7 +5,7 @@ import {
   updateQueueSettings,
   ensureMigrated,
 } from "@/lib/db";
-import { comparePassword } from "@/lib/auth";
+import { isOwnerPasswordValid } from "@/lib/auth";
 
 // GET is public (customers need to see queue settings)
 export async function GET(
@@ -50,8 +50,7 @@ export async function PUT(
   }
 
   const password = headerPassword || bodyPassword;
-  const isAdmin = password === (process.env.ADMIN_PASSWORD || "dawer-admin-2026");
-  if (!password || (!isAdmin && shop.owner_password && !(await comparePassword(password, shop.owner_password)))) {
+  if (!password || !(await isOwnerPasswordValid(password, shop.id, shop.owner_phone || ""))) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 

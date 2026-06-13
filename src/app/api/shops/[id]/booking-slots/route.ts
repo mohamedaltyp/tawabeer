@@ -7,6 +7,7 @@ import {
   ensureMigrated,
 } from "@/lib/db";
 import { comparePassword } from "@/lib/auth";
+import { isOwnerPasswordValid } from "@/lib/auth";
 
 // GET is public (customers need to see available slots)
 export async function GET(
@@ -56,8 +57,7 @@ export async function POST(
     }
 
     const password = headerPassword || (body.owner_password as string);
-    const isAdmin = password === (process.env.ADMIN_PASSWORD || "dawer-admin-2026");
-    if (!password || (!isAdmin && shop.owner_password && !(await comparePassword(password, shop.owner_password)))) {
+    if (!password || !(await isOwnerPasswordValid(password, shop.id, shop.owner_phone || ""))) {
       return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -109,7 +109,7 @@ export async function DELETE(
   const slotId = url.searchParams.get("slotId");
 
   const password = headerPassword || queryPassword;
-  if (!password || password !== shop.owner_password) {
+  if (!password || !(await isOwnerPasswordValid(password, shop.id, shop.owner_phone || ""))) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 
