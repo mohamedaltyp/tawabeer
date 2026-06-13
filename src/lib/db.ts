@@ -184,6 +184,7 @@ async function runMigrations() {
     `ALTER TABLE queue_settings ADD COLUMN IF NOT EXISTS booking_advance_days INTEGER DEFAULT 7`,
     `ALTER TABLE shops ADD COLUMN IF NOT EXISTS owner_password TEXT DEFAULT ''`,
     `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS push_subscription TEXT DEFAULT ''`,
+    `ALTER TABLE counters ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
   ];
   for (const m of migrations) {
     try { await sql.query(m); } catch { /* column already exists */ }
