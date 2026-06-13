@@ -23,8 +23,11 @@ export async function GET(
   const stream = new ReadableStream({
     async start(controller) {
       // Send initial queue state — نبعث كل الانترت عشان العميل يعرف لو اتنادى
-      const waiting = await getActiveQueue(id);
-      const all = await getQueueEntries(id);
+      // Strip push_subscription for security (contains FCM tokens)
+      const sanitize = (entries: Awaited<ReturnType<typeof getQueueEntries>>) =>
+        entries.map(({ push_subscription, ...rest }) => rest);
+      const waiting = sanitize(await getActiveQueue(id));
+      const all = sanitize(await getQueueEntries(id));
       const called = all.filter((e) => e.status === "called");
       controller.enqueue(
         encoder.encode(`event: init\ndata: ${JSON.stringify({ queue: waiting, all, called })}\n\n`)

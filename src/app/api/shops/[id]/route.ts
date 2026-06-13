@@ -11,6 +11,8 @@ export async function GET(
   const shopRaw = await getShop(id);
   if (!shopRaw) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
   const shop = sanitizeShop(shopRaw);
+  // Defense-in-depth: explicitly remove owner_password in case sanitizeShop is ever bypassed
+  delete (shop as any).owner_password;
 
   const settings = await getQueueSettings(id);
   const stats = await getQueueStats(id);
@@ -46,5 +48,7 @@ export async function PUT(
   const updated = await updateShop(id, updateData);
   if (!updated) return NextResponse.json({ error: "Update failed" }, { status: 500 });
   const shop = sanitizeShop(updated);
+  // Defense-in-depth: explicitly remove owner_password in case sanitizeShop is ever bypassed
+  delete (shop as any).owner_password;
   return NextResponse.json({ shop });
 }

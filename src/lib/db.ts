@@ -408,12 +408,12 @@ export function sanitizeShopInput(body: Record<string, any>): Record<string, any
   return sanitized;
 }
 
-export function sanitizeShop(shop: Shop): Omit<Shop, 'owner_password'> {
-  const { owner_password, ...safe } = shop;
+export function sanitizeShop(shop: Shop): Omit<Shop, 'owner_password' | 'stripe_customer_id' | 'stripe_subscription_id' | 'owner_phone'> {
+  const { owner_password, stripe_customer_id, stripe_subscription_id, owner_phone, ...safe } = shop;
   return safe;
 }
 
-export function sanitizeShops(shops: Shop[]): Omit<Shop, 'owner_password'>[] {
+export function sanitizeShops(shops: Shop[]): Omit<Shop, 'owner_password' | 'stripe_customer_id' | 'stripe_subscription_id' | 'owner_phone'>[] {
   return shops.map(sanitizeShop);
 }
 
