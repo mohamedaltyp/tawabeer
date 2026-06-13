@@ -209,12 +209,12 @@ export default function ShopPage() {
             } catch {}
             if (!isRecall) {
               if ("Notification" in window && Notification.permission === "granted") {
-                new Notification("🔔 حان دورك!", {
+                new Notification("🔔 حان طوابير!", {
                   body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
                   tag: "turn-called",
                 });
               }
-              document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
+              document.title = `🔔 حان طوابير! - ${shop?.name || "المحل"}`;
             } else {
               if ("Notification" in window && Notification.permission === "granted") {
                 new Notification("🔔🔔 إعادة نداء!", {
@@ -224,7 +224,7 @@ export default function ShopPage() {
               }
               document.title = `🔔🔔 إعادة نداء! رقم ${found.number}`;
               setTimeout(() => {
-                document.title = `🔔 حان دورك! - ${shop?.name || "المحل"}`;
+                document.title = `🔔 حان طوابير! - ${shop?.name || "المحل"}`;
               }, 3000);
             }
           }
@@ -493,7 +493,7 @@ export default function ShopPage() {
 
           {/* Title */}
           <h1 className="text-4xl font-black text-white mb-3 animate-slide-up">
-            حان دورك!
+            حان طوابير!
           </h1>
 
           {/* Number */}
@@ -689,7 +689,7 @@ export default function ShopPage() {
             مرحباً {myEntry.customer_name}! 👋
           </h1>
           <p className="text-indigo-200/70 text-sm mb-8 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            رقم دورك — هنبلغك لما يجي دورك
+            رقم طوابير — هنبلغك لما يجي طوابير
           </p>
 
           {/* Stats Grid */}
@@ -763,7 +763,7 @@ export default function ShopPage() {
               <span className="text-2xl">✈️</span>
               <div className="text-right flex-1">
                 <div className="text-sm font-bold">🔔 اشترك في إشعارات تيليجرام</div>
-                <div className="text-xs text-sky-200/70">اضغط هنا عشان توصلك إشعار لما يتنادى دورك</div>
+                <div className="text-xs text-sky-200/70">اضغط هنا عشان توصلك إشعار لما يتنادى طوابير</div>
               </div>
               <span className="text-lg">←</span>
             </a>
@@ -932,8 +932,8 @@ export default function ShopPage() {
       <div className="mx-auto max-w-md px-5 mt-6 pb-8">
         <div className="card p-6 animate-slide-up" style={{ animationDelay: "0.2s" }}>
           <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">احجز دورك الآن</h2>
-            <p className="text-sm text-gray-400 mt-1">أدخل بياناتك وهنبلغك لما يجي دورك</p>
+            <h2 className="text-xl font-bold text-gray-900">احجز طوابير الآن</h2>
+            <p className="text-sm text-gray-400 mt-1">أدخل بياناتك وهنبلغك لما يجي طوابير</p>
           </div>
 
           <div className="space-y-4">
@@ -974,7 +974,7 @@ export default function ShopPage() {
                 <div>
                   <span>لو دخلت رقم موبايلك، هتوصللك إشعار على </span>
                   <b style={{ color: "#6C3CE1" }}>تيليجرام</b>
-                  <span> تلقائياً لما يتنادى دورك!</span>
+                  <span> تلقائياً لما يتنادى طوابير!</span>
                   <br />
                   <span>اربط رقمك مع البوت: </span>
                   <a href="https://t.me/tawabeer_bot" target="_blank" className="font-semibold hover:underline" style={{ color: "#6C3CE1" }}>

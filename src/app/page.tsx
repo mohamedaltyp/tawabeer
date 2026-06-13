@@ -94,7 +94,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 h-16">
           <Link href="/" className="flex items-center gap-2">
             <span className="text-2xl">🔢</span>
-            <span className="text-xl font-bold text-indigo-700">دورك</span>
+            <span className="text-xl font-bold text-indigo-700">طوابير</span>
           </Link>
           <div className="flex items-center gap-3">
             <button
@@ -163,7 +163,7 @@ export default function HomePage() {
           {[
             { icon: "📱", title: "1. امسح QR", desc: "الزبون يمسح QR الخاص بمحلك" },
             { icon: "🔢", title: "2. خذ رقمك", desc: "يحصل على رقم دوره ووقت الانتظار التقديري" },
-            { icon: "✅", title: "3. انتظر دورك", desc: "يصل له إشعار لحظة قدوم دوره" },
+            { icon: "✅", title: "3. انتظر طوابير", desc: "يصل له إشعار لحظة قدوم دوره" },
           ].map((item) => (
             <div key={item.title} className="rounded-2xl bg-white dark:bg-gray-800 p-8 text-center shadow-sm hover:shadow-md transition-all border border-gray-100 dark:border-gray-700">
               <div className="text-5xl mb-4">{item.icon}</div>
@@ -276,7 +276,7 @@ export default function HomePage() {
 
       {/* ─── Footer ─── */}
       <footer className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
-        <p>© 2026 دورك — كل الحقوق محفوظة</p>
+        <p>© 2026 طوابير — كل الحقوق محفوظة</p>
         <Link href="/admin" className="mt-2 inline-block text-xs text-gray-300 dark:text-gray-600 hover:text-indigo-400 transition-colors">
           👑 المشرف
         </Link>

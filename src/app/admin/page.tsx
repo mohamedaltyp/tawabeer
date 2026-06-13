@@ -157,7 +157,7 @@ function AdminPanel() {
       <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 h-16">
           <div className="flex items-center gap-3">
-            <span className="text-xl font-bold text-indigo-700">👑 دورك — المشرف</span>
+            <span className="text-xl font-bold text-indigo-700">👑 طوابير — المشرف</span>
             <span className="rounded-full bg-amber-100 px-3 py-0.5 text-xs font-bold text-amber-700">
               ADMIN
             </span>

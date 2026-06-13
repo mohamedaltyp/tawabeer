@@ -98,7 +98,7 @@ export async function notifyCustomerWhatsApp(
 ): Promise<{ sent: boolean; error?: string }> {
   const message = isRecall
     ? `🔔 إعادة نداء!\n\n🏪 ${shopName}\n🔢 رقمك: ${entryNumber}\n⏰ تفضل الآن — تم تذكيرك!\n📌 إذا لم تحضر، سيتم تخطيك.`
-    : `🔔 حان دورك!\n\n🏪 ${shopName}\n🔢 رقمك: ${entryNumber}\n⏰ تفضل الآن إلى ${shopName} — دورك جه!`;
+    : `🔔 حان طوابير!\n\n🏪 ${shopName}\n🔢 رقمك: ${entryNumber}\n⏰ تفضل الآن إلى ${shopName} — طوابير جه!`;
 
   return sendWhatsAppMessage(phone, message);
 }

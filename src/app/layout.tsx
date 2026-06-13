@@ -10,13 +10,13 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "دورك — نظام إدارة الطوابير الذكي",
+  title: "طوابير — نظام إدارة الطوابير الذكي",
   description: "نظام إدارة قوائم الانتظار الرقمية للمحلات والخدمات",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "دورك",
+    title: "طوابير",
   },
 };
 
@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="دورك" />
+        <meta name="apple-mobile-web-app-title" content="طوابير" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#4f46e5" />
       </head>

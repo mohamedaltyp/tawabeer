@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
         // Build success message
         let msg = `✅ <b>تم الربط بنجاح!</b>\n\n`;
         msg += `🏪 ${shopName}\n`;
-        msg += `🔢 رقم دورك: <b>${entryNumber}</b>\n`;
+        msg += `🔢 رقم طوابير: <b>${entryNumber}</b>\n`;
         if (customerPhone) {
           msg += `📱 رقمك: <code>${customerPhone}</code>\n`;
         }
@@ -103,9 +103,9 @@ export async function POST(req: NextRequest) {
 
         if (entry.status === "waiting") {
           msg += `🟢 أنت الآن في قائمة الانتظار.\n`;
-          msg += `🔔 هتوصلك رسالة تلقائية لما يحين دورك!\n`;
+          msg += `🔔 هتوصلك رسالة تلقائية لما يحين طوابير!\n`;
         } else if (entry.status === "called") {
-          msg += `🔔🔔 <b>حان دورك الآن!</b>\n`;
+          msg += `🔔🔔 <b>حان طوابير الآن!</b>\n`;
           msg += `تفضل إلى ${shopName} 🏃‍♂️\n`;
         } else if (entry.status === "completed") {
           msg += `✅ تمت خدمتك بالفعل.\n`;
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
             `;
             await sendTelegram(
               chatId,
-              `✅ <b>تم الربط بنجاح!</b>\n\n🏪 ${entry.shop_name}\n🔢 رقم دورك: <b>${entry.number}</b>\n📱 رقمك: <code>${entry.customer_phone}</code>\n\n🔔 هتوصلك إشعارات تلقائية لما يحين دورك!`
+              `✅ <b>تم الربط بنجاح!</b>\n\n🏪 ${entry.shop_name}\n🔢 رقم طوابير: <b>${entry.number}</b>\n📱 رقمك: <code>${entry.customer_phone}</code>\n\n🔔 هتوصلك إشعارات تلقائية لما يحين طوابير!`
             );
           } else {
             await sendTelegram(
@@ -163,12 +163,12 @@ export async function POST(req: NextRequest) {
       // ── Regular /start — show welcome ──
       await sendTelegram(
         chatId,
-        `👋 مرحباً بك في بوت <b>دورك</b>!\n\n`
-        + `📌 هذا البوت يرسل لك إشعار لما يجي دورك في أي محل يستخدم نظام توابير.\n\n`
+        `👋 مرحباً بك في بوت <b>طوابير</b>!\n\n`
+        + `📌 هذا البوت يرسل لك إشعار لما يجي طوابير في أي محل يستخدم نظام توابير.\n\n`
         + `💡 <b>الاستخدام:</b>\n`
         + `1️⃣ أرسل رقم موبايلك عشان تربط حسابك (مثال: 01001112233)\n`
-        + `2️⃣ احجز دورك بنفس رقم الموبايل\n`
-        + `3️⃣ هتوصلك رسالة 🔔 لما يحين دورك!\n\n`
+        + `2️⃣ احجز طوابير بنفس رقم الموبايل\n`
+        + `3️⃣ هتوصلك رسالة 🔔 لما يحين طوابير!\n\n`
         + `🔍 <b>للاستعلام عن دور:</b>\n`
         + `أرسل رقم الدور لمتابعة وضعه.\n\n`
         + `📋 <b>الأوامر:</b>\n`
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
       `;
       await sendTelegram(
         chatId,
-        `✅ <b>تم ربط رقمك بنجاح!</b>\n\n📱 ${phone}\n\n🔔 هتوصللك إشعارات على تيليجرام لما يجي دورك في أي محل — بس تأكد إنك تستخدم نفس الرقم عند حجز الدور.`
+        `✅ <b>تم ربط رقمك بنجاح!</b>\n\n📱 ${phone}\n\n🔔 هتوصللك إشعارات على تيليجرام لما يجي طوابير في أي محل — بس تأكد إنك تستخدم نفس الرقم عند حجز الدور.`
       );
       return NextResponse.json({ ok: true });
     }
@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
 
       await sendTelegram(
         chatId,
-        `✅ <b>تم ربط رقم ${cleanPhone}</b>\n\n🔔 هتوصللك إشعارات تيليجرام لما يجي دورك!\n${updatedCount > 0 ? `\n🔄 تم ربط ${updatedCount} دور في الانتظار — هتوصللك إشعاراتهم فوراً!` : ''}\n\n📌 استخدم /unlink لو عايز تلغي الربط.`
+        `✅ <b>تم ربط رقم ${cleanPhone}</b>\n\n🔔 هتوصللك إشعارات تيليجرام لما يجي طوابير!\n${updatedCount > 0 ? `\n🔄 تم ربط ${updatedCount} دور في الانتظار — هتوصللك إشعاراتهم فوراً!` : ''}\n\n📌 استخدم /unlink لو عايز تلغي الربط.`
       );
       return NextResponse.json({ ok: true });
     }
@@ -260,7 +260,7 @@ export async function POST(req: NextRequest) {
       } else {
         await sendTelegram(
           chatId,
-          "❌ ما لقيت دور بهذا الرقم.\nتأكد من الرقم أو سجل دورك أولاً."
+          "❌ ما لقيت دور بهذا الرقم.\nتأكد من الرقم أو سجل طوابير أولاً."
         );
       }
       return NextResponse.json({ ok: true });
@@ -269,9 +269,9 @@ export async function POST(req: NextRequest) {
     // ── Default: help message ──
     await sendTelegram(
       chatId,
-      `👋 أهلاً! أنا بوت <b>دورك</b> 🤖\n\n`
+      `👋 أهلاً! أنا بوت <b>طوابير</b> 🤖\n\n`
         + `📱 أرسل رقم موبايلك عشان تربطه وتستقبل الإشعارات\n`
-        + `🔢 أرسل رقم دورك عشان تعرف وضعه\n`
+        + `🔢 أرسل رقم طوابير عشان تعرف وضعه\n`
         + `📋 أو اكتب /start`
     );
 

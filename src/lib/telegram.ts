@@ -53,7 +53,7 @@ export async function notifyCustomerCalled(
   if (isRecall) {
     message = `🔔🔔 <b>إعادة نداء!</b>\\n\\nرقم <b>${entryNumber}</b> — تفضل إلى <b>${shopName}</b> 🏪\\n\\n📌 تمت مناداتك ${recallCount + 1} مرات`;
   } else {
-    message = `🔔 <b>حان دورك!</b>\\n\\nرقم <b>${entryNumber}</b> — تفضل إلى <b>${shopName}</b> 🏪\\n\\n🎉 دورك جه!`;
+    message = `🔔 <b>حان طوابير!</b>\\n\\nرقم <b>${entryNumber}</b> — تفضل إلى <b>${shopName}</b> 🏪\\n\\n🎉 طوابير جه!`;
   }
 
   // إضافة رقم التليفون للربط لو موجود

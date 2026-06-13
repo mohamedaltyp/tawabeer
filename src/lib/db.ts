@@ -205,7 +205,7 @@ async function runMigrations() {
     await sql`
       INSERT INTO payment_methods (id, name, type, details, icon, sort_order) VALUES
       (${uuidv4()}, 'فودافون كاش', 'vodafone_cash', '٠١٠٠٠٠٠٠٠٠ (محمد)', '📱', 1),
-      (${uuidv4()}, 'بنك مصر', 'bank_transfer', '١٠٠٠-٢٠٠٠٠٠-٣٠٠ (دورك لتقنية المعلومات)', '🏦', 2),
+      (${uuidv4()}, 'بنك مصر', 'bank_transfer', '١٠٠٠-٢٠٠٠٠٠-٣٠٠ (طوابير لتقنية المعلومات)', '🏦', 2),
       (${uuidv4()}, 'إنستا باي', 'instapay', 'instapay@example.com', '💳', 3)
     `;
   }
@@ -571,7 +571,7 @@ export async function callNext(shopId: string, counterId?: string): Promise<Queu
     if (settings?.whatsapp_enabled && settings?.whatsapp_access_token && settings?.whatsapp_business_account_id && updated.customer_phone) {
       try {
         const { sendWhatsAppMessage } = await import("./whatsapp");
-        const msg = `🔔 حان دورك!\n\nرقم ${updated.number} — تفضل إلى ${shopName} 🏪\n\n🎉 دورك جه! يرجى التوجه الآن`;
+        const msg = `🔔 حان طوابير!\n\nرقم ${updated.number} — تفضل إلى ${shopName} 🏪\n\n🎉 طوابير جه! يرجى التوجه الآن`;
         await sendWhatsAppMessage(updated.customer_phone, msg, settings.whatsapp_access_token, settings.whatsapp_business_account_id);
       } catch {}
     }
@@ -628,7 +628,7 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
         const { sendWhatsAppMessage } = await import("./whatsapp");
         const msg = updated.recall_count > 0
           ? `🔔🔔 إعادة نداء!\n\nرقم ${updated.number} — تفضل إلى ${shopName} 🏪\n\n📌 تمت مناداتك ${updated.recall_count + 1} مرات`
-          : `🔔 حان دورك!\n\nرقم ${updated.number} — تفضل إلى ${shopName} 🏪\n\n🎉 دورك جه! يرجى التوجه الآن`;
+          : `🔔 حان طوابير!\n\nرقم ${updated.number} — تفضل إلى ${shopName} 🏪\n\n🎉 طوابير جه! يرجى التوجه الآن`;
         await sendWhatsAppMessage(updated.customer_phone, msg, settings.whatsapp_access_token, settings.whatsapp_business_account_id);
       } catch {}
     }

@@ -71,10 +71,10 @@ export async function notifyCustomerPush(
 ): Promise<{ sent: boolean; error?: string }> {
   const isRecall = recallCount > 0;
   
-  const title = isRecall ? "🔔 إعادة نداء!" : "🔔 حان دورك!";
+  const title = isRecall ? "🔔 إعادة نداء!" : "🔔 حان طوابير!";
   const body = isRecall
     ? `رقم ${entryNumber} — تفضل إلى ${shopName} 🏪 (تمت مناداتك ${recallCount + 1} مرات)`
-    : `رقم ${entryNumber} — تفضل إلى ${shopName} 🏪 (دورك جه!)`;
+    : `رقم ${entryNumber} — تفضل إلى ${shopName} 🏪 (طوابير جه!)`;
 
   return sendPushNotification(subscription, title, body, "/");
 }

@@ -133,7 +133,7 @@ export default function DashboardPage() {
           <div className="mx-auto max-w-6xl flex items-center justify-between px-4 h-16">
             <Link href="/" className="flex items-center gap-2">
               <span className="text-2xl">🔢</span>
-              <span className="text-xl font-black bg-gradient-to-l from-indigo-600 to-purple-600 bg-clip-text text-transparent">دورك</span>
+              <span className="text-xl font-black bg-gradient-to-l from-indigo-600 to-purple-600 bg-clip-text text-transparent">طوابير</span>
             </Link>
             <div className="flex items-center gap-3">
               <Link href="/dashboard/pricing" className="hidden sm:flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors">
@@ -312,7 +312,7 @@ export default function DashboardPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
             <span className="text-3xl">🔢</span>
-            <span className="text-3xl font-black bg-gradient-to-l from-indigo-600 to-purple-600 bg-clip-text text-transparent">دورك</span>
+            <span className="text-3xl font-black bg-gradient-to-l from-indigo-600 to-purple-600 bg-clip-text text-transparent">طوابير</span>
           </Link>
           <p className="mt-2 text-gray-500 text-sm">منصة إدارة الطوابير الذكية للمحلات</p>
         </div>

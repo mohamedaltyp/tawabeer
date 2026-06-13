@@ -77,7 +77,7 @@ export default function PricingPage() {
       features: [
         "✅ محلات غير محدود",
         "✅ زبائن غير محدود",
-        "✅ White-Label (بدون علامة دورك)",
+        "✅ White-Label (بدون علامة طوابير)",
         "✅ لوحة تحكم مركزية",
         "✅ مديرين لكل فرع",
         "✅ تكامل مع أنظمتك",
@@ -93,7 +93,7 @@ export default function PricingPage() {
       <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 h-16">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-indigo-700">دورك</span>
+            <span className="text-xl font-bold text-indigo-700">طوابير</span>
           </Link>
           <Link
             href="/dashboard"
