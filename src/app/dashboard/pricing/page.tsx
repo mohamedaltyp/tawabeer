@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Icon } from "@/components/Icon";
 
 export default function PricingPage() {
   const router = useRouter();
@@ -17,11 +18,11 @@ export default function PricingPage() {
       color: "bg-gray-50 border-gray-200",
       badge: "",
       features: [
-        "✅ محل واحد",
-        "✅ حتى ٥٠ زبون يومياً",
-        "✅ إشعارات المتصفح",
-        "✅ QR كود",
-        "✅ إحصائيات أساسية",
+        "✓ محل واحد",
+        "✓ حتى ٥٠ زبون يومياً",
+        "✓ إشعارات المتصفح",
+        "✓ QR كود",
+        "✓ إحصائيات أساسية",
       ],
       cta: "ابدأ مجاناً",
       popular: false,
@@ -35,13 +36,13 @@ export default function PricingPage() {
       color: "bg-blue-50 border-blue-200 ring-2 ring-blue-400",
       badge: "الأكثر طلباً",
       features: [
-        "✅ حتى ٣ محلات",
-        "✅ حتى ٢٠٠ زبون يومياً",
-        "✅ إشعارات المتصفح + واتساب",
-        "✅ QR كود مخصص لكل محل",
-        "✅ إحصائيات متقدمة",
-        "✅ تقارير PDF أسبوعية",
-        "✅ دعم عبر واتساب",
+        "✓ حتى ٣ محلات",
+        "✓ حتى ٢٠٠ زبون يومياً",
+        "✓ إشعارات المتصفح + واتساب",
+        "✓ QR كود مخصص لكل محل",
+        "✓ إحصائيات متقدمة",
+        "✓ تقارير PDF أسبوعية",
+        "✓ دعم عبر واتساب",
       ],
       cta: "اشترك الآن",
       popular: true,
@@ -55,13 +56,13 @@ export default function PricingPage() {
       color: "bg-purple-50 border-purple-200",
       badge: "",
       features: [
-        "✅ حتى ١٠ محلات",
-        "✅ زبائن غير محدود",
-        "✅ كل ميزات الأساسي +",
-        "✅ اسم نطاق مخصص",
-        "✅ تقارير Excel + PDF",
-        "✅ API للربط الخارجي",
-        "✅ دعم فني فوري",
+        "✓ حتى ١٠ محلات",
+        "✓ زبائن غير محدود",
+        "✓ كل ميزات الأساسي +",
+        "✓ اسم نطاق مخصص",
+        "✓ تقارير Excel + PDF",
+        "✓ API للربط الخارجي",
+        "✓ دعم فني فوري",
       ],
       cta: "اشترك الآن",
       popular: false,
@@ -75,13 +76,13 @@ export default function PricingPage() {
       color: "bg-amber-50 border-amber-200",
       badge: "",
       features: [
-        "✅ محلات غير محدود",
-        "✅ زبائن غير محدود",
-        "✅ White-Label (بدون علامة طوابير)",
-        "✅ لوحة تحكم مركزية",
-        "✅ مديرين لكل فرع",
-        "✅ تكامل مع أنظمتك",
-        "✅ دعم 24/7",
+        "✓ محلات غير محدود",
+        "✓ زبائن غير محدود",
+        "✓ White-Label (بدون علامة طوابير)",
+        "✓ لوحة تحكم مركزية",
+        "✓ مديرين لكل فرع",
+        "✓ تكامل مع أنظمتك",
+        "✓ دعم 24/7",
       ],
       cta: "تواصل معنا",
       popular: false,
@@ -106,7 +107,7 @@ export default function PricingPage() {
 
       <section className="mx-auto max-w-6xl px-4 py-16">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">💰 الباقات والأسعار</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4"><Icon name="wallet" size={26} className="inline -mt-1" /> الباقات والأسعار</h1>
           <p className="text-lg text-gray-500 max-w-2xl mx-auto">
             اختر الباقة المناسبة لمحلك — ابدأ مجاناً وطور عملك مع المزيد من المميزات
           </p>
@@ -167,7 +168,7 @@ export default function PricingPage() {
 
         {/* Payment Info */}
         <div className="mt-12 rounded-2xl bg-white border border-gray-100 p-6 text-center max-w-lg mx-auto">
-          <h3 className="font-bold text-gray-900 mb-4">💳 طرق الدفع المتاحة</h3>
+          <h3 className="font-bold text-gray-900 mb-4"><Icon name="wallet" size={18} className="inline -mt-0.5" /> طرق الدفع المتاحة</h3>
           <PaymentMethodsList />
         </div>
       </section>

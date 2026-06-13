@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Icon } from "@/components/Icon";
 
 // ─── Admin Login ───
 function AdminLogin({ onLogin }: { onLogin: () => void }) {
@@ -32,7 +33,7 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" dir="rtl">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <span className="text-5xl block mb-4">🔐</span>
+          <span className="mb-4 flex justify-center text-cyan-300"><Icon name="lock" size={46} /></span>
           <h1 className="text-2xl font-bold text-gray-900">لوحة تحكم المشرف</h1>
           <p className="text-gray-500 mt-1">دخول المالك — لتفعيل الباقات يدوياً</p>
         </div>
@@ -99,7 +100,6 @@ function AdminPanel() {
           "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
-          adminToken: "dawer-admin-2026",
           shopId,
           plan,
           expiresAt: expiresAt.toISOString(),
@@ -157,7 +157,7 @@ function AdminPanel() {
       <header className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 h-16">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg">👑</div>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg"><Icon name="crown" size={20} /></div>
             <div>
               <span className="text-lg font-bold text-gray-900">لوحة تحكم طوابير</span>
               <span className="ml-2 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">ADMIN</span>
@@ -196,7 +196,7 @@ function AdminPanel() {
                 <p className="text-xs text-indigo-600 font-bold mb-1">إجمالي المحلات</p>
                 <p className="text-3xl font-black text-indigo-700">{shops.length}</p>
               </div>
-              <span className="text-4xl">🏪</span>
+              <span className="text-cyan-300"><Icon name="store" size={36} /></span>
             </div>
           </div>
           <div className="rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 p-5 shadow-sm">
@@ -205,7 +205,7 @@ function AdminPanel() {
                 <p className="text-xs text-gray-600 font-bold mb-1">مجاني</p>
                 <p className="text-3xl font-black text-gray-700">{shops.filter((s) => s.plan === "free").length}</p>
               </div>
-              <span className="text-4xl">📖</span>
+              <span className="text-cyan-300"><Icon name="book2" size={36} /></span>
             </div>
           </div>
           <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 p-5 shadow-sm">
@@ -214,7 +214,7 @@ function AdminPanel() {
                 <p className="text-xs text-blue-600 font-bold mb-1">مدفوع</p>
                 <p className="text-3xl font-black text-blue-700">{shops.filter((s) => s.plan !== "free").length}</p>
               </div>
-              <span className="text-4xl">💎</span>
+              <span className="text-violet-300"><Icon name="diamond" size={36} /></span>
             </div>
           </div>
           <div className="rounded-2xl bg-gradient-to-br from-green-50 to-green-100 border border-green-200 p-5 shadow-sm">
@@ -229,14 +229,14 @@ function AdminPanel() {
                 </p>
                 <p className="text-xs text-green-600">ج.م</p>
               </div>
-              <span className="text-4xl">💰</span>
+              <span className="text-emerald-300"><Icon name="wallet" size={36} /></span>
             </div>
           </div>
         </div>
 
         {/* Shops by Owner */}
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">📊 المحلات والمالكين</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><Icon name="chart" size={18} className="inline -mt-0.5" /> المحلات والمالكين</h2>
         </div>
         {loading ? (
           <div className="flex justify-center py-12">
@@ -244,7 +244,7 @@ function AdminPanel() {
           </div>
         ) : shops.length === 0 ? (
           <div className="text-center py-12 rounded-2xl bg-white border border-gray-100">
-            <span className="text-4xl block mb-2">📭</span>
+            <span className="mb-2 flex justify-center text-gray-500"><Icon name="inbox" size={36} /></span>
             <p className="text-gray-400">لا توجد محلات بعد</p>
           </div>
         ) : (
@@ -259,7 +259,7 @@ function AdminPanel() {
                     </div>
                     <div>
                       <span className="text-sm font-bold text-gray-900">{ownerShops[0].owner_name || "بدون اسم"}</span>
-                      <span className="text-xs text-gray-500 mr-2 font-mono">📱 {phone}</span>
+                      <span className="text-xs text-gray-500 mr-2 font-mono"><Icon name="smartphone" size={12} className="inline -mt-0.5" /> {phone}</span>
                     </div>
                   </div>
                   <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full">{ownerShops.length} محل</span>
@@ -278,7 +278,7 @@ function AdminPanel() {
                           <p className="text-xs text-gray-400 font-mono" dir="ltr">{shop.id}</p>
                           {shop.plan_expires_at && (
                             <p className="text-xs text-amber-600 mt-1.5 font-medium">
-                              📅 ينتهي: {new Date(shop.plan_expires_at).toLocaleDateString("ar-EG")}
+                              <Icon name="calendar" size={12} className="inline -mt-0.5" /> ينتهي: {new Date(shop.plan_expires_at).toLocaleDateString("ar-EG")}
                             </p>
                           )}
                         </div>
@@ -323,7 +323,7 @@ function AdminPanel() {
         {/* ─── 💳 إدارة طرق الدفع ─── */}
         <details className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden mt-8 open:shadow-lg transition-shadow">
           <summary className="px-5 py-4 font-bold text-gray-900 cursor-pointer hover:bg-indigo-50 flex items-center gap-2 transition-colors">
-            <span className="text-xl">💳</span>
+            <span className="text-cyan-300"><Icon name="wallet" size={20} /></span>
             <span>إدارة طرق الدفع</span>
             <span className="text-xs text-gray-400 font-normal ms-auto">(إضافة / تعديل / حذف)</span>
           </summary>
@@ -335,7 +335,7 @@ function AdminPanel() {
         {/* ─── ⚙️ إعدادات عامة ─── */}
         <details className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden mt-4 open:shadow-lg transition-shadow">
           <summary className="px-5 py-4 font-bold text-gray-900 cursor-pointer hover:bg-indigo-50 flex items-center gap-2 transition-colors">
-            <span className="text-xl">⚙️</span>
+            <span className="text-cyan-300"><Icon name="gear" size={20} /></span>
             <span>إعدادات عامة</span>
           </summary>
           <div className="px-5 py-4 border-t border-gray-100 bg-gray-50">
@@ -357,7 +357,6 @@ function PaymentMethodsManager() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const ADMIN_TOKEN = "dawer-admin-2026";
 
   const load = async () => {
     setLoading(true);
@@ -386,7 +385,7 @@ function PaymentMethodsManager() {
     try {
       const url = "/api/admin/payment-methods";
       const method = editId ? "PUT" : "POST";
-      const body = editId ? { adminToken: ADMIN_TOKEN, id: editId, ...form } : { adminToken: ADMIN_TOKEN, ...form };
+      const body = editId ? { id: editId, ...form } : { ...form };
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
@@ -410,7 +409,7 @@ function PaymentMethodsManager() {
       const res = await fetch("/api/admin/payment-methods", {
         method: "DELETE",
         headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-        body: JSON.stringify({ adminToken: ADMIN_TOKEN, id }),
+        body: JSON.stringify({ id }),
       });
       const d = await res.json();
       if (d.success) { load(); setMsg("✅ تم الحذف"); }
@@ -429,7 +428,7 @@ function PaymentMethodsManager() {
       await fetch("/api/admin/payment-methods", {
         method: "PUT",
         headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-        body: JSON.stringify({ adminToken: ADMIN_TOKEN, id: m.id, is_active: m.is_active ? 0 : 1 }),
+        body: JSON.stringify({ id: m.id, is_active: m.is_active ? 0 : 1 }),
       });
       load();
     } catch {}
@@ -559,7 +558,6 @@ function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const ADMIN_TOKEN = "dawer-admin-2026";
 
   useEffect(() => {
     fetch("/api/admin/settings", { headers: { "ngrok-skip-browser-warning": "true" } })
@@ -575,7 +573,7 @@ function AdminSettings() {
       const res = await fetch("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-        body: JSON.stringify({ adminToken: ADMIN_TOKEN, admin_whatsapp: whatsapp }),
+        body: JSON.stringify({ admin_whatsapp: whatsapp }),
       });
       const d = await res.json();
       if (d.success) setMsg("✅ تم الحفظ");
@@ -594,7 +592,7 @@ function AdminSettings() {
         </div>
       )}
       <div>
-        <label className="block text-xs text-gray-500 mb-1">📱 رقم واتساب المشرف (لتواصل الزبائن عند الدفع)</label>
+        <label className="block text-xs text-gray-500 mb-1"><Icon name="smartphone" size={13} className="inline -mt-0.5" /> رقم واتساب المشرف (لتواصل الزبائن عند الدفع)</label>
         <input type="tel" value={whatsapp}
           onChange={(e) => setWhatsapp(e.target.value)}
           placeholder="مثال: 0100xxxxxxx"

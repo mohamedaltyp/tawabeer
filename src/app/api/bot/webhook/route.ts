@@ -32,6 +32,14 @@ export async function GET() {
 // POST — Incoming updates from Telegram (user messages to the bot)
 export async function POST(req: NextRequest) {
   try {
+    const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    if (expectedSecret) {
+      const got = req.headers.get("x-telegram-bot-api-secret-token");
+      if (got !== expectedSecret) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     const update = await req.json();
 
     if (!update.message) {

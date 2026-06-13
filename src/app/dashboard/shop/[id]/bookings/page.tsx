@@ -3,6 +3,25 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Icon } from "@/components/Icon";
+import {
+  ArrowRight,
+  Calendar,
+  Clock,
+  Plus,
+  Trash2,
+  Loader2,
+  AlertCircle,
+  ChevronLeft,
+  Users,
+  Hash,
+  Filter,
+  Settings,
+  Check,
+  CheckCircle,
+  XCircle,
+  RotateCcw,
+} from "lucide-react";
 
 interface BookingSlot {
   id: string;
@@ -54,7 +73,6 @@ function formatTime(time: string) {
   return `${hour}:${m.toString().padStart(2, "0")} ${period}`;
 }
 
-// Convert "1" or "true" or 1 → 1; anything else → 0
 function toInt(v: any): number {
   if (v === 1 || v === "1" || v === true) return 1;
   return 0;
@@ -77,16 +95,29 @@ export default function BookingsManagementPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [saving, setSaving] = useState(false);
   const [addingSlot, setAddingSlot] = useState(false);
-  const [message, setMessage] = useState("");
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Settings panel
+  const [showSettings, setShowSettings] = useState(false);
+
+  // New slot form
+  const [showSlotForm, setShowSlotForm] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(0);
+  const [slotStart, setSlotStart] = useState("09:00");
+  const [slotEnd, setSlotEnd] = useState("17:00");
 
   const [filterDate, setFilterDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split("T")[0];
   });
 
-  const [selectedDay, setSelectedDay] = useState(0);
-  const [slotStart, setSlotStart] = useState("09:00");
-  const [slotEnd, setSlotEnd] = useState("17:00");
+  // Status filter
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  const flash = (type: "success" | "error", message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const fetchData = async () => {
     try {
@@ -119,7 +150,6 @@ export default function BookingsManagementPage() {
   const handleSaveSettings = async () => {
     if (!settings) return;
     setSaving(true);
-    setMessage("");
     const pw = getOwnerPassword();
     try {
       const res = await fetch(`/api/shops/${id}/settings`, {
@@ -134,21 +164,20 @@ export default function BookingsManagementPage() {
         }),
       });
       if (res.ok) {
-        setMessage("✅ تم الحفظ بنجاح");
-        setTimeout(() => setMessage(""), 3000);
+        flash("success", "✅ تم الحفظ بنجاح");
+        setShowSettings(false);
       } else {
         const err = await res.json().catch(() => ({}));
-        setMessage("❌ " + (err.error || "حدث خطأ أثناء الحفظ"));
+        flash("error", err.error || "حدث خطأ أثناء الحفظ");
       }
     } catch {
-      setMessage("❌ حدث خطأ أثناء الحفظ");
+      flash("error", "حدث خطأ أثناء الحفظ");
     }
     setSaving(false);
   };
 
   const handleAddSlot = async () => {
     setAddingSlot(true);
-    setMessage("");
     const pw = getOwnerPassword();
     try {
       const res = await fetch(`/api/shops/${id}/booking-slots`, {
@@ -164,28 +193,27 @@ export default function BookingsManagementPage() {
       const data = await res.json();
       if (data.slot) {
         setSlots([...slots, data.slot]);
-        setMessage("✅ تم إضافة موعد " + DAY_NAMES[selectedDay] + " من " + formatTime(slotStart) + " إلى " + formatTime(slotEnd));
-        setTimeout(() => setMessage(""), 3000);
+        flash("success", `✅ تم إضافة موعد ${DAY_NAMES[selectedDay]} من ${formatTime(slotStart)} إلى ${formatTime(slotEnd)}`);
+        setShowSlotForm(false);
       } else if (data.error) {
-        setMessage("❌ " + data.error);
+        flash("error", data.error);
       }
     } catch {
-      setMessage("❌ حدث خطأ");
+      flash("error", "حدث خطأ");
     }
     setAddingSlot(false);
   };
 
   const handleDeleteSlot = async (slotId: string) => {
-    const pw = getOwnerPassword();
+    if (!confirm("هل تريد حذف هذا الموعد؟")) return;
     try {
-      const res = await fetch(`/api/shops/${id}/booking-slots?slotId=${slotId}&owner_password=${encodeURIComponent(pw)}`, {
+      const res = await fetch(`/api/shops/${id}/booking-slots?slotId=${slotId}`, {
         method: "DELETE",
         headers: { "ngrok-skip-browser-warning": "true" },
       });
       if (res.ok) {
         setSlots(slots.filter((s) => s.id !== slotId));
-        setMessage("✅ تم حذف الموعد");
-        setTimeout(() => setMessage(""), 3000);
+        flash("success", "✅ تم حذف الموعد");
       }
     } catch {}
   };
@@ -201,11 +229,10 @@ export default function BookingsManagementPage() {
       if (res.ok) {
         setBookings(bookings.map((b) => b.id === bookingId ? { ...b, status: newStatus } : b));
         const statusLabel = { confirmed: "مؤكد", cancelled: "ملغي", completed: "مكتمل" }[newStatus];
-        setMessage(`✅ تم تحديث الحالة إلى ${statusLabel}`);
-        setTimeout(() => setMessage(""), 3000);
+        flash("success", `✅ تم تحديث الحالة إلى ${statusLabel}`);
       }
     } catch {
-      setMessage("❌ حدث خطأ أثناء التحديث");
+      flash("error", "حدث خطأ أثناء التحديث");
     }
   };
 
@@ -223,6 +250,7 @@ export default function BookingsManagementPage() {
     if (filterDate) fetchBookings(filterDate);
   }, [filterDate]);
 
+  // Group slots by day
   const slotsByDay: Record<number, BookingSlot[]> = {};
   for (let i = 0; i < 7; i++) slotsByDay[i] = [];
   for (const slot of slots) {
@@ -231,120 +259,238 @@ export default function BookingsManagementPage() {
     }
   }
 
+  // Filter bookings by status
+  const filteredBookings = statusFilter === "all"
+    ? bookings
+    : bookings.filter((b) => b.status === statusFilter);
+
+  // Stats
+  const stats = {
+    total: bookings.length,
+    confirmed: bookings.filter((b) => b.status === "confirmed").length,
+    pending: bookings.filter((b) => b.status === "pending").length,
+    completed: bookings.filter((b) => b.status === "completed").length,
+  };
+
   if (!settings) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">جاري التحميل...</p>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-12 h-12 text-indigo-400 animate-spin mx-auto" />
+          <p className="text-indigo-300 text-lg">جاري التحميل...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
-        <div className="mx-auto max-w-4xl flex items-center justify-between px-4 h-16">
-          <div className="flex items-center gap-3">
-            <Link href={`/dashboard/shop/${id}`}
-              className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors">→</Link>
-            <div>
-              <h1 className="text-base font-bold text-gray-900">📅 إدارة الحجوزات</h1>
-              <p className="text-xs text-gray-400">{shopName}</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 text-white">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-lg backdrop-blur-xl ${
+          toast.type === "success"
+            ? "bg-emerald-500/20 border border-emerald-500/30 text-emerald-300"
+            : "bg-red-500/20 border border-red-500/30 text-red-300"
+        }`}>
+          {toast.message}
         </div>
-      </header>
+      )}
 
-      <main className="mx-auto max-w-4xl px-4 py-6 space-y-6">
-        {message && (
-          <div className={`rounded-xl p-4 text-center font-medium text-sm ${
-            message.startsWith("✅") ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
-          }`}>{message}</div>
-        )}
+      <div className="mx-auto max-w-4xl px-4 py-8 space-y-8">
+        {/* Back link */}
+        <Link
+          href={`/dashboard/shop/${id}`}
+          className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          العودة للوحة التحكم
+        </Link>
 
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>⚙️</span><span>إعدادات الحجز</span></h2>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+              <Calendar className="w-8 h-8 text-indigo-400" />
+              إدارة الحجوزات
+            </h1>
+            <p className="text-white/40 text-sm mt-1">{shopName}</p>
           </div>
-          <div className="p-5 space-y-5">
-            {/* Toggle for enabling/disabling online booking */}
-            <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-all"
+          >
+            <Settings className="w-4 h-4" />
+            الإعدادات
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: "الحجوزات", value: stats.total, icon: Hash, color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/20" },
+            { label: "مؤكدة", value: stats.confirmed, icon: CheckCircle, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
+            { label: "قيد الانتظار", value: stats.pending, icon: Clock, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
+            { label: "مكتملة", value: stats.completed, icon: RotateCcw, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className={`rounded-xl border ${stat.bg} p-4 backdrop-blur text-center`}
+            >
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                <span className="text-xs text-white/50">{stat.label}</span>
+              </div>
+              <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Settings Panel */}
+        {showSettings && (
+          <div className="rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 p-6 space-y-6">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <Settings className="w-5 h-5 text-indigo-400" />
+              إعدادات الحجز
+            </h3>
+
+            {/* Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20">
               <div>
-                <p className="text-sm font-bold text-gray-900">🟢 الحجز المسبق (أونلاين)</p>
-                <p className="text-xs text-gray-500 mt-0.5">السماح للعملاء بحجز مواعيد من الموقع</p>
+                <p className="text-sm font-bold text-white">الحجز المسبق (أونلاين)</p>
+                <p className="text-xs text-white/50 mt-0.5">السماح للعملاء بحجز مواعيد من الموقع</p>
               </div>
               <button
                 onClick={() => setSettings({ ...settings, booking_enabled: toInt(settings.booking_enabled) === 1 ? 0 : 1 })}
-                className={`relative w-14 h-7 rounded-full transition-colors ${toInt(settings.booking_enabled) === 1 ? "bg-green-500" : "bg-gray-300"}`}
-                type="button">
-                <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${toInt(settings.booking_enabled) === 1 ? "translate-x-7" : "translate-x-0.5"}`} />
+                className={`relative w-14 h-7 rounded-full transition-colors ${
+                  toInt(settings.booking_enabled) === 1 ? "bg-emerald-500" : "bg-white/20"
+                }`}
+              >
+                <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${
+                  toInt(settings.booking_enabled) === 1 ? "translate-x-7" : "translate-x-0.5"
+                }`} />
               </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                ⏱️ مدة كل موعد: <span className="font-bold text-indigo-600">{settings.slot_duration_minutes} دقيقة</span>
-              </label>
-              <input type="range" min="15" max="120" step="5"
-                value={settings.slot_duration_minutes}
-                onChange={(e) => setSettings({ ...settings, slot_duration_minutes: Number(e.target.value) })}
-                className="w-full h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer" />
-              <div className="flex justify-between text-xs text-gray-400 mt-1"><span>15 د</span><span>120 د</span></div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                👥 أقصى عدد حجوزات لكل موعد: <span className="font-bold text-indigo-600">{settings.max_bookings_per_slot}</span>
-              </label>
-              <input type="range" min="1" max="20"
-                value={settings.max_bookings_per_slot}
-                onChange={(e) => setSettings({ ...settings, max_bookings_per_slot: Number(e.target.value) })}
-                className="w-full h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                📅 الحجز المسبق: <span className="font-bold text-indigo-600">{settings.booking_advance_days} يوم</span>
-              </label>
-              <input type="range" min="1" max="30"
-                value={settings.booking_advance_days}
-                onChange={(e) => setSettings({ ...settings, booking_advance_days: Number(e.target.value) })}
-                className="w-full h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer" />
-              <div className="flex justify-between text-xs text-gray-400 mt-1"><span>يوم</span><span>30 يوم</span></div>
-            </div>
-            <button onClick={handleSaveSettings} disabled={saving}
-              className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50 transition-all">
-              {saving ? "جاري الحفظ..." : "💾 حفظ الإعدادات"}
-            </button>
-          </div>
-        </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>🕐</span><span>مواعيد العمل</span></h2>
-            <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-full">{slots.length} موعد</span>
+            {/* Sliders */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  ⏱️ مدة كل موعد: <span className="font-bold text-indigo-400">{settings.slot_duration_minutes} دقيقة</span>
+                </label>
+                <input
+                  type="range"
+                  min="15"
+                  max="120"
+                  step="5"
+                  value={settings.slot_duration_minutes}
+                  onChange={(e) => setSettings({ ...settings, slot_duration_minutes: Number(e.target.value) })}
+                  className="w-full h-2 rounded-full appearance-none bg-white/10 accent-indigo-500 cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-white/40 mt-1">
+                  <span>15 د</span>
+                  <span>120 د</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  <Users className="w-4 h-4 inline -mt-0.5" /> أقصى عدد حجوزات لكل موعد: <span className="font-bold text-indigo-400">{settings.max_bookings_per_slot}</span>
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="20"
+                  value={settings.max_bookings_per_slot}
+                  onChange={(e) => setSettings({ ...settings, max_bookings_per_slot: Number(e.target.value) })}
+                  className="w-full h-2 rounded-full appearance-none bg-white/10 accent-indigo-500 cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">
+                  <Calendar className="w-4 h-4 inline -mt-0.5" /> الحجز المسبق: <span className="font-bold text-indigo-400">{settings.booking_advance_days} يوم</span>
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="30"
+                  value={settings.booking_advance_days}
+                  onChange={(e) => setSettings({ ...settings, booking_advance_days: Number(e.target.value) })}
+                  className="w-full h-2 rounded-full appearance-none bg-white/10 accent-indigo-500 cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-white/40 mt-1">
+                  <span>يوم</span>
+                  <span>30 يوم</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleSaveSettings}
+                disabled={saving}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-l from-indigo-600 to-indigo-500 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                💾 حفظ الإعدادات
+              </button>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/60 text-sm hover:bg-white/10 transition-colors"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Working Hours */}
+        <div className="rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <Clock className="w-5 h-5 text-indigo-400" />
+              مواعيد العمل
+            </h3>
+            <span className="bg-indigo-500/20 text-indigo-300 text-xs font-bold px-2.5 py-1 rounded-full">
+              {slots.length} موعد
+            </span>
           </div>
           <div className="p-5 space-y-3">
             {[0, 1, 2, 3, 4, 5, 6].map((day) => (
-              <div key={day} className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${slotsByDay[day]?.length > 0 ? "bg-indigo-50 border-indigo-100" : "bg-gray-50 border-gray-100"}`}>
+              <div
+                key={day}
+                className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${
+                  slotsByDay[day]?.length > 0
+                    ? "bg-indigo-500/5 border-indigo-500/10"
+                    : "bg-white/[0.02] border-white/5"
+                }`}
+              >
                 <div className="flex items-center gap-3 flex-1">
                   <span className="text-xl">{DAY_EMOJIS[day]}</span>
                   <div>
-                    <span className="text-sm font-bold text-gray-900">{DAY_NAMES[day]}</span>
+                    <span className={`text-sm font-bold ${slotsByDay[day]?.length > 0 ? "text-white" : "text-white/40"}`}>
+                      {DAY_NAMES[day]}
+                    </span>
                     {slotsByDay[day]?.length > 0 ? (
-                      <p className="text-xs text-gray-600 mt-0.5">
+                      <p className="text-xs text-white/50 mt-0.5">
                         {slotsByDay[day].sort((a, b) => (a.start_time > b.start_time ? 1 : -1)).map((s) => `${formatTime(s.start_time)} - ${formatTime(s.end_time)}`).join(" • ")}
                       </p>
                     ) : (
-                      <p className="text-xs text-gray-400 mt-0.5">لا توجد مواعيد</p>
+                      <p className="text-xs text-white/20 mt-0.5">لا توجد مواعيد</p>
                     )}
                   </div>
                 </div>
                 {slotsByDay[day]?.length > 0 && (
                   <div className="flex items-center gap-1 ms-4">
                     {slotsByDay[day].map((slot) => (
-                      <button key={slot.id} onClick={() => handleDeleteSlot(slot.id)}
-                        className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-xs text-red-600 hover:bg-red-200 transition-colors font-bold"
-                        title="حذف الموعد">✕</button>
+                      <button
+                        key={slot.id}
+                        onClick={() => handleDeleteSlot(slot.id)}
+                        className="w-7 h-7 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-xs text-red-400 hover:bg-red-500/20 transition-colors"
+                        title="حذف الموعد"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     ))}
                   </div>
                 )}
@@ -353,97 +499,180 @@ export default function BookingsManagementPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>➕</span><span>إضافة موعد عمل جديد</span></h2>
-            <p className="text-xs text-gray-500 mt-1">أضف مواعيد العمل للسماح للعملاء بالحجز</p>
+        {/* Add Slot Form */}
+        <div className="rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/5">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <Plus className="w-5 h-5 text-indigo-400" />
+              إضافة موعد عمل جديد
+            </h3>
+            <p className="text-xs text-white/40 mt-1">أضف مواعيد العمل للسماح للعملاء بالحجز</p>
           </div>
           <div className="p-5 space-y-4">
+            {/* Day picker grid */}
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-3">اختر اليوم</label>
-              <div className="grid grid-cols-4 gap-2">
+              <label className="block text-sm font-bold text-white/70 mb-3">اختر اليوم</label>
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                 {[0, 1, 2, 3, 4, 5, 6].map((day) => (
-                  <button key={day} onClick={() => setSelectedDay(day)}
-                    className={`p-2.5 rounded-xl text-sm font-medium transition-all ${selectedDay === day ? "bg-indigo-600 text-white shadow-lg scale-105" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}>
+                  <button
+                    key={day}
+                    onClick={() => setSelectedDay(day)}
+                    className={`p-2.5 rounded-xl text-sm font-medium transition-all ${
+                      selectedDay === day
+                        ? "bg-indigo-600 text-white shadow-lg scale-105"
+                        : "bg-white/5 text-white/60 hover:bg-white/10"
+                    }`}
+                  >
                     <span className="text-lg block">{DAY_EMOJIS[day]}</span>
                     <span className="text-xs">{DAY_NAMES[day]}</span>
                   </button>
                 ))}
               </div>
             </div>
+
+            {/* Time range */}
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">⏱️ الوقت</label>
+              <label className="block text-sm font-bold text-white/70 mb-2">⏱️ الوقت</label>
               <div className="flex items-end gap-3">
                 <div className="flex-1">
-                  <label className="block text-xs text-gray-600 mb-1">من</label>
-                  <input type="time" value={slotStart} onChange={(e) => setSlotStart(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <label className="block text-xs text-white/40 mb-1">من</label>
+                  <input
+                    type="time"
+                    value={slotStart}
+                    onChange={(e) => setSlotStart(e.target.value)}
+                    className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                  />
                 </div>
-                <span className="text-gray-400 text-xl">←</span>
+                <span className="text-white/30 text-xl pb-2">←</span>
                 <div className="flex-1">
-                  <label className="block text-xs text-gray-600 mb-1">إلى</label>
-                  <input type="time" value={slotEnd} onChange={(e) => setSlotEnd(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <label className="block text-xs text-white/40 mb-1">إلى</label>
+                  <input
+                    type="time"
+                    value={slotEnd}
+                    onChange={(e) => setSlotEnd(e.target.value)}
+                    className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                  />
                 </div>
-                <button onClick={handleAddSlot} disabled={addingSlot}
-                  className="rounded-xl bg-indigo-600 px-8 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50 transition-all whitespace-nowrap">
-                  {addingSlot ? "⏳ جاري..." : "✓ إضافة"}
+                <button
+                  onClick={handleAddSlot}
+                  disabled={addingSlot}
+                  className="rounded-xl bg-gradient-to-l from-indigo-600 to-indigo-500 px-8 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition-all whitespace-nowrap"
+                >
+                  {addingSlot ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "✓ إضافة"}
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>📋</span><span>الحجوزات</span></h2>
-            <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-full">{bookings.length}</span>
-          </div>
-          <div className="p-5">
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">التاريخ</label>
-              <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)}
-                className="w-full max-w-xs rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        {/* Bookings List */}
+        <div className="rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <Hash className="w-5 h-5 text-indigo-400" />
+              الحجوزات
+            </h3>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-white/40" />
+              <input
+                type="date"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              />
             </div>
-            {bookings.length === 0 ? (
-              <p className="text-center text-gray-400 py-8 text-sm">لا توجد حجوزات في هذا التاريخ</p>
+          </div>
+
+          {/* Status Filter Tabs */}
+          <div className="px-5 pt-4 flex gap-2 overflow-x-auto pb-2">
+            {[
+              { key: "all", label: "الكل", count: stats.total },
+              { key: "pending", label: "قيد الانتظار", count: stats.pending },
+              { key: "confirmed", label: "مؤكد", count: stats.confirmed },
+              { key: "completed", label: "مكتمل", count: stats.completed },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setStatusFilter(tab.key)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+                  statusFilter === tab.key
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                {tab.label}
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                  statusFilter === tab.key ? "bg-white/20" : "bg-white/10"
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="p-5">
+            {filteredBookings.length === 0 ? (
+              <div className="text-center py-12">
+                <Calendar className="w-12 h-12 text-white/10 mx-auto mb-4" />
+                <p className="text-lg text-white/30">لا توجد حجوزات</p>
+                <p className="text-sm text-white/15 mt-1">
+                  {statusFilter === "all" ? "في هذا التاريخ" : `بحالة "${statusFilter}"`}
+                </p>
+              </div>
             ) : (
               <div className="space-y-2">
-                {bookings.map((booking) => (
-                  <div key={booking.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-100">
+                {filteredBookings.map((booking) => (
+                  <div
+                    key={booking.id}
+                    className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors border border-white/5"
+                  >
                     <div className="flex-1">
-                      <p className="font-medium text-sm text-gray-900">{booking.customer_name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{booking.customer_phone}</p>
-                      {booking.notes && <p className="text-xs text-gray-500 mt-1">📝 {booking.notes}</p>}
+                      <p className="font-medium text-sm text-white">{booking.customer_name}</p>
+                      <p className="text-xs text-white/40 mt-0.5" dir="ltr">{booking.customer_phone}</p>
+                      {booking.notes && <p className="text-xs text-white/30 mt-1">💬 {booking.notes}</p>}
                     </div>
                     <div className="flex items-center gap-2 ms-4">
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${
-                        booking.status === "confirmed" ? "bg-emerald-100 text-emerald-700" :
-                        booking.status === "cancelled" ? "bg-red-100 text-red-700" :
-                        booking.status === "completed" ? "bg-blue-100 text-blue-700" :
-                        "bg-yellow-100 text-yellow-700"
-                      }`}>
-                        {booking.status === "confirmed" ? "✅ مؤكد" :
-                         booking.status === "cancelled" ? "❌ ملغي" :
-                         booking.status === "completed" ? "✔️ مكتمل" :
-                         "⏳ قيد الانتظار"}
+                      <span
+                        className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${
+                          booking.status === "confirmed"
+                            ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                            : booking.status === "cancelled"
+                            ? "bg-red-500/10 border border-red-500/20 text-red-400"
+                            : booking.status === "completed"
+                            ? "bg-blue-500/10 border border-blue-500/20 text-blue-400"
+                            : "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+                        }`}
+                      >
+                        {booking.status === "confirmed"
+                          ? "✅ مؤكد"
+                          : booking.status === "cancelled"
+                          ? "❌ ملغي"
+                          : booking.status === "completed"
+                          ? "✔️ مكتمل"
+                          : "⏳ قيد الانتظار"}
                       </span>
                       <div className="flex items-center gap-1">
                         {booking.status === "pending" && (
-                          <button onClick={() => handleUpdateBookingStatus(booking.id, "confirmed")}
-                            className="text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-2 py-1 rounded-lg transition-colors font-medium">
+                          <button
+                            onClick={() => handleUpdateBookingStatus(booking.id, "confirmed")}
+                            className="text-xs bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 px-2 py-1 rounded-lg transition-colors font-medium border border-emerald-500/20"
+                          >
                             تأكيد
                           </button>
                         )}
                         {booking.status !== "cancelled" && booking.status !== "completed" && (
-                          <button onClick={() => handleUpdateBookingStatus(booking.id, "cancelled")}
-                            className="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded-lg transition-colors font-medium">
+                          <button
+                            onClick={() => handleUpdateBookingStatus(booking.id, "cancelled")}
+                            className="text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 px-2 py-1 rounded-lg transition-colors font-medium border border-red-500/20"
+                          >
                             إلغاء
                           </button>
                         )}
                         {booking.status !== "completed" && booking.status !== "cancelled" && (
-                          <button onClick={() => handleUpdateBookingStatus(booking.id, "completed")}
-                            className="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded-lg transition-colors font-medium">
+                          <button
+                            onClick={() => handleUpdateBookingStatus(booking.id, "completed")}
+                            className="text-xs bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 px-2 py-1 rounded-lg transition-colors font-medium border border-blue-500/20"
+                          >
                             مكتمل
                           </button>
                         )}
@@ -455,7 +684,7 @@ export default function BookingsManagementPage() {
             )}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

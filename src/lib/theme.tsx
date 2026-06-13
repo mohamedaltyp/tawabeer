@@ -12,19 +12,18 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-const STORAGE_KEY = "tawabeer-theme";
+const STORAGE_KEY = "tawabeer-theme-v2";
 
 function getInitialTheme(): Theme {
-  if (typeof window === "undefined") return "light";
+  if (typeof window === "undefined") return "dark";
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === "dark" || stored === "light") return stored;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  // Dark-neo is the default experience.
+  return "dark";
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -44,23 +43,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_KEY, theme);
   }, [theme, mounted]);
 
-  // Listen for system preference changes
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => {
-      if (localStorage.getItem(STORAGE_KEY)) return; // user has explicit preference
-      setTheme(e.matches ? "dark" : "light");
-    };
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-
   const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   }, []);
 
-  // Prevent flash: apply class before paint
-  const script = `(() => { try { const t = localStorage.getItem('${STORAGE_KEY}'); if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark'); } catch(e) {} })();`;
+  // Prevent flash: default to dark unless the user explicitly chose light.
+  const script = `(() => { try { const t = localStorage.getItem('${STORAGE_KEY}'); if (t !== 'light') document.documentElement.classList.add('dark'); } catch(e) { document.documentElement.classList.add('dark'); } })();`;
 
   return (
     <ThemeContext.Provider value={{ theme, isDark: theme === "dark", toggleTheme }}>
@@ -73,8 +61,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) {
-    // Fallback for SSR or contexts outside provider
-    return { theme: "light", isDark: false, toggleTheme: () => {} };
+    return { theme: "dark", isDark: true, toggleTheme: () => {} };
   }
   return ctx;
 }

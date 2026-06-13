@@ -892,7 +892,7 @@ export async function deleteBookingSlot(id: string): Promise<void> {
 // ─── Bookings ────────────────────────────────
 
 export async function getAvailableSlots(shopId: string, date: string): Promise<Array<{
-  slot: BookingSlot;
+  slot: BookingSlot & { start_time: string; end_time: string };
   available: number;
   total: number;
 }>> {
@@ -904,28 +904,85 @@ export async function getAvailableSlots(shopId: string, date: string): Promise<A
   const slots = await getBookingSlotsByDay(shopId, dayOfWeek);
   if (slots.length === 0) return [];
 
-  // Get settings for max bookings per slot
+  // Get settings for max bookings per slot and duration
   const settings = await getQueueSettings(shopId);
   const maxPerSlot = settings?.max_bookings_per_slot || 5;
+  const duration = settings?.slot_duration_minutes || 30;
 
-  const results: Array<{ slot: BookingSlot; available: number; total: number }> = [];
+  const results: Array<{ slot: BookingSlot & { start_time: string; end_time: string }; available: number; total: number }> = [];
 
   for (const slot of slots) {
-    // Count existing bookings for this slot on this date
-    const countRows = await sql`
-      SELECT COUNT(*)::int as count FROM bookings 
-      WHERE slot_id = ${slot.id} AND booking_date = ${date} AND status = 'confirmed'
-    ` as unknown as { count: number }[];
-    const booked = countRows[0]?.count || 0;
+    // Get all active bookings for this parent slot on this date
+    const bookingsRows = await sql`
+      SELECT notes FROM bookings 
+      WHERE slot_id = ${slot.id} AND booking_date = ${date} 
+      AND status IN ('confirmed', 'waiting')
+    ` as unknown as { notes: string }[];
 
-    results.push({
-      slot,
-      available: Math.max(0, maxPerSlot - booked),
-      total: maxPerSlot,
-    });
+    // Parse booking_time from each booking's notes
+    const bookedTimes: Record<string, number> = {};
+    for (const row of bookingsRows) {
+      try {
+        const parsed = JSON.parse(row.notes || "{}");
+        const bt = parsed.booking_time || slot.start_time;
+        bookedTimes[bt] = (bookedTimes[bt] || 0) + 1;
+      } catch {
+        // Legacy booking without JSON notes — count against first sub-slot
+        bookedTimes[slot.start_time] = (bookedTimes[slot.start_time] || 0) + 1;
+      }
+    }
+
+    // Split the parent slot into sub-slots based on duration
+    const subSlots = splitSlotIntoSubSlots(slot, duration);
+
+    for (const sub of subSlots) {
+      const booked = bookedTimes[sub.start_time] || 0;
+      results.push({
+        slot: { ...slot, start_time: sub.start_time, end_time: sub.end_time },
+        available: Math.max(0, maxPerSlot - booked),
+        total: maxPerSlot,
+      });
+    }
   }
 
   return results;
+}
+
+// Helper: Split a parent slot into sub-slots based on duration
+function splitSlotIntoSubSlots(
+  slot: BookingSlot,
+  durationMinutes: number
+): Array<{ start_time: string; end_time: string }> {
+  const [startH, startM] = slot.start_time.split(":").map(Number);
+  const [endH, endM] = slot.end_time.split(":").map(Number);
+  const startMin = startH * 60 + startM;
+  const endMin = endH * 60 + endM;
+  const totalMinutes = endMin - startMin;
+
+  // If duration >= total slot time, return the whole slot as one
+  if (durationMinutes >= totalMinutes) {
+    return [{ start_time: slot.start_time, end_time: slot.end_time }];
+  }
+
+  const subSlots: Array<{ start_time: string; end_time: string }> = [];
+  let current = startMin;
+
+  while (current + durationMinutes <= endMin) {
+    const sH = Math.floor(current / 60);
+    const sM = current % 60;
+    const eMin = current + durationMinutes;
+    const eH = Math.floor(eMin / 60);
+    const eM = eMin % 60;
+
+    subSlots.push({
+      start_time: `${String(sH).padStart(2, "0")}:${String(sM).padStart(2, "0")}`,
+      end_time: `${String(eH).padStart(2, "0")}:${String(eM).padStart(2, "0")}`,
+    });
+    current += durationMinutes;
+  }
+
+  // If no sub-slots fit, return the whole slot
+  return subSlots.length > 0 ? subSlots : [{ start_time: slot.start_time, end_time: slot.end_time }];
 }
 
 export async function createBooking(data: {
@@ -935,6 +992,7 @@ export async function createBooking(data: {
   customerName?: string;
   customerPhone?: string;
   notes?: string;
+  bookingTime?: string; // Specific time like "09:00"
 }): Promise<{ booking: Booking; position: number } | { error: string }> {
   // Check if shop allows booking
   const settings = await getQueueSettings(data.shopId);
@@ -948,12 +1006,28 @@ export async function createBooking(data: {
     return { error: "هذا الموعد غير متاح" };
   }
 
-  // Check availability
+  // Check availability (include waiting bookings in capacity check!)
   const maxPerSlot = settings.max_bookings_per_slot || 5;
-  const countRows = await sql`
-    SELECT COUNT(*)::int as count FROM bookings 
-    WHERE slot_id = ${data.slotId} AND booking_date = ${data.bookingDate} AND status = 'confirmed'
-  ` as unknown as { count: number }[];
+  
+  // Build notes with booking_time
+  const notesObj: Record<string, string> = {};
+  if (data.bookingTime) notesObj.booking_time = data.bookingTime;
+  if (data.notes) notesObj.note = data.notes;
+  const notesJson = Object.keys(notesObj).length > 0 ? JSON.stringify(notesObj) : "";
+
+  // Count bookings for this specific sub-slot (if bookingTime provided)
+  const countRows = data.bookingTime
+    ? await sql`
+        SELECT COUNT(*)::int as count FROM bookings 
+        WHERE slot_id = ${data.slotId} AND booking_date = ${data.bookingDate} 
+        AND status IN ('confirmed', 'waiting')
+        AND notes LIKE ${'%"booking_time":"' + data.bookingTime + '"%'}
+      ` as unknown as { count: number }[]
+    : await sql`
+        SELECT COUNT(*)::int as count FROM bookings 
+        WHERE slot_id = ${data.slotId} AND booking_date = ${data.bookingDate} 
+        AND status IN ('confirmed', 'waiting')
+      ` as unknown as { count: number }[];
   const booked = countRows[0]?.count || 0;
 
   if (booked >= maxPerSlot) {
@@ -985,8 +1059,8 @@ export async function createBooking(data: {
       ${data.slotId}, 
       ${data.bookingDate}, 
       ${data.customerName || ""}, 
-      ${data.customerPhone || ""}, 
-      ${data.notes || ""}, 
+      ${data.customerPhone || ""},
+      ${notesJson},
       COALESCE((
         SELECT COUNT(*)::int + 1 FROM bookings 
         WHERE slot_id = ${data.slotId} AND booking_date = ${data.bookingDate} AND status = 'confirmed'

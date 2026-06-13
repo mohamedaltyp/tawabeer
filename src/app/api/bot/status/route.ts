@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAdminPassword } from "@/lib/auth";
 
 const BOT_TOKEN = process.env.BOT_TOKEN || "";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const token = searchParams.get("token");
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "dawer-admin-2026";
-  if (token !== ADMIN_PASSWORD) {
+  const token = req.headers.get("x-admin-password") || searchParams.get("token");
+  const adminPassword = getAdminPassword();
+  if (!adminPassword || token !== adminPassword) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const checks: Record<string, any> = {};

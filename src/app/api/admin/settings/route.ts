@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAppSetting, setAppSetting } from "@/lib/db";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { requireAdmin } from "@/lib/auth";
 
 const limiter = createRateLimiter({ windowMs: 60_000, max: 20 }); // 20 req/min
 
 function verifyAdmin(req: NextRequest): boolean {
-  const token = req.headers.get("x-admin-token");
-  const adminPassword = process.env.ADMIN_PASSWORD || "dawer-admin-2026";
-  return token === adminPassword;
+  return requireAdmin(req).ok;
 }
 
 function rateLimitOrUnauthorized(req: NextRequest): NextResponse | null {

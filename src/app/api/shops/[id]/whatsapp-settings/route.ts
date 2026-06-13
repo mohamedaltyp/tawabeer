@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getShop, getQueueSettings, updateQueueSettings } from "@/lib/db";
+import { requireOwner } from "@/lib/auth";
 
 export async function GET(
   req: NextRequest,
@@ -27,6 +28,9 @@ export async function PATCH(
   if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
   const body = await req.json();
+  const auth = await requireOwner(req, shop, body.owner_password);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
   const { whatsapp_enabled, whatsapp_number, whatsapp_access_token, whatsapp_business_account_id } = body;
 
   // Validate: if enabling, need a phone number

@@ -5,6 +5,30 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme";
 
+const ICONS: Record<string, React.ReactNode> = {
+  listNumbers: (<><path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="M16 3l-2 18"/></>),
+  scan: (<><path d="M4 7V5a1 1 0 0 1 1-1h2"/><path d="M17 4h2a1 1 0 0 1 1 1v2"/><path d="M20 17v2a1 1 0 0 1-1 1h-2"/><path d="M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M5 12h14"/></>),
+  sparkles: (<><path d="M12 3l1.9 4.8L18.7 9l-4.8 1.9L12 15.7l-1.9-4.8L5.3 9l4.8-1.2L12 3z"/><path d="M19 14l.7 2L22 17l-2 .7L19 20l-.7-2L16 17l2-.7L19 14z"/></>),
+  store: (<><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M4 9h16"/><path d="M9 20v-6h6v6"/></>),
+  search: (<><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></>),
+  bolt: (<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>),
+  chart: (<><path d="M4 4v16h16"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></>),
+  smartphone: (<><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></>),
+  bell: (<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></>),
+  trending: (<><path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/></>),
+  pin: (<><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></>),
+  check: (<><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></>),
+  shield: (<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>),
+};
+
+function Icon({ name, size = 24, className = "" }: { name: string; size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      {ICONS[name]}
+    </svg>
+  );
+}
+
 interface Shop {
   id: string;
   name: string;
@@ -93,7 +117,7 @@ export default function HomePage() {
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 h-16">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl">🔢</span>
+            <span className="text-indigo-700"><Icon name="listNumbers" size={26} /></span>
             <span className="text-xl font-bold text-indigo-700">طوابير</span>
           </Link>
           <div className="flex items-center gap-3">
@@ -133,7 +157,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE4YzEuNjU3IDAgMy0xLjM0MyAzLTNzLTEuMzQzLTMtMy0zLTMgMS4zNDMtMyAzIDEuMzQzIDMgMyAzem0tMTIgMGMxLjY1NyAwIDMtMS4zNDMgMy0zcy0xLjM0My0zLTMtMy0zIDEuMzQzLTMgMyAxLjM0MyAzIDMgM3oiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30"></div>
         <div className="relative mx-auto max-w-6xl px-4 py-24 text-center">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
-            ودّع الطوابير ✨
+            <span className="inline-flex items-center justify-center gap-3">ودّع الطوابير <Icon name="sparkles" size={40} className="text-amber-300" /></span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-indigo-100">
             نظام إدارة قوائم الانتظار الرقمي — زبونك ياخذ رقمه من qr كود،
@@ -144,13 +168,13 @@ export default function HomePage() {
               href="/dashboard"
               className="rounded-2xl bg-white px-8 py-4 text-lg font-semibold text-indigo-700 hover:bg-indigo-50 transition-all shadow-xl hover:shadow-2xl"
             >
-              👨‍💼 ابدأ بإدارة محلك
+              <span className="inline-flex items-center gap-2"><Icon name="store" size={22} /> ابدأ بإدارة محلك</span>
             </Link>
             <Link
               href="#shops"
               className="rounded-2xl border-2 border-white/30 bg-white/10 px-8 py-4 text-lg font-semibold text-white hover:bg-white/20 backdrop-blur-sm transition-all"
             >
-              🔍 ابحث عن محل
+              <span className="inline-flex items-center gap-2"><Icon name="search" size={22} /> ابحث عن محل</span>
             </Link>
           </div>
         </div>
@@ -161,12 +185,12 @@ export default function HomePage() {
         <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white mb-12">كيف يعمل النظام؟</h2>
         <div className="grid gap-8 sm:grid-cols-3">
           {[
-            { icon: "📱", title: "1. امسح QR", desc: "الزبون يمسح QR الخاص بمحلك" },
-            { icon: "🔢", title: "2. خذ رقمك", desc: "يحصل على رقم دوره ووقت الانتظار التقديري" },
-            { icon: "✅", title: "3. انتظر طوابير", desc: "يصل له إشعار لحظة قدوم دوره" },
+            { icon: "scan", title: "1. امسح QR", desc: "الزبون يمسح QR الخاص بمحلك" },
+            { icon: "listNumbers", title: "2. خذ رقمك", desc: "يحصل على رقم دوره ووقت الانتظار التقديري" },
+            { icon: "check", title: "3. انتظر طوابير", desc: "يصل له إشعار لحظة قدوم دوره" },
           ].map((item) => (
             <div key={item.title} className="rounded-2xl bg-white dark:bg-gray-800 p-8 text-center shadow-sm hover:shadow-md transition-all border border-gray-100 dark:border-gray-700">
-              <div className="text-5xl mb-4">{item.icon}</div>
+              <div className="mb-4 flex justify-center text-indigo-600"><Icon name={item.icon} size={46} /></div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{item.title}</h3>
               <p className="text-gray-500 dark:text-gray-400">{item.desc}</p>
             </div>
@@ -180,15 +204,15 @@ export default function HomePage() {
           <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white mb-12">مزايا النظام</h2>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { icon: "⚡", title: "وقت حقيقي", desc: "تحديثات لحظية عبر Server-Sent Events" },
-              { icon: "📊", title: "إحصائيات", desc: "تحليلات أوقات الذروة ومتوسط الانتظار" },
-              { icon: "🎯", title: "QR كود مخصص", desc: "كل محل له QR كود خاص قابل للطباعة" },
-              { icon: "📱", title: "بدون تحميل", desc: "تطبيق ويب — لا يحتاج تحميل أي برنامج" },
-              { icon: "🔔", title: "إشعارات فورية", desc: "الزبون يعرف لحظة قدوم دوره" },
-              { icon: "📈", title: "تقارير", desc: "إحصائيات يومية وأسبوعية وشهرية" },
+              { icon: "bolt", title: "وقت حقيقي", desc: "تحديثات لحظية عبر Server-Sent Events" },
+              { icon: "chart", title: "إحصائيات", desc: "تحليلات أوقات الذروة ومتوسط الانتظار" },
+              { icon: "scan", title: "QR كود مخصص", desc: "كل محل له QR كود خاص قابل للطباعة" },
+              { icon: "smartphone", title: "بدون تحميل", desc: "تطبيق ويب — لا يحتاج تحميل أي برنامج" },
+              { icon: "bell", title: "إشعارات فورية", desc: "الزبون يعرف لحظة قدوم دوره" },
+              { icon: "trending", title: "تقارير", desc: "إحصائيات يومية وأسبوعية وشهرية" },
             ].map((f) => (
               <div key={f.title} className="flex items-start gap-4 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-5">
-                <span className="text-2xl shrink-0">{f.icon}</span>
+                <span className="shrink-0 text-indigo-600 mt-0.5"><Icon name={f.icon} size={26} /></span>
                 <div>
                   <h3 className="font-bold text-gray-900 dark:text-white">{f.title}</h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{f.desc}</p>
@@ -208,13 +232,16 @@ export default function HomePage() {
 
         {/* Search */}
         <div className="mx-auto max-w-md mb-8">
-          <input
-            type="text"
-            placeholder="🔍 ابحث عن محل... (عربي / English)"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-3 text-right text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/30 transition-all"
-          />
+          <div className="relative">
+            <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-400"><Icon name="search" size={20} /></span>
+            <input
+              type="text"
+              placeholder="ابحث عن محل... (عربي / English)"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 pr-12 pl-5 py-3 text-right text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/30 transition-all"
+            />
+          </div>
         </div>
 
         {!loading && search && (
@@ -252,13 +279,13 @@ export default function HomePage() {
                       </span>
                     )}
                   </div>
-                  <span className="text-2xl">🏪</span>
+                  <span className="text-indigo-600"><Icon name="store" size={26} /></span>
                 </div>
                 {shop.description && (
                   <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{shop.description}</p>
                 )}
                 {shop.address && (
-                  <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">📍 {shop.address}</p>
+                  <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500"><Icon name="pin" size={13} /> {shop.address}</p>
                 )}
                 <div className="mt-4 flex items-center justify-between">
                   <span className="text-xs text-gray-400 dark:text-gray-500">
@@ -278,7 +305,7 @@ export default function HomePage() {
       <footer className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
         <p>© 2026 طوابير — كل الحقوق محفوظة</p>
         <Link href="/admin" className="mt-2 inline-block text-xs text-gray-300 dark:text-gray-600 hover:text-indigo-400 transition-colors">
-          👑 المشرف
+          <span className="inline-flex items-center gap-1"><Icon name="shield" size={13} /> المشرف</span>
         </Link>
       </footer>
     </div>

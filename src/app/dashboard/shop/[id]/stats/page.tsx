@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { Icon } from "@/components/Icon";
 
 function parseDBDate(dateStr: string): Date {
   if (dateStr && !dateStr.endsWith("Z")) return new Date(dateStr + "Z");
@@ -232,7 +233,7 @@ export default function StatsPage() {
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
           <Link href={`/dashboard/shop/${id}`} className="text-gray-400 hover:text-gray-600 transition-colors">
-            <span className="text-xl">←</span>
+            <span className="text-cyan-300"><Icon name="arrowLeft" size={20} /></span>
           </Link>
           <div>
             <h1 className="text-xl font-bold text-gray-900">{shop?.name || "المحل"}</h1>
@@ -243,27 +244,27 @@ export default function StatsPage() {
         {/* ─── Today's Key Metrics ─── */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
           <div className="card p-4 text-center">
-            <span className="text-2xl block mb-1">📅</span>
+            <span className="mb-1 flex justify-center text-cyan-300"><Icon name="calendar" size={24} /></span>
             <p className="text-2xl font-black text-gray-900">{stats?.today_total || 0}</p>
             <p className="text-xs text-gray-400">إجمالي اليوم</p>
           </div>
           <div className="card p-4 text-center">
-            <span className="text-2xl block mb-1">🟢</span>
+            <span className="mb-1 flex justify-center text-emerald-300"><Icon name="checkCircle" size={24} /></span>
             <p className="text-2xl font-black text-amber-600">{todayWaiting}</p>
             <p className="text-xs text-gray-400">في الانتظار</p>
           </div>
           <div className="card p-4 text-center">
-            <span className="text-2xl block mb-1">✅</span>
+            <span className="mb-1 flex justify-center text-emerald-300"><Icon name="checkCircle" size={24} /></span>
             <p className="text-2xl font-black text-emerald-600">{todayCompleted}</p>
             <p className="text-xs text-gray-400">مكتمل</p>
           </div>
           <div className="card p-4 text-center">
-            <span className="text-2xl block mb-1">❌</span>
+            <span className="mb-1 flex justify-center text-red-300"><Icon name="x" size={24} /></span>
             <p className="text-2xl font-black text-red-500">{todayCancelled}</p>
             <p className="text-xs text-gray-400">ملغي</p>
           </div>
           <div className="card p-4 text-center">
-            <span className="text-2xl block mb-1">⭐</span>
+            <span className="mb-1 flex justify-center text-amber-300"><Icon name="star" size={24} /></span>
             <p className="text-2xl font-black text-amber-500">{ratingData?.average?.toFixed(1) || "—"}</p>
             <p className="text-xs text-gray-400">تقييم الزبائن {ratingData?.count ? `(${ratingData.count})` : ""}</p>
           </div>
@@ -285,7 +286,7 @@ export default function StatsPage() {
 
           {/* Avg Service */}
           <div className="card p-6 flex flex-col items-center justify-center">
-            <span className="text-4xl mb-2">⚡</span>
+            <span className="mb-2 flex justify-center text-cyan-300"><Icon name="bolt" size={36} /></span>
             <p className="text-3xl font-black text-indigo-600">{avgServiceTime ?? "—"}</p>
             <p className="text-sm text-gray-400 mt-1">متوسط الخدمة (دقيقة)</p>
           </div>
@@ -294,7 +295,7 @@ export default function StatsPage() {
         {/* ─── Weekly Chart ─── */}
         <div className="card p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">📊 آخر 7 أيام</h2>
+            <h2 className="text-lg font-bold text-gray-900"><Icon name="chart" size={18} className="inline -mt-0.5" /> آخر 7 أيام</h2>
             <div className="flex items-center gap-4 text-xs text-gray-400">
               <span>الإجمالي: <b className="text-gray-700">{weeklyTotal}</b></span>
               <span>المتوسط: <b className="text-gray-700">{weeklyAvg}</b>/يوم</span>
@@ -306,14 +307,14 @@ export default function StatsPage() {
         {/* ─── Peak Hours ─── */}
         {peakHoursData.length > 0 && (
           <div className="card p-6 mb-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">🕐 أوقات الذروة</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-4"><Icon name="clock" size={18} className="inline -mt-0.5" /> أوقات الذروة</h2>
             <BarChart data={peakHoursData} maxVal={maxPeakVal} />
           </div>
         )}
 
         {/* ─── Status Distribution ─── */}
         <div className="card p-6 mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">📈 توزيع الحالات</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-4"><Icon name="trending" size={18} className="inline -mt-0.5" /> توزيع الحالات</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {statusDistribution.map((s) => (
               <div key={s.label} className="text-center">
@@ -334,7 +335,7 @@ export default function StatsPage() {
 
         {/* ─── Recall Stats ─── */}
         <div className="card p-6 mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">🔄 إحصائيات إعادة النداء</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-4"><Icon name="refresh" size={18} className="inline -mt-0.5" /> إحصائيات إعادة النداء</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="text-center p-4 rounded-xl bg-amber-50">
               <p className="text-3xl font-black text-amber-600">{recallStats.total}</p>
@@ -350,7 +351,7 @@ export default function StatsPage() {
         {/* ─── Top Customers ─── */}
         {topCustomers.length > 0 && (
           <div className="card p-6 mb-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">👥 أكثر العملاء تكراراً</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-4"><Icon name="users" size={18} className="inline -mt-0.5" /> أكثر العملاء تكراراً</h2>
             <div className="space-y-3">
               {topCustomers.map((c, i) => (
                 <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
@@ -373,7 +374,7 @@ export default function StatsPage() {
 
         {/* ─── Today Summary ─── */}
         <div className="card p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">📋 ملخص اليوم</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-4"><Icon name="copy" size={18} className="inline -mt-0.5" /> ملخص اليوم</h2>
           <div className="space-y-3">
             <div className="flex justify-between items-center py-2 border-b border-gray-50">
               <span className="text-sm text-gray-500">إجمالي الزبائن</span>

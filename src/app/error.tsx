@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from "@/components/Icon";
 
 import { useEffect } from "react";
 
@@ -18,7 +19,7 @@ export default function Error({
       <div className="w-full max-w-md text-center">
         {/* Icon */}
         <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-red-50">
-          <span className="text-5xl">⚠️</span>
+          <span className="text-amber-300"><Icon name="warning" size={48} /></span>
         </div>
 
         {/* Title */}

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Icon, categoryIcon } from "@/components/Icon";
 
 function parseDBDate(dateStr: string): Date {
   if (dateStr && !dateStr.endsWith("Z")) return new Date(dateStr + "Z");
@@ -214,7 +215,7 @@ export default function ShopDashboard() {
         setTimeout(() => setNotification(null), 3000);
       }
     } catch {
-      setNotification({ number: 0, name: "❌ حدث خطأ", type: "error" });
+      setNotification({ number: 0, name: "حدث خطأ", type: "error" });
       setTimeout(() => setNotification(null), 3000);
     }
     setActionLoading(null);
@@ -261,9 +262,9 @@ export default function ShopDashboard() {
               ? "bg-gradient-to-r from-amber-500 to-orange-500"
               : "bg-gradient-to-r from-green-500 to-emerald-500"
           }`}>
-            {notification.type === "call" && <p className="text-sm opacity-80 mb-1">🔔 تمت المناداة</p>}
-            {notification.type === "recall" && <p className="text-sm opacity-80 mb-1">🔔🔔 إعادة نداء</p>}
-            {notification.type === "error" && <p className="text-sm opacity-80 mb-1">⚠️ خطأ</p>}
+            {notification.type === "call" && <p className="text-sm opacity-80 mb-1"><Icon name="bell" size={13} className="inline -mt-0.5" /> تمت المناداة</p>}
+            {notification.type === "recall" && <p className="text-sm opacity-80 mb-1"><Icon name="bell" size={13} className="inline -mt-0.5" /> إعادة نداء</p>}
+            {notification.type === "error" && <p className="text-sm opacity-80 mb-1"><Icon name="warning" size={13} className="inline -mt-0.5" /> خطأ</p>}
             {notification.number > 0 && (
               <p className="text-4xl font-black">{notification.number}</p>
             )}
@@ -277,10 +278,10 @@ export default function ShopDashboard() {
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 h-16">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors">
-              ←
+              <Icon name="arrowLeft" size={16} />
             </Link>
             <div className="flex items-center gap-2">
-              <span className="text-xl">{getCategoryEmoji(shop.category)}</span>
+              <span className="text-cyan-300"><Icon name={categoryIcon(shop.category)} size={22} /></span>
               <div>
                 <h1 className="text-base font-bold text-gray-900 leading-tight">{shop.name}</h1>
                 <p className="text-[10px] text-gray-400">إدارة الطابور</p>
@@ -295,14 +296,14 @@ export default function ShopDashboard() {
               }`}
               title={soundEnabled ? "إيقاف الصوت" : "تشغيل الصوت"}
             >
-              {soundEnabled ? "🔔" : "🔕"}
+              <Icon name={soundEnabled ? "bell" : "bellOff"} size={16} />
             </button>
             <button
               onClick={() => setShowQR(true)}
               className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center text-sm text-gray-600 hover:bg-gray-200 transition-colors"
               title="QR Code"
             >
-              📱
+              <Icon name="smartphone" size={16} />
             </button>
             <button
               onClick={() => setShowSettings(!showSettings)}
@@ -311,21 +312,21 @@ export default function ShopDashboard() {
               }`}
               title="الإعدادات"
             >
-              ⚙️
+              <Icon name="gear" size={16} />
             </button>
             <Link
               href={`/dashboard/shop/${id}/stats`}
               className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center text-sm text-gray-600 hover:bg-gray-200 transition-colors"
               title="الإحصائيات"
             >
-              📊
+              <Icon name="chart" size={16} />
             </Link>
             <Link
               href={`/dashboard/shop/${id}/bookings`}
               className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center text-sm text-gray-600 hover:bg-gray-200 transition-colors"
               title="الحجوزات"
             >
-              📅
+              <Icon name="calendar" size={16} />
             </Link>
           </div>
         </div>
@@ -335,7 +336,7 @@ export default function ShopDashboard() {
       {!isOpen && (
         <div className="bg-gradient-to-r from-red-500 to-rose-600 text-white text-center py-3 px-4">
           <p className="font-bold text-sm flex items-center justify-center gap-2">
-            <span>🔴</span>
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-400" />
             <span>المحل مغلق — العملاء لا يستطيعون حجز أدوار جديدة</span>
           </p>
         </div>
@@ -375,7 +376,7 @@ export default function ShopDashboard() {
                     : "bg-white text-gray-600 border border-gray-200 hover:border-indigo-300"
                 }`}
               >
-                🪟 {counter.name}
+                <Icon name="window" size={14} className="inline -mt-0.5" /> {counter.name}
               </button>
             ))}
             <Link
@@ -388,7 +389,7 @@ export default function ShopDashboard() {
         )}
         {counters.length === 1 && (
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-sm font-bold text-gray-500">🪟 {counters[0]?.name || "شباك 1"}</span>
+            <span className="text-sm font-bold text-gray-500"><Icon name="window" size={14} className="inline -mt-0.5" /> {counters[0]?.name || "شباك 1"}</span>
           </div>
         )}
 
@@ -398,7 +399,7 @@ export default function ShopDashboard() {
           disabled={calling || waiting.length === 0}
           className={`w-full rounded-2xl py-6 text-xl font-black text-white transition-all mb-6 relative overflow-hidden ${
             waiting.length > 0
-              ? "bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-[length:200%_100%] hover:bg-[position:100%_0] shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 active:scale-[0.98]"
+              ? "bg-gradient-to-r from-cyan-500 via-violet-600 to-cyan-500 bg-[length:200%_100%] hover:bg-[position:100%_0] shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 active:scale-[0.98]"
               : "bg-gray-200 text-gray-400 cursor-not-allowed"
           }`}
           style={waiting.length > 0 ? { animation: "gradientShift 3s ease infinite" } : {}}
@@ -410,7 +411,7 @@ export default function ShopDashboard() {
             </span>
           ) : waiting.length > 0 ? (
             <span className="flex items-center justify-center gap-3">
-              <span className="text-2xl">🔔</span>
+              <span className="text-2xl"><Icon name="bell" size={16} /></span>
               <span>نادِ التالي — رقم {waiting[0].number}</span>
               {waiting[0].customer_name && (
                 <span className="text-sm font-medium opacity-80">({waiting[0].customer_name})</span>
@@ -418,7 +419,7 @@ export default function ShopDashboard() {
             </span>
           ) : (
             <span className="flex items-center justify-center gap-2">
-              <span>✅</span>
+              <Icon name="checkCircle" size={16} />
               <span>لا يوجد انتظار</span>
             </span>
           )}
@@ -428,14 +429,14 @@ export default function ShopDashboard() {
         {showSettings && (
           <div className="card p-5 mb-6 animate-slide-down">
             <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <span>⚙️</span>
+              <span><Icon name="gear" size={16} /></span>
               <span>الإعدادات السريعة</span>
             </h3>
 
             {/* Avg Service Time */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                ⏱️ متوسط وقت الخدمة: <span className="font-bold text-indigo-600">{avgServiceMinutes} دقيقة</span>
+                <Icon name="clock" size={14} className="inline -mt-0.5" /> متوسط وقت الخدمة: <span className="font-bold text-indigo-600">{avgServiceMinutes} دقيقة</span>
               </label>
               <input
                 type="range"
@@ -458,7 +459,7 @@ export default function ShopDashboard() {
                       headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
                       body: JSON.stringify({ avg_service_minutes: avgServiceMinutes }),
                     });
-                    setNotification({ number: 0, name: "✅ تم حفظ وقت الانتظار", type: "call" });
+                    setNotification({ number: 0, name: "تم حفظ وقت الانتظار", type: "call" });
                     setTimeout(() => setNotification(null), 3000);
                   } catch {}
                   setSavingWaitTime(false);
@@ -466,14 +467,14 @@ export default function ShopDashboard() {
                 disabled={savingWaitTime}
                 className="mt-2 w-full rounded-xl bg-indigo-600 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50 transition-all"
               >
-                {savingWaitTime ? "جاري الحفظ..." : "💾 حفظ"}
+                {savingWaitTime ? "جاري الحفظ..." : "حفظ"}
               </button>
             </div>
 
             {/* WhatsApp */}
             <div className="border-t border-gray-100 pt-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-700">💬 إشعارات واتساب</span>
+                <span className="text-sm font-medium text-gray-700"><Icon name="message" size={16} /> إشعارات واتساب</span>
                 <button
                   onClick={async () => {
                     const newVal = !whatsappEnabled;
@@ -514,7 +515,7 @@ export default function ShopDashboard() {
           <div className="card overflow-hidden mb-6">
             <div className="bg-indigo-50 px-5 py-3 border-b border-indigo-100 flex items-center justify-between">
               <h2 className="font-bold text-indigo-700 flex items-center gap-2">
-                <span>🟢</span>
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400" />
                 <span>قائمة الانتظار</span>
               </h2>
               <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-full">{waiting.length}</span>
@@ -533,8 +534,8 @@ export default function ShopDashboard() {
                     <div>
                       <p className="font-medium text-gray-900 text-sm">{entry.customer_name || "بدون اسم"}</p>
                       <div className="flex items-center gap-2 text-xs text-gray-400">
-                        <span>⏱️ {timeSince(entry.created_at)}</span>
-                        {entry.customer_phone && <span>📱 {entry.customer_phone}</span>}
+                        <span><Icon name="clock" size={14} className="inline -mt-0.5" /> {timeSince(entry.created_at)}</span>
+                        {entry.customer_phone && <span><Icon name="smartphone" size={16} /> {entry.customer_phone}</span>}
                       </div>
                     </div>
                   </div>
@@ -544,14 +545,14 @@ export default function ShopDashboard() {
                       disabled={actionLoading === entry.id}
                       className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-100 transition-colors"
                     >
-                      ✅ تم
+                      <Icon name="checkCircle" size={14} className="inline -mt-0.5" /> تم
                     </button>
                     <button
                       onClick={() => handleAction(entry.id, "cancel")}
                       disabled={actionLoading === entry.id}
                       className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-100 transition-colors"
                     >
-                      ❌ إلغاء
+                      <Icon name="x" size={14} className="inline -mt-0.5" /> إلغاء
                     </button>
                   </div>
                 </div>
@@ -565,7 +566,7 @@ export default function ShopDashboard() {
           <div className="card overflow-hidden mb-6">
             <div className="bg-amber-50 px-5 py-3 border-b border-amber-100 flex items-center justify-between">
               <h2 className="font-bold text-amber-700 flex items-center gap-2">
-                <span>🔔</span>
+                <span><Icon name="bell" size={16} /></span>
                 <span>تمت مناداتهم</span>
               </h2>
               <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">{called.length}</span>
@@ -582,7 +583,7 @@ export default function ShopDashboard() {
                       <div className="flex items-center gap-2">
                         {(entry.recall_count ?? 0) > 0 && (
                           <span className="text-xs text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full font-medium">
-                            🔔 {(entry.recall_count ?? 0)}× إعادة نداء
+                            <Icon name="bell" size={16} /> {(entry.recall_count ?? 0)}× إعادة نداء
                           </span>
                         )}
                       </div>
@@ -598,14 +599,14 @@ export default function ShopDashboard() {
                           : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
                       }`}
                     >
-                      {actionLoading === entry.id ? "..." : "🔄 نادِ مرة أخرى"}
+                      {actionLoading === entry.id ? "..." : "نادِ مرة أخرى"}
                     </button>
                     <button
                       onClick={() => handleAction(entry.id, "complete")}
                       disabled={actionLoading === entry.id}
                       className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-100 transition-colors"
                     >
-                      ✅ تم
+                      <Icon name="checkCircle" size={14} className="inline -mt-0.5" /> تم
                     </button>
                   </div>
                 </div>
@@ -619,7 +620,7 @@ export default function ShopDashboard() {
           <div className="card overflow-hidden">
             <div className="bg-gray-50 px-5 py-3 border-b border-gray-100">
               <h2 className="font-bold text-gray-700 text-sm flex items-center gap-2">
-                <span>📋</span>
+                <span><Icon name="copy" size={16} /></span>
                 <span>آخر المنتهين</span>
               </h2>
             </div>
@@ -631,7 +632,7 @@ export default function ShopDashboard() {
                     <p className="text-sm text-gray-600">{entry.customer_name || "بدون اسم"}</p>
                   </div>
                   <span className={`text-xs font-medium ${entry.status === "completed" ? "text-emerald-500" : "text-red-400"}`}>
-                    {entry.status === "completed" ? "✅ مكتمل" : "❌ ملغي"}
+                    {entry.status === "completed" ? "مكتمل" : "ملغي"}
                   </span>
                 </div>
               ))}
@@ -642,14 +643,14 @@ export default function ShopDashboard() {
         {/* Empty State */}
         {waiting.length === 0 && called.length === 0 && completed.length === 0 && (
           <div className="text-center py-16">
-            <div className="text-7xl mb-6 animate-float">🛋️</div>
+            <div className="mb-6 flex justify-center text-cyan-300 animate-float"><Icon name="users" size={64} /></div>
             <p className="text-xl font-bold text-gray-900 mb-2">لا يوجد زبائن حتى الآن</p>
             <p className="text-sm text-gray-400 mb-6">شارك QR كود محلك ليبدأ الزبائن في الحجز</p>
             <button
               onClick={() => setShowQR(true)}
               className="btn-primary inline-flex items-center gap-2"
             >
-              <span>📱</span>
+              <span><Icon name="smartphone" size={16} /></span>
               <span>عرض QR Code</span>
             </button>
           </div>
@@ -661,8 +662,8 @@ export default function ShopDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowQR(false)}>
           <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl animate-scale-in text-center" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900">📱 QR Code المحل</h3>
-              <button onClick={() => setShowQR(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600">✕</button>
+              <h3 className="text-lg font-bold text-gray-900"><Icon name="smartphone" size={16} /> QR Code المحل</h3>
+              <button onClick={() => setShowQR(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600"><Icon name="x" size={18} /></button>
             </div>
             <p className="text-sm text-gray-400 mb-4">شارك هذا الكود مع عملائك لحجز الأدوار</p>
             <div className="inline-block rounded-2xl bg-white border-2 border-gray-100 p-4 mb-4">
@@ -677,12 +678,12 @@ export default function ShopDashboard() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(`https://tawabeer-mu.vercel.app/shop/${id}`);
-                  setNotification({ number: 0, name: "✅ تم نسخ الرابط", type: "call" });
+                  setNotification({ number: 0, name: "تم نسخ الرابط", type: "call" });
                   setTimeout(() => setNotification(null), 2000);
                 }}
                 className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition-all"
               >
-                📋 نسخ الرابط
+                <Icon name="copy" size={16} /> نسخ الرابط
               </button>
               <button
                 onClick={() => setShowQR(false)}

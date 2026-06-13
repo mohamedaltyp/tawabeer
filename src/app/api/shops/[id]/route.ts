@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getShop, updateShop, getActiveQueue, getQueueEntries, getQueueStats, getQueueSettings, sanitizeShop, sanitizeText, ensureMigrated } from "@/lib/db";
-import { comparePassword } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 
 export async function GET(
   req: NextRequest,
@@ -27,22 +27,17 @@ export async function PUT(
   await ensureMigrated();
   const { id } = await params;
   const body = await req.json();
-  
-  // Auth: require owner_password or admin password
-  if (!body.owner_password) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
-  
+
   const shopRaw = await getShop(id);
   if (!shopRaw) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
-  
-  const isAdmin = body.owner_password === (process.env.ADMIN_PASSWORD || "dawer-admin-2026");
-  if (!isAdmin && shopRaw.owner_password && !(await comparePassword(body.owner_password, shopRaw.owner_password))) {
-    return NextResponse.json({ error: "Invalid password" }, { status: 403 });
-  }
-  
+
+  // Auth: session cookie (preferred) or legacy owner password
+  const auth = await requireOwner(req, shopRaw, body.owner_password);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
   // Remove owner_password from update data
-  const { owner_password, ...updateData } = body;
+  delete body.owner_password;
+  const updateData = body;
   
   // Sanitize text fields
   if (updateData.name) updateData.name = sanitizeText(updateData.name);

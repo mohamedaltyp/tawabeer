@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ shops });
   } catch (e: any) {
     console.error("GET /api/shops error:", e);
-    return NextResponse.json({ error: e.message, stack: e.stack?.split("\n").slice(0, 5).join("\n") }, { status: 500 });
+    return NextResponse.json({ error: "حدث خطأ في تحميل المحلات" }, { status: 500 });
   }
 }
 
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     const shop = await sanitizeShop(await createShop(body));
     return NextResponse.json({ shop }, { status: 201 });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error("POST /api/shops error:", e);
+    return NextResponse.json({ error: "تعذر إنشاء المحل. تحقق من البيانات وحاول مجدداً." }, { status: 500 });
   }
 }

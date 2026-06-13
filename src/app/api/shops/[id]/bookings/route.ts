@@ -10,7 +10,7 @@ import {
   getQueueSettings,
   ensureMigrated,
 } from "@/lib/db";
-import { isOwnerPasswordValid } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 
 // GET is public (customers need to see available slots and make bookings)
 export async function GET(
@@ -74,6 +74,7 @@ export async function POST(
       customerName: body.customerName,
       customerPhone: body.customerPhone,
       notes: body.notes,
+      bookingTime: body.bookingTime,
     });
 
     if ("error" in result) {
@@ -101,21 +102,15 @@ export async function PATCH(
   if (!shop)
     return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
-  // Verify owner password
-  const headerPassword = req.headers.get("x-owner-password");
   let body: Record<string, unknown> = {};
-
   try {
-    const parsed = await req.json();
-    body = parsed;
+    body = await req.json();
   } catch {
     // No body
   }
 
-  const password = headerPassword || (body.owner_password as string);
-  if (!password || !(await isOwnerPasswordValid(password, shop.id, shop.owner_phone || ""))) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const auth = await requireOwner(req, shop, body.owner_password as string | undefined);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   let result;
   switch (body.action) {

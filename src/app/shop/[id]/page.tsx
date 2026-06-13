@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Icon, categoryIcon } from "@/components/Icon";
 
 interface ShopData {
   id: string;
@@ -209,22 +210,22 @@ export default function ShopPage() {
             } catch {}
             if (!isRecall) {
               if ("Notification" in window && Notification.permission === "granted") {
-                new Notification("🔔 حان طوابير!", {
+                new Notification("حان طوابير!", {
                   body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
                   tag: "turn-called",
                 });
               }
-              document.title = `🔔 حان طوابير! - ${shop?.name || "المحل"}`;
+              document.title = `حان طوابير! - ${shop?.name || "المحل"}`;
             } else {
               if ("Notification" in window && Notification.permission === "granted") {
-                new Notification("🔔🔔 إعادة نداء!", {
+                new Notification("إعادة نداء!", {
                   body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
                   tag: `turn-called-${Date.now()}`,
                 });
               }
-              document.title = `🔔🔔 إعادة نداء! رقم ${found.number}`;
+              document.title = `إعادة نداء! رقم ${found.number}`;
               setTimeout(() => {
-                document.title = `🔔 حان طوابير! - ${shop?.name || "المحل"}`;
+                document.title = `حان طوابير! - ${shop?.name || "المحل"}`;
               }, 3000);
             }
           }
@@ -433,7 +434,7 @@ export default function ShopPage() {
   // ─── Loading State ───
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6C3CE1 100%)" }}>
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #67E8F9 100%)" }}>
         <div className="text-center animate-fade-in">
           <div className="relative mx-auto mb-6" style={{ width: 80, height: 80 }}>
             <div className="absolute inset-0 rounded-full border-4 border-white/20"></div>
@@ -448,8 +449,8 @@ export default function ShopPage() {
   // ─── Not Found ───
   if (!shop) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6C3CE1 100%)" }}>
-        <div className="text-8xl animate-float">😕</div>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #67E8F9 100%)" }}>
+        <div className="mb-2 flex justify-center text-cyan-300 animate-float"><Icon name="warning" size={76} /></div>
         <h1 className="text-2xl font-bold text-white">المحل غير موجود</h1>
         <p className="text-white/60 text-center">تأكد من الرابط وحاول مرة أخرى</p>
         <Link
@@ -482,12 +483,12 @@ export default function ShopPage() {
           <div className="animate-bounce-in mb-8">
             <div className="relative">
               <div className="w-28 h-28 rounded-full bg-white/15 backdrop-blur-md flex items-center justify-center border-2 border-white/20 animate-glow">
-                <span className="text-6xl animate-wave">🎉</span>
+                <span className="text-6xl animate-wave"><Icon name="sparkles" size={52} /></span>
               </div>
               {/* Sparkles */}
-              <div className="absolute -top-2 -right-2 text-2xl animate-float" style={{ animationDelay: "0.3s" }}>✨</div>
-              <div className="absolute -bottom-1 -left-3 text-xl animate-float" style={{ animationDelay: "0.7s" }}>⭐</div>
-              <div className="absolute top-0 -left-4 text-lg animate-float" style={{ animationDelay: "1s" }}>🎊</div>
+              <div className="absolute -top-2 -right-2 text-2xl animate-float" style={{ animationDelay: "0.3s" }}><Icon name="sparkles" size={20} /></div>
+              <div className="absolute -bottom-1 -left-3 text-xl animate-float" style={{ animationDelay: "0.7s" }}><Icon name="star" size={20} className="text-amber-300" /></div>
+              <div className="absolute top-0 -left-4 text-lg animate-float" style={{ animationDelay: "1s" }}><Icon name="sparkles" size={16} /></div>
             </div>
           </div>
 
@@ -511,7 +512,7 @@ export default function ShopPage() {
 
           {(myEntry.recall_count ?? 0) > 0 && (
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm px-4 py-2 mb-4 animate-fade-in" style={{ animationDelay: "0.4s" }}>
-              <span className="text-sm">🔔</span>
+              <span className="text-sm"><Icon name="bell" size={16} /></span>
               <span className="text-sm text-white/80">
                 تمت مناداتك {(myEntry.recall_count ?? 0) + 1} مرات
               </span>
@@ -520,20 +521,20 @@ export default function ShopPage() {
 
           {/* Timer */}
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm px-5 py-2.5 mb-8">
-            <span className="text-sm">⏱️</span>
+            <span className="text-sm"><Icon name="clock" size={18} /></span>
             <span className="text-sm text-emerald-200 font-medium">{formatElapsed(elapsed)}</span>
           </div>
 
           {/* Shop Info Card */}
           <div className="w-full max-w-sm glass-dark rounded-3xl p-6 mb-8 animate-slide-up" style={{ animationDelay: "0.5s" }}>
             <div className="flex items-center gap-3 mb-3">
-              <span className="text-3xl">{getCategoryEmoji(shop.category)}</span>
+              <span className="text-cyan-300"><Icon name={categoryIcon(shop.category)} size={30} /></span>
               <div className="text-right">
                 <p className="text-white font-bold text-lg">{shop.name}</p>
                 {shop.address && (
                   <p className="text-white/60 text-sm flex items-center gap-1 justify-end">
                     <span>{shop.address}</span>
-                    <span>📍</span>
+                    <span><Icon name="pin" size={14} /></span>
                   </p>
                 )}
               </div>
@@ -559,18 +560,18 @@ export default function ShopPage() {
   // ─── Completed View (Rating Modal) ───
   if (myEntry && myEntry.status === "completed" && showRatingModal) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6C3CE1 100%)" }}>
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #67E8F9 100%)" }}>
         <div className="w-full max-w-sm">
           <div className="card p-8 text-center animate-scale-in">
             {ratingSubmitted ? (
               <div className="animate-bounce-in">
-                <span className="text-6xl block mb-4">🎉</span>
+                <span className="text-6xl block mb-4"><Icon name="sparkles" size={52} /></span>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">شكراً لتقييمك!</h2>
                 <p className="text-gray-500">تم تسجيل تقييمك بنجاح</p>
               </div>
             ) : (
               <>
-                <span className="text-5xl block mb-4">⭐</span>
+                <span className="mb-4 flex justify-center text-amber-300"><Icon name="star" size={46} /></span>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">كيف كانت تجربتك؟</h2>
                 <p className="text-gray-500 text-sm mb-6">{shop.name}</p>
 
@@ -585,19 +586,19 @@ export default function ShopPage() {
                       className="text-4xl transition-transform hover:scale-110 active:scale-95"
                       style={{ cursor: "pointer" }}
                     >
-                      {star <= (hoverStars || ratingStars) ? "⭐" : "☆"}
+                      <Icon name="star" size={34} strokeWidth={1.5} className={star <= (hoverStars || ratingStars) ? "text-amber-300" : "text-gray-600"} />
                     </button>
                   ))}
                 </div>
 
                 {/* Rating Label */}
-                <p className="text-sm font-medium mb-4" style={{ color: "#6C3CE1" }}>
+                <p className="text-sm font-medium mb-4" style={{ color: "#67E8F9" }}>
                   {ratingStars === 0 && "اختر تقييمك"}
-                  {ratingStars === 1 && "سيء جداً 😞"}
-                  {ratingStars === 2 && "سيء 😕"}
-                  {ratingStars === 3 && "مقبول 🙂"}
-                  {ratingStars === 4 && "جيد 😊"}
-                  {ratingStars === 5 && "ممتاز! 🤩"}
+                  {ratingStars === 1 && "سيء جداً "}
+                  {ratingStars === 2 && "سيء "}
+                  {ratingStars === 3 && "مقبول "}
+                  {ratingStars === 4 && "جيد "}
+                  {ratingStars === 5 && "ممتاز! "}
                 </p>
 
                 {/* Comment */}
@@ -666,10 +667,10 @@ export default function ShopPage() {
           <div className="w-full max-w-sm mb-6 animate-slide-down">
             <div className="flex items-center justify-center gap-2 mb-1">
               <h2 className="text-lg font-bold text-white/90">{shop.name}</h2>
-              <span className="text-2xl">{getCategoryEmoji(shop.category)}</span>
+              <span className="text-cyan-300"><Icon name={categoryIcon(shop.category)} size={26} /></span>
             </div>
             {shop.address && (
-              <p className="text-center text-white/50 text-sm">📍 {shop.address}</p>
+              <p className="text-center text-white/50 text-sm"><Icon name="pin" size={14} /> {shop.address}</p>
             )}
           </div>
 
@@ -686,7 +687,7 @@ export default function ShopPage() {
 
           {/* Greeting */}
           <h1 className="text-2xl font-bold mb-1 animate-fade-in">
-            مرحباً {myEntry.customer_name}! 👋
+            مرحباً {myEntry.customer_name}!
           </h1>
           <p className="text-indigo-200/70 text-sm mb-8 animate-fade-in" style={{ animationDelay: "0.1s" }}>
             رقم طوابير — هنبلغك لما يجي طوابير
@@ -738,7 +739,7 @@ export default function ShopPage() {
           {peopleCalled > 0 && (
             <div className="w-full max-w-sm mb-6 animate-fade-in" style={{ animationDelay: "0.6s" }}>
               <div className="stat-card flex items-center justify-center gap-2">
-                <span className="text-sm">✅</span>
+                <span className="text-sm"><Icon name="checkCircle" size={16} /></span>
                 <span className="text-sm text-indigo-200/80">
                   تم مناداة {peopleCalled} شخص قبلك
                 </span>
@@ -760,12 +761,12 @@ export default function ShopPage() {
                 textDecoration: "none",
               }}
             >
-              <span className="text-2xl">✈️</span>
+              <span className="text-2xl"><Icon name="send" size={22} /></span>
               <div className="text-right flex-1">
-                <div className="text-sm font-bold">🔔 اشترك في إشعارات تيليجرام</div>
+                <div className="text-sm font-bold"><Icon name="bell" size={16} /> اشترك في إشعارات تيليجرام</div>
                 <div className="text-xs text-sky-200/70">اضغط هنا عشان توصلك إشعار لما يتنادى طوابير</div>
               </div>
-              <span className="text-lg">←</span>
+              <span className="text-lg"><Icon name="arrowLeft" size={18} /></span>
             </a>
           </div>
 
@@ -773,7 +774,7 @@ export default function ShopPage() {
           {telegramLinkUrl && (
             <div className="w-full max-w-sm mb-6 animate-slide-up" style={{ animationDelay: "0.75s" }}>
               <div className="rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 p-5 text-center">
-                <p className="text-xs text-indigo-200/60 mb-3">📱 امسح الكود ده بالكاميرا عشان تفتح تيليجرام</p>
+                <p className="text-xs text-indigo-200/60 mb-3"><Icon name="smartphone" size={16} /> امسح الكود ده بالكاميرا عشان تفتح تيليجرام</p>
                 <div className="inline-block rounded-xl bg-white p-3">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(telegramLinkUrl)}`}
@@ -781,7 +782,7 @@ export default function ShopPage() {
                     className="w-44 h-44"
                   />
                 </div>
-                <p className="text-xs text-indigo-200/50 mt-3">هيفتح البوت ويربط رقمك تلقائياً ✅</p>
+                <p className="text-xs text-indigo-200/50 mt-3">هيفتح البوت ويربط رقمك تلقائياً <Icon name="checkCircle" size={16} /></p>
               </div>
             </div>
           )}
@@ -801,7 +802,7 @@ export default function ShopPage() {
 
   // ─── Join Form ───
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #1E1B4B 0%, #312E81 40%, #FDF8F0 100%)" }}>
+    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #0B0E16 0%, #131A36 45%, #0B0E16 100%)" }}>
       {/* Hero Section */}
       <div className="relative px-6 pt-12 pb-16 text-center overflow-hidden">
         {/* Decorative blobs */}
@@ -811,7 +812,7 @@ export default function ShopPage() {
         <div className="relative">
           {/* Category Emoji */}
           <div className="animate-bounce-in mb-4">
-            <span className="text-7xl block animate-float">{getCategoryEmoji(shop.category)}</span>
+            <span className="flex justify-center text-cyan-300 animate-float"><Icon name={categoryIcon(shop.category)} size={72} /></span>
           </div>
 
           {/* Shop Name */}
@@ -830,14 +831,14 @@ export default function ShopPage() {
           {shop.address && (
             <p className="text-indigo-200/50 text-sm flex items-center justify-center gap-1 animate-fade-in" style={{ animationDelay: "0.2s" }}>
               <span>{shop.address}</span>
-              <span>📍</span>
+              <span><Icon name="pin" size={14} /></span>
             </p>
           )}
 
           {/* Phone */}
           {shop.phone && (
             <p className="text-indigo-200/50 text-sm mt-1 animate-fade-in" style={{ animationDelay: "0.25s" }}>
-              📞 {shop.phone}
+              <Icon name="phone" size={15} /> {shop.phone}
             </p>
           )}
 
@@ -850,7 +851,7 @@ export default function ShopPage() {
               className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-green-500/90 hover:bg-green-600 text-white text-sm font-bold rounded-full transition-all animate-fade-in shadow-lg"
               style={{ animationDelay: "0.3s" }}
             >
-              💬 تواصل معنا عبر واتساب
+              <Icon name="message" size={18} /> تواصل معنا عبر واتساب
             </a>
           )}
         </div>
@@ -862,19 +863,19 @@ export default function ShopPage() {
           <div className="flex items-center justify-around">
             {/* Waiting */}
             <div className="text-center flex-1">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-2" style={{ background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)" }}>
-                <span className="text-xl">👥</span>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-2" style={{ background: "linear-gradient(135deg, rgba(34,211,238,0.18), rgba(139,92,246,0.18))" }}>
+                <span className="text-xl"><Icon name="users" size={20} /></span>
               </div>
               <p className="text-xs text-gray-400 mb-1">في الانتظار</p>
-              <p className="text-2xl font-black" style={{ color: "#6C3CE1" }}>{waitingCount}</p>
+              <p className="text-2xl font-black" style={{ color: "#67E8F9" }}>{waitingCount}</p>
             </div>
 
             <div className="h-12 w-px bg-gray-100"></div>
 
             {/* Current */}
             <div className="text-center flex-1">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-2" style={{ background: "linear-gradient(135deg, #FEF3C7, #FDE68A)" }}>
-                <span className="text-xl">🔄</span>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-2" style={{ background: "linear-gradient(135deg, rgba(251,191,36,0.20), rgba(245,158,11,0.18))" }}>
+                <span className="text-xl"><Icon name="refresh" size={20} /></span>
               </div>
               <p className="text-xs text-gray-400 mb-1">الدور الحالي</p>
               <p className="text-2xl font-black text-gray-800">{shop.current_number || "—"}</p>
@@ -884,8 +885,8 @@ export default function ShopPage() {
 
             {/* Avg Time */}
             <div className="text-center flex-1">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-2" style={{ background: "linear-gradient(135deg, #D1FAE5, #A7F3D0)" }}>
-                <span className="text-xl">⏱️</span>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-2" style={{ background: "linear-gradient(135deg, rgba(52,211,153,0.20), rgba(16,185,129,0.18))" }}>
+                <span className="text-xl"><Icon name="clock" size={18} /></span>
               </div>
               <p className="text-xs text-gray-400 mb-1">متوسط الانتظار</p>
               <p className="text-2xl font-black" style={{ color: "#F59E0B" }}>~{settings?.avg_service_minutes || 10}<span className="text-sm">د</span></p>
@@ -898,7 +899,7 @@ export default function ShopPage() {
       {!isQueueOpen && (
         <div className="mx-auto max-w-md px-5 mt-4 animate-fade-in">
           <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-center">
-            <span className="text-2xl mb-2 block">🔒</span>
+            <span className="text-2xl mb-2 block"><Icon name="lock" size={22} /></span>
             <p className="text-amber-700 font-medium text-sm">الطابور مغلق حالياً</p>
             <p className="text-amber-500 text-xs mt-1">يرجى المحاولة لاحقاً</p>
           </div>
@@ -918,12 +919,12 @@ export default function ShopPage() {
               boxShadow: "0 8px 32px rgba(99, 102, 241, 0.3)",
             }}
           >
-            <span className="text-2xl">📅</span>
+            <span className="text-2xl"><Icon name="calendar" size={22} /></span>
             <div className="text-right flex-1">
               <div className="text-sm font-bold">احجز موعد مسبق</div>
               <div className="text-xs text-purple-200/70">اختر التاريخ والوقت المناسب ليك</div>
             </div>
-            <span className="text-lg">←</span>
+            <span className="text-lg"><Icon name="arrowLeft" size={18} /></span>
           </Link>
         </div>
       )}
@@ -940,7 +941,7 @@ export default function ShopPage() {
             {/* Name Input */}
             <div>
               <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-2">
-                <span>👤</span>
+                <span><Icon name="user" size={16} /></span>
                 <span>الاسم *</span>
               </label>
               <input
@@ -957,7 +958,7 @@ export default function ShopPage() {
             {/* Phone Input */}
             <div>
               <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-2">
-                <span>📱</span>
+                <span><Icon name="smartphone" size={16} /></span>
                 <span>رقم الهاتف (اختياري)</span>
               </label>
               <input
@@ -970,14 +971,14 @@ export default function ShopPage() {
                 disabled={!isQueueOpen}
               />
               <div className="mt-2 flex items-start gap-1.5 text-xs text-gray-400 bg-indigo-50 rounded-xl p-3">
-                <span className="text-sm mt-0.5">💡</span>
+                <span className="text-sm mt-0.5"><Icon name="bulb" size={16} /></span>
                 <div>
                   <span>لو دخلت رقم موبايلك، هتوصللك إشعار على </span>
-                  <b style={{ color: "#6C3CE1" }}>تيليجرام</b>
+                  <b style={{ color: "#67E8F9" }}>تيليجرام</b>
                   <span> تلقائياً لما يتنادى طوابير!</span>
                   <br />
                   <span>اربط رقمك مع البوت: </span>
-                  <a href="https://t.me/tawabeer_bot" target="_blank" className="font-semibold hover:underline" style={{ color: "#6C3CE1" }}>
+                  <a href="https://t.me/tawabeer_bot" target="_blank" className="font-semibold hover:underline" style={{ color: "#67E8F9" }}>
                     @tawabeer_bot
                   </a>
                 </div>
@@ -988,7 +989,7 @@ export default function ShopPage() {
             {counters.length > 1 && (
               <div>
                 <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-2">
-                  <span>🪟</span>
+                  <span><Icon name="window" size={18} /></span>
                   <span>اختر الشباك</span>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -1004,7 +1005,7 @@ export default function ShopPage() {
                           : "border-gray-200 bg-white text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/50"
                       }`}
                     >
-                      <span className="block text-lg mb-0.5">🪟</span>
+                      <span className="block text-lg mb-0.5"><Icon name="window" size={18} /></span>
                       <span>{counter.name}</span>
                     </button>
                   ))}
@@ -1015,7 +1016,7 @@ export default function ShopPage() {
             {/* Error */}
             {error && (
               <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 text-center animate-fade-in flex items-center justify-center gap-2">
-                <span>⚠️</span>
+                <span><Icon name="warning" size={16} /></span>
                 <span>{error}</span>
               </div>
             )}
@@ -1033,7 +1034,7 @@ export default function ShopPage() {
                 </>
               ) : (
                 <>
-                  <span>🔢</span>
+                  <span><Icon name="hash" size={18} /></span>
                   <span>احجز دوري</span>
                 </>
               )}
@@ -1047,7 +1048,7 @@ export default function ShopPage() {
             href="/"
             className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-600 transition-colors"
           >
-            <span>←</span>
+            <span><Icon name="arrowLeft" size={18} /></span>
             <span>العودة للرئيسية</span>
           </Link>
         </div>

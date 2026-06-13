@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { Icon } from "@/components/Icon";
 
 export default function QRPage() {
   const { id } = useParams<{ id: string }>();
@@ -64,7 +65,7 @@ export default function QRPage() {
           </div>
 
           <h2 className="text-xl font-bold text-gray-900">{shop?.name}</h2>
-          {shop?.address && <p className="text-sm text-gray-500 mt-1">📍 {shop.address}</p>}
+          {shop?.address && <p className="text-sm text-gray-500 mt-1"><Icon name="pin" size={13} className="inline -mt-0.5" /> {shop.address}</p>}
 
           <div className="mt-6 rounded-xl bg-gray-50 p-3">
             <p className="text-xs text-gray-400 mb-1">رابط المحل</p>
@@ -76,13 +77,13 @@ export default function QRPage() {
               onClick={handleDownload}
               className="flex-1 rounded-2xl bg-indigo-600 py-3.5 text-sm font-bold text-white hover:bg-indigo-700 transition-all shadow-sm"
             >
-              📥 تحميل QR
+              <Icon name="download" size={16} className="inline -mt-0.5" /> تحميل QR
             </button>
             <button
               onClick={handlePrint}
               className="flex-1 rounded-2xl border-2 border-gray-200 py-3.5 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all"
             >
-              🖨️ طباعة
+              <Icon name="print" size={16} className="inline -mt-0.5" /> طباعة
             </button>
           </div>
         </div>

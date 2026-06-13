@@ -5,7 +5,7 @@ import {
   updateQueueSettings,
   ensureMigrated,
 } from "@/lib/db";
-import { isOwnerPasswordValid } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 
 // GET is public (customers need to see queue settings)
 export async function GET(
@@ -36,23 +36,15 @@ export async function PUT(
   if (!shop)
     return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
-  // Verify owner password from header or body
-  const headerPassword = req.headers.get("x-owner-password");
-  let bodyPassword: string | undefined;
   let body: Record<string, unknown> = {};
-
   try {
-    const parsed = await req.json();
-    body = parsed;
-    bodyPassword = parsed.owner_password;
+    body = await req.json();
   } catch {
     // No body or invalid JSON
   }
 
-  const password = headerPassword || bodyPassword;
-  if (!password || !(await isOwnerPasswordValid(password, shop.id, shop.owner_phone || ""))) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const auth = await requireOwner(req, shop, body.owner_password as string | undefined);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   // Remove auth fields before passing to DB
   delete body.owner_password;

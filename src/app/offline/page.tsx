@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from "@/components/Icon";
 
 import Link from "next/link";
 
@@ -9,7 +10,7 @@ export default function OfflinePage() {
         {/* Offline Icon */}
         <div className="relative mx-auto mb-6">
           <span className="block text-[10rem] font-black leading-none text-amber-100 select-none">
-            📡
+            <Icon name="wifiOff" size={44} />
           </span>
         </div>
 
@@ -23,7 +24,7 @@ export default function OfflinePage() {
 
         {/* Offline Features */}
         <div className="mt-6 rounded-xl bg-amber-50 p-4 border border-amber-100">
-          <p className="text-sm text-amber-700 font-medium mb-2">💡 يمكنك:</p>
+          <p className="text-sm text-amber-700 font-medium mb-2"><Icon name="bulb" size={14} className="inline -mt-0.5" /> يمكنك:</p>
           <ul className="text-sm text-amber-600 space-y-1">
             <li>• تصفح الصفحات المحفوظة مسبقاً</li>
             <li>• عرض آخر بيانات تم تحميلها</li>
@@ -48,7 +49,7 @@ export default function OfflinePage() {
 
         {/* Fun suggestion */}
         <p className="mt-8 text-xs text-gray-400">
-          💡 جرّب الاتصال بالإنترنت وسنعمل تلقائياً
+          <Icon name="bulb" size={14} className="inline -mt-0.5" /> جرّب الاتصال بالإنترنت وسنعمل تلقائياً
         </p>
       </div>
     </div>

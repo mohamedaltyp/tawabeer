@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Icon } from "@/components/Icon";
 
 interface ShopData {
   id: string;
@@ -66,6 +67,7 @@ export default function BookingPage() {
 
   // Booking form state
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedBookingTime, setSelectedBookingTime] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
@@ -102,6 +104,7 @@ export default function BookingPage() {
 
   const handleDateSelect = (dateStr: string) => {
     setSelectedDate(dateStr);
+    setSelectedBookingTime(null);
     fetchAvailableSlots(dateStr);
   };
 
@@ -110,7 +113,7 @@ export default function BookingPage() {
       setError("من فضلك أدخل اسمك");
       return;
     }
-    if (!selectedSlot || !selectedDate) {
+    if (!selectedSlot || !selectedDate || !selectedBookingTime) {
       setError("من فضلك اختر موعداً");
       return;
     }
@@ -127,6 +130,7 @@ export default function BookingPage() {
           customerName: name,
           customerPhone: phone,
           notes,
+          bookingTime: selectedBookingTime,
         }),
       });
       const data = await res.json();
@@ -171,7 +175,7 @@ export default function BookingPage() {
   if (!shop) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6C3CE1 100%)" }}>
-        <div className="text-8xl">😕</div>
+        <div className="flex justify-center text-cyan-300"><Icon name="warning" size={76} /></div>
         <h1 className="text-2xl font-bold text-white">المحل غير موجود</h1>
         <Link href="/" className="text-white/70 hover:text-white transition-colors underline">العودة للرئيسية</Link>
       </div>
@@ -184,13 +188,13 @@ export default function BookingPage() {
       <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6C3CE1 100%)" }}>
         <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/10 border-b border-white/10">
           <div className="mx-auto max-w-lg flex items-center justify-between px-4 h-14">
-            <Link href={`/shop/${id}`} className="text-white/70 hover:text-white transition-colors text-sm">→ العودة</Link>
+            <Link href={`/shop/${id}`} className="text-white/70 hover:text-white transition-colors text-sm"><Icon name="arrowRight" size={14} className="inline" /> العودة</Link>
             <h1 className="font-bold text-white text-sm">{shop.name}</h1>
             <div className="w-12"></div>
           </div>
         </header>
         <div className="flex flex-col items-center justify-center gap-4 p-6 pt-20">
-          <div className="text-6xl">📅</div>
+          <div className="flex justify-center text-cyan-300"><Icon name="calendar" size={56} /></div>
           <h2 className="text-xl font-bold text-white text-center">الحجز بالمواعيد غير متاح</h2>
           <p className="text-white/60 text-center">هذا المحل لا يقبل حجوزات أونلاين حالياً</p>
           <Link
@@ -209,7 +213,7 @@ export default function BookingPage() {
     return (
       <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #065F46 0%, #059669 50%, #10B981 100%)" }}>
         <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-6 text-center">
-          <div className="text-8xl animate-bounce">✅</div>
+          <div className="flex justify-center text-emerald-300 animate-bounce"><Icon name="checkCircle" size={76} /></div>
           <h1 className="text-2xl font-bold text-white">تم الحجز بنجاح!</h1>
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 w-full max-w-sm border border-white/20 space-y-3">
             <div className="flex justify-between text-white">
@@ -231,6 +235,7 @@ export default function BookingPage() {
               setBookingResult(null);
               setSelectedDate(null);
               setSelectedSlot(null);
+              setSelectedBookingTime(null);
               setName("");
               setPhone("");
               setNotes("");
@@ -253,8 +258,8 @@ export default function BookingPage() {
       {/* Header */}
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/10 border-b border-white/10">
         <div className="mx-auto max-w-lg flex items-center justify-between px-4 h-14">
-          <Link href={`/shop/${id}`} className="text-white/70 hover:text-white transition-colors text-sm">→ العودة</Link>
-          <h1 className="font-bold text-white text-sm">📅 حجز موعد — {shop.name}</h1>
+          <Link href={`/shop/${id}`} className="text-white/70 hover:text-white transition-colors text-sm"><Icon name="arrowRight" size={14} className="inline" /> العودة</Link>
+          <h1 className="font-bold text-white text-sm"><Icon name="calendar" size={16} className="inline -mt-0.5" /> حجز موعد — {shop.name}</h1>
           <div className="w-12"></div>
         </div>
       </header>
@@ -272,11 +277,11 @@ export default function BookingPage() {
           {/* Month Navigation */}
           <div className="flex items-center justify-between px-4 py-3 bg-white/5">
             <button onClick={prevMonth} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
-              →
+              <Icon name="arrowRight" size={18} />
             </button>
             <h2 className="font-bold text-white">{MONTH_NAMES[month]} {year}</h2>
             <button onClick={nextMonth} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
-              ←
+              <Icon name="arrowLeft" size={18} />
             </button>
           </div>
 
@@ -333,7 +338,7 @@ export default function BookingPage() {
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden animate-fade-in">
             <div className="px-4 py-3 bg-white/5 border-b border-white/10">
               <h3 className="font-bold text-white text-sm">
-                🕐 المواعيد المتاحة — {selectedDate}
+                <Icon name="clock" size={16} className="inline -mt-0.5" /> المواعيد المتاحة — {selectedDate}
               </h3>
             </div>
             <div className="p-4">
@@ -344,7 +349,7 @@ export default function BookingPage() {
                 </div>
               ) : availableSlots.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="text-4xl mb-3">😔</div>
+                  <div className="mb-3 flex justify-center text-gray-500"><Icon name="calendar" size={40} /></div>
                   <p className="text-white/50 text-sm">لا توجد مواعيد متاحة في هذا التاريخ</p>
                 </div>
               ) : (
@@ -352,7 +357,10 @@ export default function BookingPage() {
                   {availableSlots.map((item) => (
                     <button
                       key={item.slot.id}
-                      onClick={() => setSelectedSlot(item.slot.id)}
+                      onClick={() => {
+                        setSelectedSlot(item.slot.id);
+                        setSelectedBookingTime(item.slot.start_time);
+                      }}
                       disabled={item.available === 0}
                       className={`w-full p-3 rounded-xl border transition-all text-right ${
                         selectedSlot === item.slot.id
@@ -379,7 +387,7 @@ export default function BookingPage() {
                             {item.available === 0 ? "ممتلأ" : `${item.available} متاح`}
                           </span>
                           {selectedSlot === item.slot.id && (
-                            <span className="text-indigo-300 text-lg">✓</span>
+                            <span className="text-cyan-300"><Icon name="check" size={18} /></span>
                           )}
                         </div>
                       </div>
@@ -395,7 +403,7 @@ export default function BookingPage() {
         {selectedSlot && selectedDate && (
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden animate-fade-in">
             <div className="px-4 py-3 bg-white/5 border-b border-white/10">
-              <h3 className="font-bold text-white text-sm">📝 بيانات الحجز</h3>
+              <h3 className="font-bold text-white text-sm"><Icon name="edit" size={16} className="inline -mt-0.5" /> بيانات الحجز</h3>
             </div>
             <div className="p-4 space-y-3">
               <input
@@ -425,7 +433,7 @@ export default function BookingPage() {
                 disabled={booking || !name.trim()}
                 className="w-full py-3.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-all shadow-lg shadow-indigo-500/30"
               >
-                {booking ? "جاري الحجز..." : "📅 تأكيد الحجز"}
+                {booking ? "جاري الحجز..." : "تأكيد الحجز"}
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Icon } from "@/components/Icon";
 
 export default function NotFound() {
   return (
@@ -34,13 +35,13 @@ export default function NotFound() {
             href="/dashboard"
             className="rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all"
           >
-            📊 لوحة التحكم
+            <Icon name="chart" size={16} className="inline -mt-0.5" /> لوحة التحكم
           </Link>
         </div>
 
         {/* Fun suggestion */}
         <p className="mt-8 text-xs text-gray-400">
-          💡 ربما تحاول البحث عن محل في الصفحة الرئيسية؟
+          <Icon name="bulb" size={14} className="inline -mt-0.5" /> ربما تحاول البحث عن محل في الصفحة الرئيسية؟
         </p>
       </div>
     </div>

@@ -7,7 +7,7 @@ import {
   ensureMigrated,
 } from "@/lib/db";
 import { comparePassword } from "@/lib/auth";
-import { isOwnerPasswordValid } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 
 // GET is public (customers need to see available slots)
 export async function GET(
@@ -45,21 +45,15 @@ export async function POST(
     if (!shop)
       return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
-    // Verify owner password
-    const headerPassword = req.headers.get("x-owner-password");
     let body: Record<string, unknown> = {};
-
     try {
-      const parsed = await req.json();
-      body = parsed;
+      body = await req.json();
     } catch {
       // No body
     }
 
-    const password = headerPassword || (body.owner_password as string);
-    if (!password || !(await isOwnerPasswordValid(password, shop.id, shop.owner_phone || ""))) {
-      return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-    }
+    const auth = await requireOwner(req, shop, body.owner_password as string | undefined);
+    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
     if (!body.dayOfWeek && body.dayOfWeek !== 0) {
       return NextResponse.json(
@@ -102,16 +96,11 @@ export async function DELETE(
   if (!shop)
     return NextResponse.json({ error: "Shop not found" }, { status: 404 });
 
-  // Verify owner password (from header or query param for DELETE)
-  const headerPassword = req.headers.get("x-owner-password");
   const url = new URL(req.url);
-  const queryPassword = url.searchParams.get("owner_password");
   const slotId = url.searchParams.get("slotId");
 
-  const password = headerPassword || queryPassword;
-  if (!password || !(await isOwnerPasswordValid(password, shop.id, shop.owner_phone || ""))) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  const auth = await requireOwner(req, shop);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   if (!slotId) {
     return NextResponse.json(

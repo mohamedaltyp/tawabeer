@@ -1,10 +1,9 @@
 // Browser Push Notification helper (VAPID)
 // Primary notification method — Telegram & WhatsApp are fallbacks
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
-  "BE8-aGxHZ-WIVJM4Er_1tibtao13441BpH07UEoR2rT2pnT21tDI7c7OF6GquKspOq-2LkFge65WBqWPs8Yb9LI";
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ||
-  "1UJg499GD7iqUkqwTzhjX_dRrmvjV3Fzx8OW-HWxv80";
+// Secrets come ONLY from the environment. Never hardcode VAPID keys.
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:admin@tawabeer.app";
 
 /**

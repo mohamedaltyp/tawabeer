@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAllShops, sanitizeShops } from "@/lib/db";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { comparePassword } from "@/lib/auth";
+import { setSessionCookie } from "@/lib/session";
 
 const limiter = createRateLimiter({
   windowMs: 15 * 60_000, // 15 min window
@@ -57,11 +58,16 @@ export async function POST(req: NextRequest) {
     // إرجاع جميع محلات هذا المالك (بدون كلمة المرور)
     const safeShops = await sanitizeShops(matchingShops);
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       owner: { phone: matchedShop.owner_phone, name: matchedShop.owner_name },
       shops: safeShops,
     });
+    setSessionCookie(res, {
+      phone: matchedShop.owner_phone || "",
+      name: matchedShop.owner_name || "",
+    });
+    return res;
   } catch {
     return NextResponse.json(
       { error: "حدث خطأ في تسجيل الدخول" },

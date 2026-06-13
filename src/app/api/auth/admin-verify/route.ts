@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { getAdminPassword } from "@/lib/auth";
+import { setSessionCookie } from "@/lib/session";
 
 const limiter = createRateLimiter({
   windowMs: 15 * 60_000, // 15 min window
@@ -23,10 +25,18 @@ export async function POST(req: NextRequest) {
     }
 
     const { token } = await req.json();
-    const adminPassword = process.env.ADMIN_PASSWORD || "dawer-admin-2026";
+    const adminPassword = getAdminPassword();
+    if (!adminPassword) {
+      return NextResponse.json(
+        { success: false, error: "خدمة الإدارة غير مهيأة (ADMIN_PASSWORD غير مضبوط)" },
+        { status: 503 },
+      );
+    }
 
     if (token === adminPassword) {
-      return NextResponse.json({ success: true });
+      const res = NextResponse.json({ success: true });
+      setSessionCookie(res, { phone: "admin", name: "Admin", isAdmin: true });
+      return res;
     }
     return NextResponse.json(
       { success: false, error: "كلمة المرور غير صحيحة" },

@@ -12,6 +12,7 @@ import {
   ensureMigrated,
 } from "@/lib/db";
 import { canAcceptCustomer, getPlanLimits } from "@/lib/plans";
+import { requireOwner } from "@/lib/auth";
 
 // GET queue for a shop
 export async function GET(
@@ -81,7 +82,12 @@ export async function PATCH(
 ) {
   await ensureMigrated();
   const { id } = await params;
+
+  const shop = await getShop(id);
+  if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 });
   const body = await req.json();
+  const auth = await requireOwner(req, shop, body.owner_password);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   let result;
   switch (body.action) {

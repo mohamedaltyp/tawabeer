@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Icon } from "@/components/Icon";
 
 interface ShopSettings {
   shop_id: string;
@@ -109,9 +110,8 @@ export default function ShopSettingsPage() {
   };
 
   const removeCounter = async (counterId: string) => {
-    const pw = getOwnerPassword();
     try {
-      const res = await fetch(`/api/shops/${id}/counters?counterId=${counterId}&owner_password=${encodeURIComponent(pw)}`, {
+      const res = await fetch(`/api/shops/${id}/counters?counterId=${counterId}`, {
         method: "DELETE",
         headers: { "ngrok-skip-browser-warning": "true" },
       });
@@ -167,7 +167,7 @@ export default function ShopSettingsPage() {
             <Link href={`/dashboard/shop/${id}`}
               className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors">→</Link>
             <div>
-              <h1 className="text-base font-bold text-gray-900">⚙️ الإعدادات</h1>
+              <h1 className="text-base font-bold text-gray-900"><Icon name="gear" size={18} className="inline -mt-0.5" /> الإعدادات</h1>
               <p className="text-xs text-gray-400">{shopName}</p>
             </div>
           </div>
@@ -219,13 +219,13 @@ export default function ShopSettingsPage() {
         {/* Counters */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>🪟</span><span>الشبابيك (العدادات)</span></h2>
+            <h2 className="font-bold text-gray-900 flex items-center gap-2"><Icon name="window" size={18} /><span>الشبابيك (العدادات)</span></h2>
             <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-full">{counters.length} شباك</span>
           </div>
           <div className="p-5 space-y-3">
             {counters.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-6 bg-gray-50 rounded-xl">
-                📍 لا توجد شبابيك — أضف شباكاً واحداً على الأقل لتوزيع العملاء
+                <Icon name="pin" size={13} className="inline -mt-0.5" /> لا توجد شبابيك — أضف شباكاً واحداً على الأقل لتوزيع العملاء
               </p>
             ) : (
               counters.map((counter, i) => (
@@ -236,13 +236,13 @@ export default function ShopSettingsPage() {
                     </div>
                     <div>
                       <p className="font-bold text-gray-900 text-sm">{counter.name}</p>
-                      <p className="text-xs text-gray-600 mt-0.5">📊 آخر رقم: <span className="font-bold text-indigo-600">{counter.current_number || 0}</span></p>
+                      <p className="text-xs text-gray-600 mt-0.5"><Icon name="chart" size={13} className="inline -mt-0.5" /> آخر رقم: <span className="font-bold text-indigo-600">{counter.current_number || 0}</span></p>
                     </div>
                   </div>
                   {counters.length > 1 && (
                     <button onClick={() => removeCounter(counter.id)}
                       className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center text-sm text-red-600 hover:bg-red-200 transition-colors font-bold ms-3"
-                      title="حذف الشباك">✕</button>
+                      title="حذف الشباك"><Icon name="x" size={16} /></button>
                   )}
                 </div>
               ))
@@ -261,7 +261,7 @@ export default function ShopSettingsPage() {
         {/* General Settings */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>🔧</span><span>الإعدادات العامة</span></h2>
+            <h2 className="font-bold text-gray-900 flex items-center gap-2"><Icon name="gear" size={18} /><span>الإعدادات العامة</span></h2>
           </div>
           <div className="p-5 space-y-5">
             <div>
@@ -274,7 +274,7 @@ export default function ShopSettingsPage() {
               <div className="flex justify-between text-xs text-gray-400 mt-1"><span>1 د</span><span>60 د</span></div>
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">💬 رسالة الترحيب</label>
+              <label className="block text-sm font-bold text-gray-900 mb-2"><Icon name="message" size={14} className="inline -mt-0.5" /> رسالة الترحيب</label>
               <p className="text-xs text-gray-500 mb-2">المتغيرات المتاحة: {`{customer_name} {queue_number} {wait_time}`}</p>
               <textarea value={settings.greeting_message}
                 onChange={(e) => setSettings({ ...settings, greeting_message: e.target.value })}
@@ -282,7 +282,7 @@ export default function ShopSettingsPage() {
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                 placeholder="مرحباً {customer_name} ، رقمك هو {queue_number}" />
               <div className="mt-3 p-3 rounded-xl bg-indigo-50 border border-indigo-100">
-                <p className="text-xs font-medium text-indigo-900">👁️ معاينة:</p>
+                <p className="text-xs font-medium text-indigo-900">معاينة:</p>
                 <p className="text-sm text-indigo-700 mt-1">{settings.greeting_message || "مرحباً بك!"}</p>
               </div>
             </div>
@@ -292,7 +292,7 @@ export default function ShopSettingsPage() {
         {/* WhatsApp */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>💬</span><span>إعدادات واتساب</span></h2>
+            <h2 className="font-bold text-gray-900 flex items-center gap-2"><Icon name="message" size={18} /><span>إعدادات واتساب</span></h2>
           </div>
           <div className="p-5 space-y-4">
             {/* Toggle */}
@@ -319,7 +319,7 @@ export default function ShopSettingsPage() {
               <>
                 {/* Phone Number */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-900 mb-1">📱 رقم الواتساب</label>
+                  <label className="block text-xs font-bold text-gray-900 mb-1"><Icon name="smartphone" size={13} className="inline -mt-0.5" /> رقم الواتساب</label>
                   <div className="flex gap-2">
                     <input type="tel" value={settings.whatsapp_number}
                       onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
@@ -334,7 +334,7 @@ export default function ShopSettingsPage() {
                       className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
                     <button onClick={testWhatsappConnection} disabled={testingWhatsapp || !settings.whatsapp_number}
                       className="rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-50 transition-all whitespace-nowrap">
-                      {testingWhatsapp ? "⏳..." : "🧪 اختبار"}
+                      {testingWhatsapp ? "⏳..." : "اختبار"}
                     </button>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">ادخل الرقم من غير كود الدولة — هيتضاف تلقائياً</p>
@@ -342,7 +342,7 @@ export default function ShopSettingsPage() {
 
                 {/* Access Token (for Cloud API) */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">🔑 توكن الواتساب (اختياري — للـ Cloud API)</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1"><Icon name="key" size={13} className="inline -mt-0.5" /> توكن الواتساب (اختياري — للـ Cloud API)</label>
                   <input type="password" value={settings.whatsapp_access_token || ""}
                     onChange={(e) => setSettings({ ...settings, whatsapp_access_token: e.target.value })}
                     onBlur={async () => {
@@ -361,7 +361,7 @@ export default function ShopSettingsPage() {
 
                 {/* Phone Number ID (for Cloud API) */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">📞 Phone Number ID (اختياري — للـ Cloud API)</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1"><Icon name="phone" size={13} className="inline -mt-0.5" /> Phone Number ID (اختياري — للـ Cloud API)</label>
                   <input type="text" value={settings.whatsapp_business_account_id || ""}
                     onChange={(e) => setSettings({ ...settings, whatsapp_business_account_id: e.target.value })}
                     onBlur={async () => {
@@ -384,7 +384,7 @@ export default function ShopSettingsPage() {
 
         <button onClick={handleSave} disabled={saving}
           className="w-full rounded-2xl bg-indigo-600 py-4 text-lg font-bold text-white hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-200">
-          {saving ? "جاري الحفظ..." : "💾 حفظ الإعدادات"}
+          {saving ? "جاري الحفظ..." : "حفظ الإعدادات"}
         </button>
       </main>
     </div>

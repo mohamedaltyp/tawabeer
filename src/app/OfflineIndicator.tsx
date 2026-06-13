@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from "@/components/Icon";
 
 import { useEffect, useState } from "react";
 
@@ -64,7 +65,7 @@ export default function OfflineIndicator() {
             : "bg-green-50 border-green-200 text-green-800"
         }`}
       >
-        <span className="text-2xl">{isOffline ? "📡" : "✅"}</span>
+        <span className="text-2xl"><Icon name={isOffline ? "wifiOff" : "checkCircle"} size={20} /></span>
         <div className="flex-1">
           <p className="font-semibold text-sm">
             {isOffline ? "أنت غير متصل" : "تم الاتصال מחדש"}
@@ -80,7 +81,7 @@ export default function OfflineIndicator() {
             onClick={() => setShowBanner(false)}
             className="text-green-600 hover:text-green-800"
           >
-            ✕
+            <Icon name="x" size={16} />
           </button>
         )}
       </div>

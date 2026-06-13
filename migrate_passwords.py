@@ -1,0 +1,204 @@
+"""
+Migration: Hash all plain-text passwords in the shops table.
+Shops with plain text passwords or empty passwords will be updated.
+"""
+import os
+import sys
+import json
+import urllib.request
+import urllib.error
+
+# bcryptjs-compatible bcrypt via Node.js (since Python bcrypt may not be installed)
+import subprocess
+import tempfile
+
+BASE = "http://localhost:3004"
+
+def bcrypt_hash(password: str) -> str:
+    """Hash a password using Node.js bcryptjs"""
+    js_code = f"""
+const bcrypt = require('bcryptjs');
+bcrypt.hash('{password}', 12).then(h => process.stdout.write(h));
+"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
+        f.write(js_code)
+        f.flush()
+        try:
+            r = subprocess.run(['node', f.name], capture_output=True, text=True, timeout=15, 
+                             cwd=r'C:\Users\admin\Desktop\tawabeer')
+            return r.stdout.strip()
+        finally:
+            os.unlink(f.name)
+
+def bcrypt_check(password: str, hash_val: str) -> bool:
+    """Verify a password against a bcrypt hash using Node.js"""
+    js_code = f"""
+const bcrypt = require('bcryptjs');
+bcrypt.compare('{password}', '{hash_val}').then(ok => process.stdout.write(ok ? 'true' : 'false'));
+"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
+        f.write(js_code)
+        f.flush()
+        try:
+            r = subprocess.run(['node', f.name], capture_output=True, text=True, timeout=15,
+                             cwd=r'C:\Users\admin\Desktop\tawabeer')
+            return r.stdout.strip() == 'true'
+        finally:
+            os.unlink(f.name)
+
+def api_get(path):
+    r = urllib.request.urlopen(f'{BASE}{path}', timeout=10)
+    return json.loads(r.read().decode())
+
+def api_post(path, data):
+    req = urllib.request.Request(f'{BASE}{path}', 
+                                data=json.dumps(data).encode(),
+                                method='POST',
+                                headers={'Content-Type': 'application/json'})
+    try:
+        r = urllib.request.urlopen(req, timeout=10)
+        return r.status, json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read().decode())
+
+print("=" * 60)
+print("🔧 PASSWORD MIGRATION SCRIPT")
+print("=" * 60)
+
+# Step 1: Get all shops
+print("\n📋 Step 1: Fetching all shops...")
+data = api_get("/api/shops")
+shops = data.get("shops", [])
+print(f"  Found {len(shops)} shops")
+
+# Known passwords from memory/context
+KNOWN_PASSWORDS = {
+    "01012345678": "mohamed123",  # مطعم الضيافة - Owner
+    "01017603874": "mohamed123",  # HASA/altyp - Owner (mohamed)
+}
+
+# Step 2: Check each shop's password status
+print("\n🔍 Step 2: Analyzing passwords...")
+shops_to_fix = []
+
+for shop in shops:
+    phone = shop.get("owner_phone", "")
+    name = shop.get("name", "?")
+    shop_id = shop.get("id", "")
+    slug = shop.get("slug", "")
+    
+    # Check if the password field exists and is empty/non-bcrypt
+    # Note: sanitizeShop removes owner_password, so we need to check differently
+    # We'll try logging in with known passwords
+    
+    if phone in KNOWN_PASSWORDS:
+        pw = KNOWN_PASSWORDS[phone]
+        print(f"  {name:20s} | phone={phone} | Known password: '{pw}' → needs bcrypt hash")
+        shops_to_fix.append({"shop_id": shop_id, "phone": phone, "name": name, "password": pw, "slug": slug})
+    else:
+        print(f"  {name:20s} | phone={phone} | No known password — skipping")
+
+# Step 3: Test current login status
+print("\n🔐 Step 3: Testing current login status...")
+for shop in shops:
+    phone = shop.get("owner_phone", "")
+    name = shop.get("name", "?")
+    
+    if phone in KNOWN_PASSWORDS:
+        pw = KNOWN_PASSWORDS[phone]
+        status, resp = api_post("/api/auth/login", {"phone": phone, "password": pw})
+        if status == 200:
+            print(f"  ✅ {name} — Login works!")
+        else:
+            print(f"  ❌ {name} — Login fails ({status}): {resp.get('error', '?')}")
+            if shop not in shops_to_fix:
+                shops_to_fix.append({"shop_id": shop["id"], "phone": phone, "name": name, "password": pw, "slug": shop.get("slug", "")})
+
+# Step 4: Generate bcrypt hashes
+print(f"\n🔧 Step 4: Generating bcrypt hashes for {len(shops_to_fix)} shops...")
+hashes = {}
+for item in shops_to_fix:
+    pw = item["password"]
+    h = bcrypt_hash(pw)
+    hashes[item["phone"]] = h
+    print(f"  {item['name']:20s} | '{pw}' → {h[:30]}... (len={len(h)})")
+    
+    # Verify the hash
+    ok = bcrypt_check(pw, h)
+    print(f"    Verification: {'✅ OK' if ok else '❌ FAILED'}")
+
+# Step 5: Write migration SQL
+print("\n📝 Step 5: Generating migration SQL...")
+sql_lines = []
+for item in shops_to_fix:
+    h = hashes[item["phone"]]
+    sql_lines.append(f"UPDATE shops SET owner_password = '{h}' WHERE owner_phone = '{item['phone']}' AND id = '{item['shop_id']}';")
+
+sql_content = "-- Password Migration Script\n-- Generated by test_v1.py migration\n\n" + "\n".join(sql_lines)
+
+with open("migrate_passwords.sql", "w") as f:
+    f.write(sql_content)
+
+print(f"  Saved to: migrate_passwords.sql")
+print(f"  Contains {len(sql_lines)} UPDATE statements")
+
+# Step 6: Also create a fix script that can be run via the API
+print("\n📝 Step 6: Creating API-based fix script...")
+
+# We need to update passwords directly in the DB. 
+# Since we can't do that through the API (no admin endpoint), 
+# let's create a temporary API route or use the debug endpoint.
+
+# Check if there's a debug-db endpoint
+try:
+    status, resp = api_get("/api/debug-db")
+    print(f"  /api/debug-db: HTTP {status}")
+except:
+    print(f"  /api/debug-db: Not available")
+
+# Print the SQL that needs to be run
+print(f"\n{'=' * 60}")
+print("📋 SQL TO RUN IN NEON CONSOLE:")
+print("=" * 60)
+for line in sql_lines:
+    print(f"  {line}")
+
+print(f"\n{'=' * 60}")
+print("🔧 OR RUN THIS NODE SCRIPT:")
+print("=" * 60)
+node_script = """
+const { neon } = require('@neondatabase/serverless');
+const bcrypt = require('bcryptjs');
+
+async function fixPasswords() {
+  const sql = neon(process.env.DATABASE_URL);
+  
+  const fixes = [
+"""
+for item in shops_to_fix:
+    h = hashes[item["phone"]]
+    node_script += f'    {{ phone: "{item["phone"]}", hash: "{h}" }},\n'
+
+node_script += """  ];
+  
+  for (const fix of fixes) {
+    await sql`UPDATE shops SET owner_password = ${fix.hash} WHERE owner_phone = ${fix.phone}`;
+    console.log(`✅ Updated password for phone ${fix.phone}`);
+  }
+  
+  // Verify
+  const shops = await sql`SELECT owner_phone, owner_password FROM shops WHERE owner_phone IN (${sql`SELECT phone FROM (VALUES ${sql`('01012345678'), ('01017603874')`})`})`;
+  for (const s of shops) {
+    const isBcrypt = s.owner_password?.startsWith('$2');
+    console.log(`${s.owner_phone}: ${isBcrypt ? '✅ bcrypt' : '❌ NOT bcrypt'} (len=${s.owner_password?.length || 0})`);
+  }
+}
+
+fixPasswords().catch(console.error);
+"""
+
+with open("fix_passwords.js", "w") as f:
+    f.write(node_script)
+
+print(f"  Saved to: fix_passwords.js")
+print(f"  Run with: node fix_passwords.js")
