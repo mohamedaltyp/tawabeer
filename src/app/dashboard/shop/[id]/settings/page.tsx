@@ -40,6 +40,7 @@ export default function ShopSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [newCounterName, setNewCounterName] = useState("");
+  const [testingWhatsapp, setTestingWhatsapp] = useState(false);
 
   useEffect(() => {
     fetch(`/api/shops/${id}/settings`, { headers: { "ngrok-skip-browser-warning": "true" } })
@@ -122,6 +123,31 @@ export default function ShopSettingsPage() {
     } catch {}
   };
 
+  const testWhatsappConnection = async () => {
+    if (!settings?.whatsapp_number) {
+      setMessage("❌ يجب إدخال رقم الواتساب أولاً");
+      return;
+    }
+    setTestingWhatsapp(true);
+    setMessage("");
+    try {
+      const res = await fetch(`/api/shops/${id}/whatsapp-settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        body: JSON.stringify({ action: "test", whatsapp_number: settings.whatsapp_number }),
+      });
+      if (res.ok) {
+        setMessage("✅ تم الاتصال بالواتساب بنجاح!");
+      } else {
+        setMessage("❌ فشل الاتصال بالواتساب");
+      }
+    } catch {
+      setMessage("❌ حدث خطأ أثناء الاختبار");
+    }
+    setTimeout(() => setMessage(""), 4000);
+    setTestingWhatsapp(false);
+  };
+
   if (!settings) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -156,17 +182,17 @@ export default function ShopSettingsPage() {
         )}
 
         {/* shop status toggle */}
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>🔴</span><span>حالة المحل</span></h2>
+        <div className={`bg-white rounded-2xl border-2 overflow-hidden transition-colors ${settings.is_open === 1 ? "border-green-100" : "border-red-100"}`}>
+          <div className={`px-5 py-4 border-b border-gray-100 ${settings.is_open === 1 ? "bg-green-50" : "bg-red-50"}`}>
+            <h2 className="font-bold flex items-center gap-2"><span className="text-xl">{settings.is_open === 1 ? "🟢" : "🔴"}</span><span className={settings.is_open === 1 ? "text-green-900" : "text-red-900"}>حالة المحل</span></h2>
           </div>
           <div className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-sm font-medium text-gray-700">
-                  {settings.is_open === 0 ? "🔴 المحل مغلق حالياً" : "🟢 المحل مفتوح"}
+                <span className={`text-sm font-bold ${settings.is_open === 1 ? "text-green-700" : "text-red-700"}`}>
+                  {settings.is_open === 1 ? "✅ المحل مفتوح الآن" : "❌ المحل مغلق حالياً"}
                 </span>
-                <p className="text-xs text-gray-400 mt-0.5">عند إغلاق المحل، لا يمكن للعملاء حجز أدوار جديدة</p>
+                <p className="text-xs text-gray-500 mt-1">عند الإغلاق، لن يتمكن العملاء من حجز أدوار جديدة</p>
               </div>
               <button onClick={async () => {
                   const newVal = settings.is_open === 0 ? 1 : 0;
@@ -183,8 +209,8 @@ export default function ShopSettingsPage() {
                     setTimeout(() => setMessage(""), 3000);
                   }
                 }}
-                className={`relative w-14 h-7 rounded-full transition-colors ${settings.is_open === 0 ? "bg-red-500" : "bg-green-500"}`}>
-                <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${settings.is_open === 0 ? "translate-x-0.5" : "translate-x-7"}`} />
+                className={`relative w-16 h-8 rounded-full transition-all ${settings.is_open === 0 ? "bg-red-500" : "bg-green-500"} shadow-lg`}>
+                <span className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all ${settings.is_open === 0 ? "translate-x-1" : "translate-x-8"}`} />
               </button>
             </div>
           </div>
@@ -193,28 +219,30 @@ export default function ShopSettingsPage() {
         {/* Counters */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>🪟</span><span>الشبابيك</span></h2>
-            <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-full">{counters.length}</span>
+            <h2 className="font-bold text-gray-900 flex items-center gap-2"><span>🪟</span><span>الشبابيك (العدادات)</span></h2>
+            <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-full">{counters.length} شباك</span>
           </div>
           <div className="p-5 space-y-3">
             {counters.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4">لا توجد شبابيك — أضف شباكاً واحداً على الأقل</p>
+              <p className="text-sm text-gray-500 text-center py-6 bg-gray-50 rounded-xl">
+                📍 لا توجد شبابيك — أضف شباكاً واحداً على الأقل لتوزيع العملاء
+              </p>
             ) : (
               counters.map((counter, i) => (
-                <div key={counter.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
-                      <span className="text-sm font-black text-indigo-600">{i + 1}</span>
+                <div key={counter.id} className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-11 h-11 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg">
+                      <span className="text-base font-bold text-white">{i + 1}</span>
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{counter.name}</p>
-                      <p className="text-xs text-gray-400">آخر رقم: {counter.current_number || 0}</p>
+                      <p className="font-bold text-gray-900 text-sm">{counter.name}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">📊 آخر رقم: <span className="font-bold text-indigo-600">{counter.current_number || 0}</span></p>
                     </div>
                   </div>
                   {counters.length > 1 && (
                     <button onClick={() => removeCounter(counter.id)}
-                      className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-xs text-red-500 hover:bg-red-100 transition-colors"
-                      title="حذف">✕</button>
+                      className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center text-sm text-red-600 hover:bg-red-200 transition-colors font-bold ms-3"
+                      title="حذف الشباك">✕</button>
                   )}
                 </div>
               ))
@@ -246,12 +274,17 @@ export default function ShopSettingsPage() {
               <div className="flex justify-between text-xs text-gray-400 mt-1"><span>1 د</span><span>60 د</span></div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">💬 رسالة الترحيب</label>
+              <label className="block text-sm font-bold text-gray-900 mb-2">💬 رسالة الترحيب</label>
+              <p className="text-xs text-gray-500 mb-2">المتغيرات المتاحة: {`{customer_name} {queue_number} {wait_time}`}</p>
               <textarea value={settings.greeting_message}
                 onChange={(e) => setSettings({ ...settings, greeting_message: e.target.value })}
                 rows={3}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                placeholder="مرحباً بك!" />
+                placeholder="مرحباً {customer_name} ، رقمك هو {queue_number}" />
+              <div className="mt-3 p-3 rounded-xl bg-indigo-50 border border-indigo-100">
+                <p className="text-xs font-medium text-indigo-900">👁️ معاينة:</p>
+                <p className="text-sm text-indigo-700 mt-1">{settings.greeting_message || "مرحباً بك!"}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -286,19 +319,25 @@ export default function ShopSettingsPage() {
               <>
                 {/* Phone Number */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">📱 رقم الواتساب</label>
-                  <input type="tel" value={settings.whatsapp_number}
-                    onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
-                    onBlur={async () => {
-                      await fetch(`/api/shops/${id}/whatsapp-settings`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-                        body: JSON.stringify({ whatsapp_enabled: settings.whatsapp_enabled, whatsapp_number: settings.whatsapp_number }),
-                      });
-                    }}
-                    placeholder="01012345678"
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
-                  <p className="text-xs text-gray-400 mt-1">ادخل الرقم من غير كود الدولة — هيتضاف تلقائياً</p>
+                  <label className="block text-xs font-bold text-gray-900 mb-1">📱 رقم الواتساب</label>
+                  <div className="flex gap-2">
+                    <input type="tel" value={settings.whatsapp_number}
+                      onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
+                      onBlur={async () => {
+                        await fetch(`/api/shops/${id}/whatsapp-settings`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+                          body: JSON.stringify({ whatsapp_enabled: settings.whatsapp_enabled, whatsapp_number: settings.whatsapp_number }),
+                        });
+                      }}
+                      placeholder="01012345678"
+                      className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
+                    <button onClick={testWhatsappConnection} disabled={testingWhatsapp || !settings.whatsapp_number}
+                      className="rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-50 transition-all whitespace-nowrap">
+                      {testingWhatsapp ? "⏳..." : "🧪 اختبار"}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">ادخل الرقم من غير كود الدولة — هيتضاف تلقائياً</p>
                 </div>
 
                 {/* Access Token (for Cloud API) */}

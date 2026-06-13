@@ -323,6 +323,7 @@ export interface Booking {
   status: "confirmed" | "cancelled" | "completed";
   notes: string;
   counter_id: string;
+  queue_number: number;
   created_at: string;
 }
 
@@ -971,19 +972,38 @@ export async function createBooking(data: {
     }
   }
 
-  // Create booking
+  // Atomic check-and-insert using a single query to prevent race conditions
   const id = uuidv4();
-  const queueNumber = booked + 1;
-  await sql`
+  
+  // First, try to insert only if under capacity — this is atomic at DB level
+  const insertResult = await sql`
     INSERT INTO bookings (id, shop_id, slot_id, booking_date, customer_name, customer_phone, notes, queue_number)
-    VALUES (${id}, ${data.shopId}, ${data.slotId}, ${data.bookingDate}, ${data.customerName || ""}, ${data.customerPhone || ""}, ${data.notes || ""}, ${queueNumber})
-  `;
+    SELECT 
+      ${id}::uuid, 
+      ${data.shopId}, 
+      ${data.slotId}, 
+      ${data.bookingDate}, 
+      ${data.customerName || ""}, 
+      ${data.customerPhone || ""}, 
+      ${data.notes || ""}, 
+      COALESCE((
+        SELECT COUNT(*)::int + 1 FROM bookings 
+        WHERE slot_id = ${data.slotId} AND booking_date = ${data.bookingDate} AND status = 'confirmed'
+      ), 1)
+    WHERE (
+      SELECT COUNT(*)::int FROM bookings 
+      WHERE slot_id = ${data.slotId} AND booking_date = ${data.bookingDate} AND status = 'confirmed'
+    ) < ${maxPerSlot}
+    RETURNING *
+  ` as unknown as Booking[];
 
-  const booking = await sql`SELECT * FROM bookings WHERE id = ${id}` as unknown as Booking[];
+  if (insertResult.length === 0) {
+    return { error: "هذا الموعد ممتلأ. اختر موعداً آخر." };
+  }
 
   return {
-    booking: booking[0],
-    position: queueNumber,
+    booking: insertResult[0],
+    position: insertResult[0].queue_number,
   };
 }
 

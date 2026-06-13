@@ -154,19 +154,23 @@ function AdminPanel() {
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 h-16">
-          <div className="flex items-center gap-3">
-            <span className="text-xl font-bold text-indigo-700">👑 طوابير — المشرف</span>
-            <span className="rounded-full bg-amber-100 px-3 py-0.5 text-xs font-bold text-amber-700">
-              ADMIN
-            </span>
-          </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-400">{shops.length} محل</span>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg">👑</div>
+            <div>
+              <span className="text-lg font-bold text-gray-900">لوحة تحكم طوابير</span>
+              <span className="ml-2 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">ADMIN</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="text-center">
+              <p className="text-2xl font-black text-indigo-600">{shops.length}</p>
+              <p className="text-xs text-gray-400">محل</p>
+            </div>
             <button
               onClick={handleLogout}
-              className="text-sm text-red-500 hover:text-red-600"
+              className="rounded-lg bg-red-50 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-100 transition-all"
             >
               تسجيل خروج
             </button>
@@ -185,94 +189,128 @@ function AdminPanel() {
 
       <main className="mx-auto max-w-6xl px-4 py-6">
         {/* Summary Stats */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
-          <div className="rounded-2xl bg-white border border-gray-100 p-4 text-center shadow-sm">
-            <p className="text-xs text-gray-400">الإجمالي</p>
-            <p className="text-2xl font-black text-indigo-600 mt-1">{shops.length}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-indigo-600 font-bold mb-1">إجمالي المحلات</p>
+                <p className="text-3xl font-black text-indigo-700">{shops.length}</p>
+              </div>
+              <span className="text-4xl">🏪</span>
+            </div>
           </div>
-          <div className="rounded-2xl bg-white border border-gray-100 p-4 text-center shadow-sm">
-            <p className="text-xs text-gray-400">مجاني</p>
-            <p className="text-2xl font-black text-gray-400 mt-1">{shops.filter((s) => s.plan === "free").length}</p>
+          <div className="rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-600 font-bold mb-1">مجاني</p>
+                <p className="text-3xl font-black text-gray-700">{shops.filter((s) => s.plan === "free").length}</p>
+              </div>
+              <span className="text-4xl">📖</span>
+            </div>
           </div>
-          <div className="rounded-2xl bg-white border border-gray-100 p-4 text-center shadow-sm">
-            <p className="text-xs text-gray-400">مدفوع</p>
-            <p className="text-2xl font-black text-blue-600 mt-1">{shops.filter((s) => s.plan !== "free").length}</p>
+          <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-blue-600 font-bold mb-1">مدفوع</p>
+                <p className="text-3xl font-black text-blue-700">{shops.filter((s) => s.plan !== "free").length}</p>
+              </div>
+              <span className="text-4xl">💎</span>
+            </div>
           </div>
-          <div className="rounded-2xl bg-white border border-gray-100 p-4 text-center shadow-sm">
-            <p className="text-xs text-gray-400">إيراد متوقع</p>
-            <p className="text-lg font-black text-green-600 mt-1">
-              {shops.reduce((sum, s) => {
-                const prices: Record<string, number> = { basic: 199, pro: 399, enterprise: 999 };
-                return sum + (prices[s.plan] || 0);
-              }, 0).toLocaleString("ar-EG")} ج.م
-            </p>
+          <div className="rounded-2xl bg-gradient-to-br from-green-50 to-green-100 border border-green-200 p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-green-600 font-bold mb-1">إيراد متوقع</p>
+                <p className="text-2xl font-black text-green-700">
+                  {shops.reduce((sum, s) => {
+                    const prices: Record<string, number> = { basic: 199, pro: 399, enterprise: 999 };
+                    return sum + (prices[s.plan] || 0);
+                  }, 0).toLocaleString("ar-EG")}
+                </p>
+                <p className="text-xs text-green-600">ج.م</p>
+              </div>
+              <span className="text-4xl">💰</span>
+            </div>
           </div>
         </div>
 
         {/* Shops by Owner */}
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">📊 المحلات والمالكين</h2>
+        </div>
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
           </div>
         ) : shops.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">لا توجد محلات بعد</div>
+          <div className="text-center py-12 rounded-2xl bg-white border border-gray-100">
+            <span className="text-4xl block mb-2">📭</span>
+            <p className="text-gray-400">لا توجد محلات بعد</p>
+          </div>
         ) : (
           <div className="space-y-4">
             {Array.from(owners.entries()).map(([phone, ownerShops]) => (
-              <div key={phone} className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+              <div key={phone} className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                 {/* Owner Header */}
-                <div className="bg-gray-50 px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-gray-700">{ownerShops[0].owner_name || "بدون اسم"}</span>
-                    <span className="text-xs text-gray-400" dir="ltr">📱 {phone}</span>
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center font-bold text-indigo-700">
+                      {(ownerShops[0].owner_name || "?").charAt(0)}
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-gray-900">{ownerShops[0].owner_name || "بدون اسم"}</span>
+                      <span className="text-xs text-gray-500 mr-2 font-mono">📱 {phone}</span>
+                    </div>
                   </div>
-                  <span className="text-xs text-gray-400">{ownerShops.length} محل</span>
+                  <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full">{ownerShops.length} محل</span>
                 </div>
 
                 {/* Shops */}
-                <div className="divide-y divide-gray-50">
+                <div className="divide-y divide-gray-100">
                   {ownerShops.map((shop) => (
-                    <div key={shop.id} className="flex items-center justify-between px-5 py-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-900">{shop.name}</span>
-                          {getPlanBadge(shop.plan)}
+                    <div key={shop.id} className="px-5 py-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-bold text-gray-900 text-sm">{shop.name}</span>
+                            {getPlanBadge(shop.plan)}
+                          </div>
+                          <p className="text-xs text-gray-400 font-mono" dir="ltr">{shop.id}</p>
+                          {shop.plan_expires_at && (
+                            <p className="text-xs text-amber-600 mt-1.5 font-medium">
+                              📅 ينتهي: {new Date(shop.plan_expires_at).toLocaleDateString("ar-EG")}
+                            </p>
+                          )}
                         </div>
-                        <p className="text-xs text-gray-400 mt-1 font-mono" dir="ltr">{shop.id}</p>
-                        {shop.plan_expires_at && (
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            ينتهي: {new Date(shop.plan_expires_at).toLocaleDateString("ar-EG")}
-                          </p>
-                        )}
-                      </div>
 
-                      {/* Actions */}
-                      <div className="flex gap-1 shrink-0">
-                        {["basic", "pro", "enterprise"].map((p) => (
+                        {/* Actions */}
+                        <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
+                          {["basic", "pro", "enterprise"].map((p) => (
+                            <button
+                              key={p}
+                              onClick={() => handleActivate(shop.id, p)}
+                              disabled={activating === shop.id || shop.plan === p}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${
+                                shop.plan === p
+                                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                  : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200 shadow-sm"
+                              }`}
+                            >
+                              {activating === shop.id ? "⏳..." : p === "basic" ? "⭐" : p === "pro" ? "💎" : "🏢"}
+                            </button>
+                          ))}
                           <button
-                            key={p}
-                            onClick={() => handleActivate(shop.id, p)}
-                            disabled={activating === shop.id || shop.plan === p}
-                            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                              shop.plan === p
-                                ? "bg-gray-100 text-gray-300 cursor-not-allowed"
-                                : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                            onClick={() => handleActivate(shop.id, "free")}
+                            disabled={activating === shop.id || shop.plan === "free"}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${
+                              shop.plan === "free"
+                                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                : "bg-red-100 text-red-700 hover:bg-red-200 shadow-sm"
                             }`}
                           >
-                            {activating === shop.id ? "..." : p === "basic" ? "⭐ أساسي" : p === "pro" ? "💎 احترافية" : "🏢 مؤسسات"}
+                            ❌
                           </button>
-                        ))}
-                        <button
-                          onClick={() => handleActivate(shop.id, "free")}
-                          disabled={activating === shop.id || shop.plan === "free"}
-                          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                            shop.plan === "free"
-                              ? "bg-gray-100 text-gray-300 cursor-not-allowed"
-                              : "bg-red-50 text-red-500 hover:bg-red-100"
-                          }`}
-                        >
-                          إلغاء
-                        </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -283,22 +321,24 @@ function AdminPanel() {
         )}
 
         {/* ─── 💳 إدارة طرق الدفع ─── */}
-        <details className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden mt-6">
-          <summary className="px-5 py-3 font-bold text-gray-700 cursor-pointer hover:bg-gray-50 flex items-center gap-2">
-            <span>💳</span> طرق الدفع
-            <span className="text-xs text-gray-400 font-normal">(إضافة / تعديل / حذف)</span>
+        <details className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden mt-8 open:shadow-lg transition-shadow">
+          <summary className="px-5 py-4 font-bold text-gray-900 cursor-pointer hover:bg-indigo-50 flex items-center gap-2 transition-colors">
+            <span className="text-xl">💳</span>
+            <span>إدارة طرق الدفع</span>
+            <span className="text-xs text-gray-400 font-normal ms-auto">(إضافة / تعديل / حذف)</span>
           </summary>
-          <div className="px-5 py-4 border-t border-gray-100">
+          <div className="px-5 py-4 border-t border-gray-100 bg-gray-50">
             <PaymentMethodsManager />
           </div>
         </details>
 
         {/* ─── ⚙️ إعدادات عامة ─── */}
-        <details className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden mt-6">
-          <summary className="px-5 py-3 font-bold text-gray-700 cursor-pointer hover:bg-gray-50 flex items-center gap-2">
-            <span>⚙️</span> إعدادات عامة
+        <details className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden mt-4 open:shadow-lg transition-shadow">
+          <summary className="px-5 py-4 font-bold text-gray-900 cursor-pointer hover:bg-indigo-50 flex items-center gap-2 transition-colors">
+            <span className="text-xl">⚙️</span>
+            <span>إعدادات عامة</span>
           </summary>
-          <div className="px-5 py-4 border-t border-gray-100">
+          <div className="px-5 py-4 border-t border-gray-100 bg-gray-50">
             <AdminSettings />
           </div>
         </details>
