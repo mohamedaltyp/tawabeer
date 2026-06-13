@@ -46,3 +46,20 @@ data.db*
 *.tsbuildinfo
 next-env.d.ts
 .hermes/
+
+# macOS files
+.DS_Store
+.fuse_hidden*
+*.pyc
+__pycache__/
+
+# Test files
+test_v1.py
+compare.py
+fix_passwords.js
+migrate_passwords.py
+design-mockups/
+HARDENING.md
+.env.example
+src/lib/__writetest.ts
+src/components/Icon.tsx
