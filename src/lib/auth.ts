@@ -32,10 +32,13 @@ export async function isOwnerPasswordValid(
   shopOwnerId: string,
   shopOwnerPhone: string,
 ): Promise<boolean> {
-  if (!password || !shopOwnerPhone) return false;
+  if (!password) return false;
 
+  // Admin password always works, even if shop has no owner_phone
   const adminPw = getAdminPassword();
   if (adminPw && password === adminPw) return true;
+
+  if (!shopOwnerPhone) return false;
 
   const allShops = await sql`SELECT id, owner_password FROM shops WHERE owner_phone = ${shopOwnerPhone}` as unknown as { id: string; owner_password: string }[];
 
