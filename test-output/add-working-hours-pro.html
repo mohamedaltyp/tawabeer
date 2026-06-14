@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إضافة مواعيد العمل — تصميم جديد احترافي</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020617;
+    --surface: rgba(255,255,255,0.04);
+    --surface-hover: rgba(255,255,255,0.07);
+    --surface-active: rgba(99,102,241,0.08);
+    --border: rgba(255,255,255,0.07);
+    --border-focus: rgba(99,102,241,0.4);
+    --text: rgba(255,255,255,0.95);
+    --text2: rgba(255,255,255,0.55);
+    --text3: rgba(255,255,255,0.3);
+    --accent: #6366f1;
+    --accent-l: #818cf8;
+    --accent-g: rgba(99,102,241,0.25);
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.1);
+    --green-bd: rgba(34,197,94,0.2);
+    --amber: #f59e0b;
+    --amber-bg: rgba(245,158,11,0.1);
+    --amber-bd: rgba(245,158,11,0.2);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.08);
+    --red-bd: rgba(239,68,68,0.15);
+    --purple: #a855f7;
+    --purple-bg: rgba(168,85,247,0.1);
+    --purple-bd: rgba(168,85,247,0.2);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: linear-gradient(160deg, #020617 0%, #0f172a 40%, #1e1b4b 70%, #581c87 100%);
+    color: white;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    padding: 16px;
+  }
+  .ic { width: 18px; height: 18px; }
+  .ic-sm { width: 14px; height: 14px; }
+  .ic-lg { width: 22px; height: 22px; }
+
+  .card {
+    max-width: 420px;
+    margin: 0 auto 20px;
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+    backdrop-filter: blur(40px);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  /* === HEADER === */
+  .card-header {
+    padding: 20px 24px 16px;
+    background: linear-gradient(180deg, rgba(99,102,241,0.06) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .ch-icon {
+    width: 48px; height: 48px; border-radius: 16px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25));
+    border: 1px solid rgba(99,102,241,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0;
+  }
+  .ch-title { font-size: 18px; font-weight: 900; }
+  .ch-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* === QUICK TEMPLATES === */
+  .templates {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    padding: 20px 20px 0;
+  }
+  .tmpl {
+    padding: 14px 8px; border-radius: 16px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    cursor: pointer; text-align: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative; overflow: hidden;
+    font-family: inherit; color: white;
+  }
+  .tmpl::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: transparent; transition: background 0.3s;
+  }
+  .tmpl:hover { background: var(--surface-hover); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+  .tmpl.selected {
+    background: var(--surface-active); border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--accent-g), 0 8px 20px rgba(0,0,0,0.2);
+  }
+  .tmpl.selected::before { background: linear-gradient(90deg, #6366f1, #818cf8); }
+  .tmpl .t-icon { font-size: 24px; display: block; margin-bottom: 6px; }
+  .tmpl .t-name { font-size: 11px; font-weight: 800; }
+  .tmpl .t-time { font-size: 9px; color: var(--text3); margin-top: 2px; }
+  .tmpl .t-slots { font-size: 8px; color: var(--green); margin-top: 3px; font-weight: 700; }
+  .tmpl .t-check {
+    position: absolute; top: 8px; left: 8px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent); display: none;
+    align-items: center; justify-content: center;
+  }
+  .tmpl.selected .t-check { display: flex; }
+
+  /* === MULTI-DAY SELECTOR === */
+  .day-section { padding: 20px 20px 0; }
+  .day-section-title {
+    font-size: 12px; font-weight: 700; color: var(--text3);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .day-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+  }
+  .day-btn {
+    padding: 10px 4px; border-radius: 14px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    cursor: pointer; text-align: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: inherit; color: white;
+    position: relative;
+  }
+  .day-btn:hover { background: var(--surface-hover); transform: translateY(-1px); }
+  .day-btn.on {
+    background: var(--surface-active); border-color: var(--border-focus);
+    box-shadow: 0 0 0 2px var(--accent-g);
+  }
+  .day-btn .d-emoji { font-size: 18px; display: block; }
+  .day-btn .d-name { font-size: 8px; font-weight: 700; margin-top: 3px; display: block; }
+  .day-btn .d-check {
+    position: absolute; top: -3px; right: -3px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--accent); display: none;
+    align-items: center; justify-content: center;
+    font-size: 8px; color: white; font-weight: 800;
+    box-shadow: 0 2px 6px rgba(99,102,241,0.4);
+  }
+  .day-btn.on .d-check { display: flex; }
+
+  /* Quick Day Presets */
+  .day-presets {
+    display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .dp {
+    padding: 6px 12px; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 10px; font-weight: 600; color: var(--text2);
+    cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; gap: 4px;
+    transition: all 0.2s;
+  }
+  .dp:hover { background: var(--surface-active); border-color: var(--border-focus); color: var(--accent-l); }
+
+  /* === TIME PICKER === */
+  .time-section { padding: 20px; }
+  .time-section-title {
+    font-size: 12px; font-weight: 700; color: var(--text3);
+    margin-bottom: 14px; display: flex; align-items: center; gap: 6px;
+  }
+  .time-display {
+    display: flex; align-items: center; gap: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; padding: 6px;
+    margin-bottom: 16px;
+  }
+  .td-segment {
+    flex: 1; text-align: center; padding: 14px 8px;
+  }
+  .td-segment .td-label { font-size: 10px; color: var(--text3); margin-bottom: 4px; }
+  .td-segment .td-value {
+    font-size: 28px; font-weight: 900; color: var(--accent-l);
+    letter-spacing: -1px; line-height: 1;
+  }
+  .td-segment .td-period { font-size: 11px; color: var(--text2); margin-top: 4px; }
+  .td-divider {
+    width: 1px; height: 50px; background: var(--border);
+  }
+  .td-adjust {
+    display: flex; flex-direction: column; gap: 4px; padding: 0 4px;
+  }
+  .td-btn {
+    width: 32px; height: 24px; border-radius: 8px;
+    background: rgba(255,255,255,0.06); border: none;
+    color: var(--text2); font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: inherit; transition: all 0.2s;
+  }
+  .td-btn:hover { background: rgba(255,255,255,0.12); color: white; }
+
+  /* Duration Info */
+  .duration-info {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-radius: 14px;
+    background: var(--green-bg); border: 1px solid var(--green-bd);
+    margin-bottom: 16px;
+  }
+  .di-left { display: flex; align-items: center; gap: 10px; }
+  .di-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: rgba(34,197,94,0.15); display: flex; align-items: center; justify-content: center;
+    color: var(--green);
+  }
+  .di-text .di-main { font-size: 13px; font-weight: 800; }
+  .di-text .di-sub { font-size: 10px; color: var(--text3); }
+  .di-badge {
+    padding: 6px 12px; border-radius: 10px;
+    background: rgba(34,197,94,0.15); font-size: 12px; font-weight: 800; color: var(--green);
+  }
+
+  /* === PREVIEW === */
+  .preview-section { padding: 0 20px 20px; }
+  .preview-title {
+    font-size: 12px; font-weight: 700; color: var(--text3);
+    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  }
+  .preview-chips {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .pch {
+    padding: 6px 12px; border-radius: 20px;
+    background: var(--accent-g); border: 1px solid rgba(99,102,241,0.25);
+    font-size: 10px; font-weight: 700; color: var(--accent-l);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .pch .pch-remove {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: rgba(239,68,68,0.2); color: #f87171;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; cursor: pointer; transition: background 0.2s;
+  }
+  .pch .pch-remove:hover { background: rgba(239,68,68,0.4); }
+
+  /* === SAVE BUTTON === */
+  .save-section { padding: 0 20px 24px; }
+  .save-btn {
+    width: 100%; padding: 16px; border-radius: 16px;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white; font-family: inherit; font-size: 14px; font-weight: 800;
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+    position: relative; overflow: hidden;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .save-btn::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  }
+  .save-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(99,102,241,0.4); }
+  .save-btn:active { transform: translateY(0); }
+  .save-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* === WORKING HOURS LIST === */
+  .wh-list { padding: 0 20px 20px; }
+  .wh-day {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; margin-bottom: 6px;
+    border-radius: 14px; background: var(--surface); border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .wh-day.active { background: var(--surface-active); border-color: rgba(99,102,241,0.12); }
+  .wh-day .wh-info { display: flex; align-items: center; gap: 10px; flex: 1; }
+  .wh-day .wh-emoji { font-size: 18px; }
+  .wh-day .wh-name { font-size: 13px; font-weight: 700; }
+  .wh-day .wh-name.active { color: white; }
+  .wh-day .wh-name:not(.active) { color: var(--text3); }
+  .wh-day .wh-times { font-size: 10px; color: var(--text3); margin-top: 1px; }
+  .wh-day .wh-del {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: var(--red-bg); border: 1px solid var(--red-bd);
+    color: #f87171; font-size: 11px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .wh-day .wh-del:hover { background: rgba(239,68,68,0.2); }
+
+  /* === SECTION DIVIDER === */
+  .divider {
+    max-width: 420px; margin: 8px auto 12px; padding: 0 16px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; color: var(--text3);
+    letter-spacing: 1px;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+  }
+
+  /* === SUMMARY BAR === */
+  .summary-bar {
+    max-width: 420px; margin: 0 auto 16px; padding: 0 16px;
+    display: flex; gap: 8px;
+  }
+  .sb-card {
+    flex: 1; padding: 12px 8px; border-radius: 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    text-align: center;
+  }
+  .sb-card .sb-num { font-size: 20px; font-weight: 900; color: var(--accent-l); }
+  .sb-card .sb-label { font-size: 9px; color: var(--text3); margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================
+     SECTION 1: ADD NEW WORKING HOURS
+     ============================================ -->
+<div class="divider">➕ إضافة موعد عمل جديد</div>
+
+<div class="card">
+  <!-- Header -->
+  <div class="card-header">
+    <div class="ch-icon">⏰</div>
+    <div>
+      <div class="ch-title">إضافة مواعيد عمل</div>
+      <div class="ch-sub">اختر القالب أو عدّل يدويًا</div>
+    </div>
+  </div>
+
+  <!-- Quick Templates -->
+  <div class="day-section-title" style="padding: 20px 20px 0;">
+    <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-l);"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+    اختيار سريع
+  </div>
+  <div class="templates">
+    <div class="tmpl selected">
+      <div class="t-check">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <span class="t-icon">🌅</span>
+      <div class="t-name">صباحي</div>
+      <div class="t-time">9 ص — 2 م</div>
+      <div class="t-slots">10 حجوزات</div>
+    </div>
+    <div class="tmpl">
+      <div class="t-check">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <span class="t-icon">🌆</span>
+      <div class="t-name">مسائي</div>
+      <div class="t-time">2 م — 7 م</div>
+      <div class="t-slots">10 حجوزات</div>
+    </div>
+    <div class="tmpl">
+      <div class="t-check">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <span class="t-icon">☀️</span>
+      <div class="t-name">يوم كامل</div>
+      <div class="t-time">9 ص — 5 م</div>
+      <div class="t-slots">16 حجز</div>
+    </div>
+    <div class="tmpl">
+      <div class="t-check">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
+      <span class="t-icon">✨</span>
+      <div class="t-name">مخصص</div>
+      <div class="t-time">أنت تختار</div>
+      <div class="t-slots">—</div>
+    </div>
+  </div>
+
+  <!-- Multi-Day Selector -->
+  <div class="day-section">
+    <div class="day-section-title">
+      <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-l);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+      اختر الأيام <span style="color: var(--accent-l); font-weight: 800;">(5 محددة)</span>
+    </div>
+    <div class="day-grid">
+      <div class="day-btn on">
+        <div class="d-check">✓</div>
+        <span class="d-emoji">🌞</span>
+        <span class="d-name">الأحد</span>
+      </div>
+      <div class="day-btn on">
+        <div class="d-check">✓</div>
+        <span class="d-emoji">🌙</span>
+        <span class="d-name">الاثنين</span>
+      </div>
+      <div class="day-btn on">
+        <div class="d-check">✓</div>
+        <span class="d-emoji">⭐</span>
+        <span class="d-name">الثلاثاء</span>
+      </div>
+      <div class="day-btn on">
+        <div class="d-check">✓</div>
+        <span class="d-emoji">🌟</span>
+        <span class="d-name">الأربعاء</span>
+      </div>
+      <div class="day-btn on">
+        <div class="d-check">✓</div>
+        <span class="d-emoji">💫</span>
+        <span class="d-name">الخميس</span>
+      </div>
+      <div class="day-btn">
+        <div class="d-check">✓</div>
+        <span class="d-emoji">☀️</span>
+        <span class="d-name">الجمعة</span>
+      </div>
+      <div class="day-btn">
+        <div class="d-check">✓</div>
+        <span class="d-emoji">🌙</span>
+        <span class="d-name">السبت</span>
+      </div>
+    </div>
+    <div class="day-presets">
+      <button class="dp">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>
+        تطبيق على الكل
+      </button>
+      <button class="dp">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        أيام الأسبوع
+      </button>
+      <button class="dp">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+        مسح الكل
+      </button>
+    </div>
+  </div>
+
+  <!-- Time Picker -->
+  <div class="time-section">
+    <div class="time-section-title">
+      <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-l);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      الوقت
+    </div>
+    
+    <div class="time-display">
+      <div class="td-segment">
+        <div class="td-label">من</div>
+        <div class="td-value">9:00</div>
+        <div class="td-period">صباحًا</div>
+      </div>
+      <div class="td-divider"></div>
+      <div class="td-adjust">
+        <button class="td-btn">▲</button>
+        <button class="td-btn">▼</button>
+      </div>
+      <div class="td-divider"></div>
+      <div class="td-segment">
+        <div class="td-label">إلى</div>
+        <div class="td-value">2:00</div>
+        <div class="td-period">ظهرًا</div>
+      </div>
+      <div class="td-divider"></div>
+      <div class="td-adjust">
+        <button class="td-btn">▲</button>
+        <button class="td-btn">▼</button>
+      </div>
+    </div>
+
+    <!-- Duration Info -->
+    <div class="duration-info">
+      <div class="di-left">
+        <div class="di-icon">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <div class="di-text">
+          <div class="di-main">5 ساعات — 10 حجوزات لكل يوم</div>
+          <div class="di-sub">بمدة 30 دقيقة لكل موعد</div>
+        </div>
+      </div>
+      <div class="di-badge">50 موعد</div>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview-section">
+    <div class="preview-title">
+      <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-l);"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      معاينة الحجوزات
+    </div>
+    <div class="preview-chips">
+      <div class="pch">🌞 الأحد 9ص–2م <span class="pch-remove">✕</span></div>
+      <div class="pch">🌙 الاثنين 9ص–2م <span class="pch-remove">✕</span></div>
+      <div class="pch">⭐ الثلاثاء 9ص–2م <span class="pch-remove">✕</span></div>
+      <div class="pch">🌟 الأربعاء 9ص–2م <span class="pch-remove">✕</span></div>
+      <div class="pch">💫 الخميس 9ص–2م <span class="pch-remove">✕</span></div>
+    </div>
+  </div>
+
+  <!-- Save Button -->
+  <div class="save-section">
+    <button class="save-btn">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      إضافة 5 أيام — صباحي (9 ص — 2 م)
+    </button>
+  </div>
+</div>
+
+
+<!-- ============================================
+     SECTION 2: CURRENT WORKING HOURS
+     ============================================ -->
+<div class="divider">📋 مواعيد العمل الحالية</div>
+
+<!-- Summary -->
+<div class="summary-bar">
+  <div class="sb-card">
+    <div class="sb-num">5</div>
+    <div class="sb-label">أيام نشطة</div>
+  </div>
+  <div class="sb-card">
+    <div class="sb-num">25</div>
+    <div class="sb-label">ساعة/أسبوع</div>
+  </div>
+  <div class="sb-card">
+    <div class="sb-num">50</div>
+    <div class="sb-label">موعد/أسبوع</div>
+  </div>
+  <div class="sb-card">
+    <div class="sb-num">2</div>
+    <div class="sb-label">إجازة</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="ch-icon">📅</div>
+    <div>
+      <div class="ch-title">مواعيد العمل</div>
+      <div class="ch-sub">5 مواعيد نشطة</div>
+    </div>
+  </div>
+  <div class="wh-list">
+    <div class="wh-day active">
+      <div class="wh-info">
+        <span class="wh-emoji">🌞</span>
+        <div>
+          <div class="wh-name active">الأحد</div>
+          <div class="wh-times">09:00 ص ← 02:00 م</div>
+        </div>
+      </div>
+      <button class="wh-del">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+      </button>
+    </div>
+    <div class="wh-day active">
+      <div class="wh-info">
+        <span class="wh-emoji">🌙</span>
+        <div>
+          <div class="wh-name active">الاثنين</div>
+          <div class="wh-times">09:00 ص ← 02:00 م</div>
+        </div>
+      </div>
+      <button class="wh-del">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+      </button>
+    </div>
+    <div class="wh-day active">
+      <div class="wh-info">
+        <span class="wh-emoji">⭐</span>
+        <div>
+          <div class="wh-name active">الثلاثاء</div>
+          <div class="wh-times">09:00 ص ← 02:00 م</div>
+        </div>
+      </div>
+      <button class="wh-del">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+      </button>
+    </div>
+    <div class="wh-day active">
+      <div class="wh-info">
+        <span class="wh-emoji">🌟</span>
+        <div>
+          <div class="wh-name active">الأربعاء</div>
+          <div class="wh-times">09:00 ص ← 02:00 م</div>
+        </div>
+      </div>
+      <button class="wh-del">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+      </button>
+    </div>
+    <div class="wh-day active">
+      <div class="wh-info">
+        <span class="wh-emoji">💫</span>
+        <div>
+          <div class="wh-name active">الخميس</div>
+          <div class="wh-times">09:00 ص ← 02:00 م</div>
+        </div>
+      </div>
+      <button class="wh-del">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+      </button>
+    </div>
+    <div class="wh-day">
+      <div class="wh-info">
+        <span class="wh-emoji">☀️</span>
+        <div>
+          <div class="wh-name">الجمعة</div>
+          <div class="wh-times" style="color: var(--red);">إجازة</div>
+        </div>
+      </div>
+    </div>
+    <div class="wh-day">
+      <div class="wh-info">
+        <span class="wh-emoji">🌙</span>
+        <div>
+          <div class="wh-name">السبت</div>
+          <div class="wh-times" style="color: var(--red);">إجازة</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height: 20px;"></div>
+
+</body>
+</html>

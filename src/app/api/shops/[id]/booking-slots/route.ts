@@ -73,6 +73,7 @@ export async function POST(
       dayOfWeek: body.dayOfWeek as number,
       startTime: body.startTime as string,
       endTime: body.endTime as string,
+      maxBookings: body.maxBookings as number | undefined,
     });
 
     return NextResponse.json({ slot }, { status: 201 });

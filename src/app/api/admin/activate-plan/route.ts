@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const shop = await getShop(shopId);
     if (!shop) {
-      return NextResponse.json({ error: "المحل غير موجود" }, { status: 404 });
+      return NextResponse.json({ error: "المنشأة غير موجودة" }, { status: 404 });
     }
 
     const validPlans = ["basic", "pro", "enterprise"];
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `تم تفعيل باقة ${plan} للمحل ${shop.name}`,
+      message: `تم تفعيل باقة ${plan} للمنشأة ${shop.name}`,
       shop: updated,
     });
   } catch (e: any) {

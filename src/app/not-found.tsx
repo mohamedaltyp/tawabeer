@@ -41,7 +41,7 @@ export default function NotFound() {
 
         {/* Fun suggestion */}
         <p className="mt-8 text-xs text-gray-400">
-          <Icon name="bulb" size={14} className="inline -mt-0.5" /> ربما تحاول البحث عن محل في الصفحة الرئيسية؟
+          <Icon name="bulb" size={14} className="inline -mt-0.5" /> ربما تحاول البحث عن منشأة في الصفحة الرئيسية؟
         </p>
       </div>
     </div>

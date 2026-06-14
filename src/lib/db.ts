@@ -185,6 +185,7 @@ async function runMigrations() {
     `ALTER TABLE shops ADD COLUMN IF NOT EXISTS owner_password TEXT DEFAULT ''`,
     `ALTER TABLE queue_entries ADD COLUMN IF NOT EXISTS push_subscription TEXT DEFAULT ''`,
     `ALTER TABLE counters ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+    `ALTER TABLE booking_slots ADD COLUMN IF NOT EXISTS max_bookings INTEGER DEFAULT 5`,
   ];
   for (const m of migrations) {
     try { await sql.query(m); } catch { /* column already exists */ }
@@ -300,6 +301,7 @@ export interface BookingSlot {
   day_of_week: number;
   start_time: string;
   end_time: string;
+  max_bookings: number;
   is_active: number;
   created_at: string;
 }
@@ -548,7 +550,7 @@ export async function callNext(shopId: string, counterId?: string): Promise<Queu
   // Send notifications: Browser Push → Telegram → WhatsApp (fallback chain)
   if (updated) {
     const shop = await getShop(shopId);
-    const shopName = shop?.name || "المحل";
+    const shopName = shop?.name || "المنشأة";
     const settings = await getQueueSettings(shopId);
 
     // 1️⃣ Browser Push Notification (PRIMARY)
@@ -603,7 +605,7 @@ export async function callAgain(id: string): Promise<QueueEntry | undefined> {
   // Send notifications: Browser Push → Telegram → WhatsApp (fallback chain)
   if (updated) {
     const shop = await getShop(entry.shop_id);
-    const shopName = shop?.name || "المحل";
+    const shopName = shop?.name || "المنشأة";
     const settings = await getQueueSettings(entry.shop_id);
 
     // 1️⃣ Browser Push Notification (PRIMARY)
@@ -878,9 +880,11 @@ export async function createBookingSlot(data: {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  maxBookings?: number;
 }): Promise<BookingSlot | undefined> {
   const id = uuidv4();
-  await sql`INSERT INTO booking_slots (id, shop_id, day_of_week, start_time, end_time) VALUES (${id}, ${data.shopId}, ${data.dayOfWeek}, ${data.startTime}, ${data.endTime})`;
+  const maxB = data.maxBookings || 5;
+  await sql`INSERT INTO booking_slots (id, shop_id, day_of_week, start_time, end_time, max_bookings) VALUES (${id}, ${data.shopId}, ${data.dayOfWeek}, ${data.startTime}, ${data.endTime}, ${maxB})`;
   const rows = await sql`SELECT * FROM booking_slots WHERE id = ${id}` as unknown as BookingSlot[];
   return rows[0];
 }
@@ -904,9 +908,8 @@ export async function getAvailableSlots(shopId: string, date: string): Promise<A
   const slots = await getBookingSlotsByDay(shopId, dayOfWeek);
   if (slots.length === 0) return [];
 
-  // Get settings for max bookings per slot and duration
+  // Get settings for duration
   const settings = await getQueueSettings(shopId);
-  const maxPerSlot = settings?.max_bookings_per_slot || 5;
   const duration = settings?.slot_duration_minutes || 30;
 
   const results: Array<{ slot: BookingSlot & { start_time: string; end_time: string }; available: number; total: number }> = [];
@@ -937,10 +940,11 @@ export async function getAvailableSlots(shopId: string, date: string): Promise<A
 
     for (const sub of subSlots) {
       const booked = bookedTimes[sub.start_time] || 0;
+      const slotMax = slot.max_bookings || 5;
       results.push({
         slot: { ...slot, start_time: sub.start_time, end_time: sub.end_time },
-        available: Math.max(0, maxPerSlot - booked),
-        total: maxPerSlot,
+        available: Math.max(0, slotMax - booked),
+        total: slotMax,
       });
     }
   }
@@ -997,7 +1001,7 @@ export async function createBooking(data: {
   // Check if shop allows booking
   const settings = await getQueueSettings(data.shopId);
   if (!settings || settings.booking_enabled === 0) {
-    return { error: "الحجز غير متاح حالياً في هذا المحل" };
+    return { error: "الحجز غير متاح حالياً في هذه المنشأة" };
   }
 
   // Check if slot exists and is active
@@ -1007,7 +1011,8 @@ export async function createBooking(data: {
   }
 
   // Check availability (include waiting bookings in capacity check!)
-  const maxPerSlot = settings.max_bookings_per_slot || 5;
+  const slotData = slots[0];
+  const maxPerSlot = slotData.max_bookings || 5;
   
   // Build notes with booking_time
   const notesObj: Record<string, string> = {};

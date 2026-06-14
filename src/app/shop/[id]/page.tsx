@@ -211,21 +211,21 @@ export default function ShopPage() {
             if (!isRecall) {
               if ("Notification" in window && Notification.permission === "granted") {
                 new Notification("حان طوابير!", {
-                  body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
+                  body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المنشأة"}`,
                   tag: "turn-called",
                 });
               }
-              document.title = `حان طوابير! - ${shop?.name || "المحل"}`;
+              document.title = `حان طوابير! - ${shop?.name || "المنشأة"}`;
             } else {
               if ("Notification" in window && Notification.permission === "granted") {
                 new Notification("إعادة نداء!", {
-                  body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المحل"}`,
+                  body: `رقم ${found.number} — تفضل إلى ${shop?.name || "المنشأة"}`,
                   tag: `turn-called-${Date.now()}`,
                 });
               }
               document.title = `إعادة نداء! رقم ${found.number}`;
               setTimeout(() => {
-                document.title = `حان طوابير! - ${shop?.name || "المحل"}`;
+                document.title = `حان طوابير! - ${shop?.name || "المنشأة"}`;
               }, 3000);
             }
           }
@@ -451,7 +451,7 @@ export default function ShopPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #67E8F9 100%)" }}>
         <div className="mb-2 flex justify-center text-cyan-300 animate-float"><Icon name="warning" size={76} /></div>
-        <h1 className="text-2xl font-bold text-white">المحل غير موجود</h1>
+        <h1 className="text-2xl font-bold text-white">المنشأة غير موجودة</h1>
         <p className="text-white/60 text-center">تأكد من الرابط وحاول مرة أخرى</p>
         <Link
           href="/"
@@ -507,7 +507,7 @@ export default function ShopPage() {
           </div>
 
           <p className="text-xl text-white/80 mb-2 animate-fade-in" style={{ animationDelay: "0.3s" }}>
-            تفضل إلى المحل
+            تفضل إلى المنشأة
           </p>
 
           {(myEntry.recall_count ?? 0) > 0 && (

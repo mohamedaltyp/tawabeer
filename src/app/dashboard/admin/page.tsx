@@ -70,9 +70,9 @@ export default function AdminPage() {
       .then((r) => r.json())
       .then((d) => {
         if (d.shops) setShops(d.shops);
-        else setError("لا توجد محلات");
+        else setError("لا توجد منشآت");
       })
-      .catch(() => setError("فشل تحميل المحلات"))
+      .catch(() => setError("فشل تحميل المنشآت"))
       .finally(() => setLoading(false));
   }, [loggedIn]);
 
@@ -193,7 +193,7 @@ export default function AdminPage() {
             <h1 className="text-base font-bold text-gray-900">🔐 المشرف</h1>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">{shops.length} محل</span>
+            <span className="text-xs text-gray-400">{shops.length} منشأة</span>
             <button
               onClick={handleLogout}
               className="text-xs text-red-500 hover:text-red-700 font-medium"
@@ -225,7 +225,7 @@ export default function AdminPage() {
           </div>
         ) : shops.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-gray-400">لا توجد محلات</p>
+            <p className="text-gray-400">لا توجد منشآت</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -247,13 +247,13 @@ export default function AdminPage() {
             {/* Shops table */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
-                <h2 className="font-bold text-gray-900">📋 جميع المحلات</h2>
+                <h2 className="font-bold text-gray-900">📋 جميع المنشآت</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50/50">
-                      <th className="text-right px-4 py-3 text-gray-500 font-medium">المحل</th>
+                      <th className="text-right px-4 py-3 text-gray-500 font-medium">المنشأة</th>
                       <th className="text-right px-4 py-3 text-gray-500 font-medium">المالك</th>
                       <th className="text-right px-4 py-3 text-gray-500 font-medium">الباقة</th>
                       <th className="text-right px-4 py-3 text-gray-500 font-medium">تاريخ الانتهاء</th>

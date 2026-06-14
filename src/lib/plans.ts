@@ -16,7 +16,7 @@ export const PLANS: Record<Plan, PlanLimits> = {
     maxShops: 1,
     maxDailyCustomers: 50,
     features: [
-      "محل واحد",
+      "منشأة واحدة",
       "إشعارات المتصفح",
       "QR كود",
       "إحصائيات أساسية",
@@ -29,7 +29,7 @@ export const PLANS: Record<Plan, PlanLimits> = {
     maxShops: 3,
     maxDailyCustomers: 200,
     features: [
-      "حتى ٣ محلات",
+      "حتى ٣ منشآت",
       "إشعارات المتصفح",
       "QR كود مخصص",
       "إحصائيات متقدمة",
@@ -45,7 +45,7 @@ export const PLANS: Record<Plan, PlanLimits> = {
     maxShops: 10,
     maxDailyCustomers: 1000,
     features: [
-      "حتى ١٠ محلات",
+      "حتى ١٠ منشآت",
       "إشعارات المتصفح",
       "QR كود مخصص قابل للطباعة",
       "إحصائيات متقدمة",
@@ -62,7 +62,7 @@ export const PLANS: Record<Plan, PlanLimits> = {
     maxShops: 999,
     maxDailyCustomers: 99999,
     features: [
-      "محلات غير محدود",
+      "منشآت غير محدود",
       "كل ميزات الاحترافية +",
       "White-Label (بدون علامة طوابير)",
       "لوحة تحكم مركزية لكل الفروع",

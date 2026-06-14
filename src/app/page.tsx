@@ -54,7 +54,7 @@ export default function HomePage() {
 
   // Transliteration mapping: common Arabic terms ↔ English
   const TRANSLITERATION: Record<string, string[]> = {
-    محل: ["mahal", "shop", "store"],
+    منشأة: ["mahal", "shop", "store"],
     مطعم: ["matam", "restaurant", "mat'aam"],
     حلاق: ["halaq", "barber", "salon"],
     عيادة: ["clinic", "clayda"],
@@ -146,7 +146,7 @@ export default function HomePage() {
               href="/dashboard"
               className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-all"
             >
-              افتح محلك
+              افتح منشأتك
             </Link>
           </div>
         </div>
@@ -168,13 +168,13 @@ export default function HomePage() {
               href="/dashboard"
               className="rounded-2xl bg-white px-8 py-4 text-lg font-semibold text-indigo-700 hover:bg-indigo-50 transition-all shadow-xl hover:shadow-2xl"
             >
-              <span className="inline-flex items-center gap-2"><Icon name="store" size={22} /> ابدأ بإدارة محلك</span>
+              <span className="inline-flex items-center gap-2"><Icon name="store" size={22} /> ابدأ بإدارة منشأتك</span>
             </Link>
             <Link
               href="#shops"
               className="rounded-2xl border-2 border-white/30 bg-white/10 px-8 py-4 text-lg font-semibold text-white hover:bg-white/20 backdrop-blur-sm transition-all"
             >
-              <span className="inline-flex items-center gap-2"><Icon name="search" size={22} /> ابحث عن محل</span>
+              <span className="inline-flex items-center gap-2"><Icon name="search" size={22} /> ابحث عن منشأة</span>
             </Link>
           </div>
         </div>
@@ -185,7 +185,7 @@ export default function HomePage() {
         <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white mb-12">كيف يعمل النظام؟</h2>
         <div className="grid gap-8 sm:grid-cols-3">
           {[
-            { icon: "scan", title: "1. امسح QR", desc: "الزبون يمسح QR الخاص بمحلك" },
+            { icon: "scan", title: "1. امسح QR", desc: "الزبون يمسح QR الخاص بمنشأتك" },
             { icon: "listNumbers", title: "2. خذ رقمك", desc: "يحصل على رقم دوره ووقت الانتظار التقديري" },
             { icon: "check", title: "3. انتظر طوابير", desc: "يصل له إشعار لحظة قدوم دوره" },
           ].map((item) => (
@@ -206,7 +206,7 @@ export default function HomePage() {
             {[
               { icon: "bolt", title: "وقت حقيقي", desc: "تحديثات لحظية عبر Server-Sent Events" },
               { icon: "chart", title: "إحصائيات", desc: "تحليلات أوقات الذروة ومتوسط الانتظار" },
-              { icon: "scan", title: "QR كود مخصص", desc: "كل محل له QR كود خاص قابل للطباعة" },
+              { icon: "scan", title: "QR كود مخصص", desc: "كل منشأة له QR كود خاص قابل للطباعة" },
               { icon: "smartphone", title: "بدون تحميل", desc: "تطبيق ويب — لا يحتاج تحميل أي برنامج" },
               { icon: "bell", title: "إشعارات فورية", desc: "الزبون يعرف لحظة قدوم دوره" },
               { icon: "trending", title: "تقارير", desc: "إحصائيات يومية وأسبوعية وشهرية" },
@@ -226,8 +226,8 @@ export default function HomePage() {
       {/* ─── Shops ─── */}
       <section id="shops" className="mx-auto max-w-6xl px-4 py-20">
         <div className="mb-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">المحلات المتاحة</h2>
-          <p className="mt-2 text-gray-500 dark:text-gray-400">اختر المحل اللي عايز تروح له</p>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">المنشآت المتاحة</h2>
+          <p className="mt-2 text-gray-500 dark:text-gray-400">اختر المنشأة اللي عايز تروح له</p>
         </div>
 
         {/* Search */}
@@ -236,7 +236,7 @@ export default function HomePage() {
             <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-400"><Icon name="search" size={20} /></span>
             <input
               type="text"
-              placeholder="ابحث عن محل... (عربي / English)"
+              placeholder="ابحث عن منشأة... (عربي / English)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 pr-12 pl-5 py-3 text-right text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-500/30 transition-all"
@@ -258,7 +258,7 @@ export default function HomePage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-400 dark:text-gray-500">
-            {search ? "لا توجد محلات بهذا الاسم" : "لا توجد محلات بعد — كن أول من يفتح محله!"}
+            {search ? "لا توجد منشآت بهذا الاسم" : "لا توجد منشآت بعد — كن أول من يفتح منشأةه!"}
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -292,7 +292,7 @@ export default function HomePage() {
                     يحصل على رقمه الآن
                   </span>
                   <span className="rounded-lg bg-indigo-50 dark:bg-indigo-900/40 px-3 py-1 text-sm font-bold text-indigo-600 dark:text-indigo-400">
-                    ادخل المحل ←
+                    ادخل المنشأة ←
                   </span>
                 </div>
               </button>

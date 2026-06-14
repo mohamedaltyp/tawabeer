@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // إرجاع جميع محلات هذا المالك (بدون كلمة المرور)
+    // إرجاع جميع منشآت هذا المالك (بدون كلمة المرور)
     const safeShops = await sanitizeShops(matchingShops);
 
     const res = NextResponse.json({

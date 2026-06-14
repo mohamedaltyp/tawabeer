@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تصميم إدارة الحجوزات — 3 خيارات</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Cairo', sans-serif; background: #0a0a12; color: #fff; min-height: 100vh; }
+
+  .page-header { text-align: center; padding: 40px 20px 10px; }
+  .page-header h1 { font-size: 26px; font-weight: 900; background: linear-gradient(135deg, #34d399, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .page-header p { color: #64748b; font-size: 13px; margin-top: 6px; }
+
+  .designs { display: flex; flex-direction: column; gap: 50px; padding: 20px; max-width: 420px; margin: 0 auto; }
+  .design-label { text-align: center; margin-bottom: 14px; }
+  .design-label h2 { font-size: 17px; font-weight: 800; color: #e2e8f0; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; margin-top: 4px; }
+  .b1 { background: #065f46; color: #6ee7b7; }
+  .b2 { background: #1e40af; color: #93c5fd; }
+  .b3 { background: #7c2d12; color: #fdba74; }
+  .design-label p { color: #64748b; font-size: 11px; margin-top: 4px; }
+
+  .phone { width: 100%; max-width: 390px; margin: 0 auto; border-radius: 32px; overflow: hidden; border: 3px solid #1e293b; background: #0f172a; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+
+  /* ═══════ DESIGN 1: Dashboard-first ═══════ */
+  .d1 { min-height: 800px; background: linear-gradient(180deg, #0f172a, #111827); }
+  .d1-top { padding: 16px 16px 0; display: flex; align-items: center; justify-content: space-between; }
+  .d1-top .back { color: #6366f1; font-size: 20px; }
+  .d1-top .title { font-size: 16px; font-weight: 900; }
+  .d1-top .settings-btn { width: 36px; height: 36px; border-radius: 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 16px; }
+
+  /* Today stats strip */
+  .d1-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 14px 16px; }
+  .d1-stat { text-align: center; padding: 10px 4px; border-radius: 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
+  .d1-stat .num { font-size: 22px; font-weight: 900; }
+  .d1-stat .lbl { font-size: 9px; color: #64748b; margin-top: 2px; }
+  .d1-stat.green .num { color: #34d399; }
+  .d1-stat.amber .num { color: #fbbf24; }
+  .d1-stat.blue .num { color: #60a5fa; }
+  .d1-stat.purple .num { color: #a78bfa; }
+
+  /* Horizontal day strip */
+  .d1-days { display: flex; gap: 6px; padding: 0 16px 12px; overflow-x: auto; scrollbar-width: none; }
+  .d1-days::-webkit-scrollbar { display: none; }
+  .d1-day { flex-shrink: 0; width: 52px; text-align: center; padding: 8px 4px; border-radius: 14px; background: rgba(255,255,255,0.04); border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
+  .d1-day .wd { font-size: 8px; color: #64748b; }
+  .d1-day .dn { font-size: 18px; font-weight: 900; margin: 2px 0; }
+  .d1-day .count { font-size: 8px; color: #34d399; }
+  .d1-day.active { background: #4f46e5; border-color: #6366f1; }
+  .d1-day.active .wd, .d1-day.active .count { color: rgba(255,255,255,0.7); }
+
+  /* Booking cards */
+  .d1-bookings { padding: 0 16px; }
+  .d1-section-title { font-size: 12px; font-weight: 800; color: #64748b; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .d1-bcard { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); margin-bottom: 8px; }
+  .d1-bcard .time-badge { flex-shrink: 0; width: 52px; height: 52px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; }
+  .d1-bcard .time-badge .t { font-size: 14px; }
+  .d1-bcard .time-badge .p { font-size: 9px; opacity: 0.7; }
+  .d1-bcard .time-badge.confirmed { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .d1-bcard .time-badge.pending { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .d1-bcard .time-badge.completed { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  .d1-bcard .info { flex: 1; min-width: 0; }
+  .d1-bcard .name { font-size: 13px; font-weight: 800; }
+  .d1-bcard .meta { font-size: 10px; color: #64748b; margin-top: 1px; }
+  .d1-bcard .actions { display: flex; gap: 4px; }
+  .d1-act { width: 32px; height: 32px; border-radius: 10px; border: none; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+  .d1-act.ok { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .d1-act.ok:hover { background: rgba(34,197,94,0.3); }
+  .d1-act.cancel { background: rgba(239,68,68,0.1); color: #f87171; }
+  .d1-act.done { background: rgba(96,165,250,0.15); color: #60a5fa; }
+
+  /* Quick add FAB */
+  .d1-fab { position: absolute; bottom: 20px; left: 20px; width: 52px; height: 52px; border-radius: 16px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 24px rgba(99,102,241,0.4); cursor: pointer; }
+
+  /* ═══════ DESIGN 2: Kanban-style ═══════ */
+  .d2 { min-height: 800px; background: #f8fafc; color: #0f172a; }
+  .d2-header { background: #fff; padding: 14px 16px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 12px; }
+  .d2-header .back { color: #6366f1; font-size: 20px; }
+  .d2-header .info h1 { font-size: 15px; font-weight: 900; }
+  .d2-header .info p { font-size: 10px; color: #64748b; }
+
+  /* Stats row */
+  .d2-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 14px 16px; }
+  .d2-stat { text-align: center; padding: 10px 4px; border-radius: 14px; background: #fff; border: 1px solid #e2e8f0; }
+  .d2-stat .num { font-size: 20px; font-weight: 900; }
+  .d2-stat .lbl { font-size: 9px; color: #94a3b8; margin-top: 2px; }
+
+  /* Tab bar */
+  .d2-tabs { display: flex; gap: 4px; padding: 0 16px 12px; }
+  .d2-tab { padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; background: #f1f5f9; color: #64748b; border: none; cursor: pointer; transition: all 0.2s; }
+  .d2-tab.active { background: #4f46e5; color: #fff; }
+  .d2-tab .count { background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 10px; font-size: 9px; margin-right: 4px; }
+  .d2-tab.active .count { background: rgba(255,255,255,0.2); }
+
+  /* Booking list */
+  .d2-list { padding: 0 16px; }
+  .d2-card { background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; padding: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+  .d2-card .avatar { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; color: #fff; flex-shrink: 0; }
+  .d2-card .avatar.green { background: linear-gradient(135deg, #22c55e, #16a34a); }
+  .d2-card .avatar.amber { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .d2-card .avatar.blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+  .d2-card .info { flex: 1; min-width: 0; }
+  .d2-card .name { font-size: 13px; font-weight: 800; }
+  .d2-card .detail { font-size: 10px; color: #64748b; display: flex; gap: 8px; margin-top: 2px; }
+  .d2-card .status-pill { padding: 3px 8px; border-radius: 8px; font-size: 9px; font-weight: 700; }
+  .d2-card .status-pill.confirmed { background: #dcfce7; color: #15803d; }
+  .d2-card .status-pill.pending { background: #fef3c7; color: #b45309; }
+  .d2-card .status-pill.completed { background: #dbeafe; color: #1d4ed8; }
+  .d2-card .quick-actions { display: flex; gap: 4px; }
+  .d2-qa { width: 30px; height: 30px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .d2-qa:hover { background: #f1f5f9; }
+
+  /* Working hours compact */
+  .d2-hours { padding: 16px; }
+  .d2-hours h3 { font-size: 13px; font-weight: 800; margin-bottom: 10px; }
+  .d2-days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .d2-day-cell { text-align: center; padding: 8px 2px; border-radius: 10px; background: #f1f5f9; font-size: 10px; font-weight: 700; }
+  .d2-day-cell.has-slots { background: #ede9fe; color: #6d28d9; }
+  .d2-day-cell .day-name { font-size: 8px; color: #94a3b8; display: block; }
+  .d2-day-cell.has-slots .day-name { color: #8b5cf6; }
+
+  /* ═══════ DESIGN 3: Tab-based clean ═══════ */
+  .d3 { min-height: 800px; background: #0f172a; position: relative; }
+  .d3-header { padding: 16px 16px 0; }
+  .d3-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .d3-top .back { color: #6366f1; font-size: 20px; }
+  .d3-top .actions { display: flex; gap: 8px; }
+  .d3-top .abtn { width: 36px; height: 36px; border-radius: 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: #94a3b8; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .d3-title { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
+  .d3-sub { font-size: 11px; color: #64748b; }
+
+  /* Big stat cards */
+  .d3-big-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 16px; }
+  .d3-big-stat { padding: 16px; border-radius: 18px; position: relative; overflow: hidden; }
+  .d3-big-stat::before { content: ''; position: absolute; top: -20px; left: -20px; width: 80px; height: 80px; border-radius: 50%; opacity: 0.1; }
+  .d3-big-stat.green { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.15); }
+  .d3-big-stat.green::before { background: #22c55e; }
+  .d3-big-stat.amber { background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.15); }
+  .d3-big-stat.amber::before { background: #fbbf24; }
+  .d3-big-stat .num { font-size: 32px; font-weight: 900; }
+  .d3-big-stat.green .num { color: #4ade80; }
+  .d3-big-stat.amber .num { color: #fbbf24; }
+  .d3-big-stat .lbl { font-size: 11px; color: #94a3b8; }
+  .d3-big-stat .sub { font-size: 9px; color: #475569; margin-top: 2px; }
+
+  /* Tab navigation */
+  .d3-tab-nav { display: flex; gap: 2px; padding: 0 16px; background: rgba(255,255,255,0.03); margin: 0 16px; border-radius: 14px; }
+  .d3-tab-item { flex: 1; text-align: center; padding: 10px 8px; font-size: 11px; font-weight: 700; color: #64748b; cursor: pointer; border-radius: 12px; transition: all 0.2s; border: none; background: none; }
+  .d3-tab-item.active { background: rgba(99,102,241,0.15); color: #818cf8; }
+
+  /* Today timeline */
+  .d3-timeline { padding: 16px; }
+  .d3-tl-item { display: flex; gap: 12px; margin-bottom: 16px; position: relative; }
+  .d3-tl-item::before { content: ''; position: absolute; right: 15px; top: 36px; bottom: -16px; width: 2px; background: rgba(255,255,255,0.06); }
+  .d3-tl-item:last-child::before { display: none; }
+  .d3-tl-time { flex-shrink: 0; width: 70px; text-align: center; }
+  .d3-tl-time .t { font-size: 14px; font-weight: 900; }
+  .d3-tl-time .p { font-size: 9px; color: #64748b; }
+  .d3-tl-dot { flex-shrink: 0; width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; border: 3px solid #0f172a; }
+  .d3-tl-dot.green { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.3); }
+  .d3-tl-dot.amber { background: #fbbf24; }
+  .d3-tl-dot.blue { background: #60a5fa; }
+  .d3-tl-card { flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 12px; }
+  .d3-tl-card .name { font-size: 13px; font-weight: 800; }
+  .d3-tl-card .meta { font-size: 10px; color: #64748b; margin-top: 2px; }
+  .d3-tl-card .btns { display: flex; gap: 6px; margin-top: 8px; }
+  .d3-tl-btn { padding: 5px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; border: none; cursor: pointer; }
+  .d3-tl-btn.confirm { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .d3-tl-btn.complete { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  .d3-tl-btn.cancel { background: rgba(239,68,68,0.1); color: #f87171; }
+
+  /* Bottom bar */
+  .d3-bottom { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 16px; background: linear-gradient(180deg, transparent, #0f172a 30%); }
+  .d3-bottom-inner { display: flex; gap: 8px; }
+  .d3-bottom-btn { flex: 1; padding: 12px; border-radius: 14px; text-align: center; font-size: 12px; font-weight: 800; border: none; cursor: pointer; }
+  .d3-bottom-btn.primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; box-shadow: 0 4px 16px rgba(99,102,241,0.3); }
+  .d3-bottom-btn.secondary { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>إدارة الحجوزات — 3 تصميمات</h1>
+  <p>لصاحب المحل / العيادة — أفضل من التصميم الحالي</p>
+</div>
+
+<div class="designs">
+
+<!-- ═══════ DESIGN 1: Dashboard-first ═══════ -->
+<div>
+  <div class="design-label">
+    <h2>التصميم ١: لوحة التحكم السريعة</h2>
+    <span class="badge b1">Conservative</span>
+    <p>كل حاجة في صفحة واحدة — إحصائيات + أيام + حجوزات + أctions سريعة</p>
+  </div>
+  <div class="phone" style="position:relative;">
+    <div class="d1">
+      <div class="d1-top">
+        <span class="back">→</span>
+        <span class="title">إدارة الحجوزات</span>
+        <div class="settings-btn">⚙</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="d1-stats">
+        <div class="d1-stat purple"><div class="num">8</div><div class="lbl">اليوم</div></div>
+        <div class="d1-stat green"><div class="num">3</div><div class="lbl">مؤكدة</div></div>
+        <div class="d1-stat amber"><div class="num">2</div><div class="lbl">انتظار</div></div>
+        <div class="d1-stat blue"><div class="num">3</div><div class="lbl">مكتملة</div></div>
+      </div>
+
+      <!-- Day strip -->
+      <div class="d1-days">
+        <div class="d1-day"><div class="wd">سب</div><div class="dn">14</div><div class="count">3</div></div>
+        <div class="d1-day active"><div class="wd">أحد</div><div class="dn">15</div><div class="count">8</div></div>
+        <div class="d1-day"><div class="wd">اث</div><div class="dn">16</div><div class="count">5</div></div>
+        <div class="d1-day"><div class="wd">ثل</div><div class="dn">17</div><div class="count">2</div></div>
+        <div class="d1-day"><div class="wd">أر</div><div class="dn">18</div><div class="count">6</div></div>
+        <div class="d1-day"><div class="wd">خم</div><div class="dn">19</div><div class="count">1</div></div>
+      </div>
+
+      <!-- Bookings -->
+      <div class="d1-bookings">
+        <div class="d1-section-title">📋 حجوزات الأحد ١٥ يونيو</div>
+
+        <div class="d1-bcard">
+          <div class="time-badge confirmed"><div class="t">9:00</div><div class="p">ص</div></div>
+          <div class="info">
+            <div class="name">د. أحمد محمد</div>
+            <div class="meta">موعد فحص • 01012345678</div>
+          </div>
+          <div class="actions">
+            <button class="d1-act done">✓</button>
+          </div>
+        </div>
+
+        <div class="d1-bcard">
+          <div class="time-badge pending"><div class="t">9:40</div><div class="p">ص</div></div>
+          <div class="info">
+            <div class="name">سارة علي</div>
+            <div class="meta">استشارة • 01112891062</div>
+          </div>
+          <div class="actions">
+            <button class="d1-act ok">✓</button>
+            <button class="d1-act cancel">✕</button>
+          </div>
+        </div>
+
+        <div class="d1-bcard">
+          <div class="time-badge pending"><div class="t">10:20</div><div class="p">ص</div></div>
+          <div class="info">
+            <div class="name">عمر حسن</div>
+            <div class="meta">متابعة • 01077777777</div>
+          </div>
+          <div class="actions">
+            <button class="d1-act ok">✓</button>
+            <button class="d1-act cancel">✕</button>
+          </div>
+        </div>
+
+        <div class="d1-bcard">
+          <div class="time-badge completed"><div class="t">11:00</div><div class="p">ص</div></div>
+          <div class="info">
+            <div class="name">محمد علي</div>
+            <div class="meta">فحص سنوي • 01099999999</div>
+          </div>
+          <div class="actions">
+            <button class="d1-act done">✓</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="d1-fab">+</button>
+  </div>
+</div>
+
+<!-- ═══════ DESIGN 2: Kanban Light ═══════ -->
+<div>
+  <div class="design-label">
+    <h2>التصميم ٢: بطاقة سريعة فاتحة</h2>
+    <span class="badge b2">Strong Fit</span>
+    <p>تصميم فاتح نظيف — تبويبات سريعة + بطاقات حجوزات + مواعيد عمل مدمجة</p>
+  </div>
+  <div class="phone">
+    <div class="d2">
+      <div class="d2-header">
+        <span class="back">←</span>
+        <div class="info">
+          <h1>إدارة الحجوزات</h1>
+          <p>عيادة د. أحمد — الأحد ١٥ يونيو</p>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="d2-stats">
+        <div class="d2-stat"><div class="num" style="color:#6366f1">8</div><div class="lbl">الكل</div></div>
+        <div class="d2-stat"><div class="num" style="color:#22c55e">3</div><div class="lbl">مؤكدة</div></div>
+        <div class="d2-stat"><div class="num" style="color:#f59e0b">2</div><div class="lbl">انتظار</div></div>
+        <div class="d2-stat"><div class="num" style="color:#3b82f6">3</div><div class="lbl">مكتملة</div></div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="d2-tabs">
+        <button class="d2-tab active">الكل <span class="count">8</span></button>
+        <button class="d2-tab">انتظار <span class="count">2</span></button>
+        <button class="d2-tab">مؤكدة <span class="count">3</span></button>
+        <button class="d2-tab">مكتملة <span class="count">3</span></button>
+      </div>
+
+      <!-- Bookings -->
+      <div class="d2-list">
+        <div class="d2-card">
+          <div class="avatar green">أ</div>
+          <div class="info">
+            <div class="name">د. أحمد محمد</div>
+            <div class="detail"><span>🕐 9:00 ص</span><span>📋 فحص</span></div>
+          </div>
+          <span class="status-pill confirmed">مؤكد</span>
+          <div class="quick-actions">
+            <button class="d2-qa">✓</button>
+          </div>
+        </div>
+
+        <div class="d2-card">
+          <div class="avatar amber">س</div>
+          <div class="info">
+            <div class="name">سارة علي</div>
+            <div class="detail"><span>🕐 9:40 ص</span><span>📋 استشارة</span></div>
+          </div>
+          <span class="status-pill pending">انتظار</span>
+          <div class="quick-actions">
+            <button class="d2-qa">✓</button>
+            <button class="d2-qa">✕</button>
+          </div>
+        </div>
+
+        <div class="d2-card">
+          <div class="avatar amber">ع</div>
+          <div class="info">
+            <div class="name">عمر حسن</div>
+            <div class="detail"><span>🕐 10:20 ص</span><span>📋 متابعة</span></div>
+          </div>
+          <span class="status-pill pending">انتظار</span>
+          <div class="quick-actions">
+            <button class="d2-qa">✓</button>
+            <button class="d2-qa">✕</button>
+          </div>
+        </div>
+
+        <div class="d2-card">
+          <div class="avatar blue">م</div>
+          <div class="info">
+            <div class="name">محمد علي</div>
+            <div class="detail"><span>🕐 11:00 ص</span><span>📋 فحص سنوي</span></div>
+          </div>
+          <span class="status-pill completed">مكتمل</span>
+          <div class="quick-actions">
+            <button class="d2-qa">↻</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Working hours compact -->
+      <div class="d2-hours">
+        <h3>⏰ مواعيد العمل</h3>
+        <div class="d2-days-grid">
+          <div class="d2-day-cell has-slots"><span class="day-name">سب</span>✓</div>
+          <div class="d2-day-cell has-slots"><span class="day-name">أحد</span>✓</div>
+          <div class="d2-day-cell has-slots"><span class="day-name">اث</span>✓</div>
+          <div class="d2-day-cell has-slots"><span class="day-name">ثل</span>✓</div>
+          <div class="d2-day-cell has-slots"><span class="day-name">أر</span>✓</div>
+          <div class="d2-day-cell"><span class="day-name">خم</span>—</div>
+          <div class="d2-day-cell"><span class="day-name">جم</span>—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ DESIGN 3: Dark Timeline ═══════ -->
+<div>
+  <div class="design-label">
+    <h2>التصميم ٣: رحلة اليوم</h2>
+    <span class="badge b3">Divergent</span>
+    <p>تصميم Dark مع Timeline — يوريك الحجوزات كأنها مواعيد على خط زمني</p>
+  </div>
+  <div class="phone" style="position:relative;">
+    <div class="d3">
+      <div class="d3-header">
+        <div class="d3-top">
+          <span class="back">→</span>
+          <div class="actions">
+            <div class="abtn">📊</div>
+            <div class="abtn">⚙</div>
+          </div>
+        </div>
+        <div class="d3-title">إدارة الحجوزات</div>
+        <div class="d3-sub">عيادة د. أحمد — الأحد ١٥ يونيو ٢٠٢٦</div>
+      </div>
+
+      <!-- Big stats -->
+      <div class="d3-big-stats">
+        <div class="d3-big-stat green">
+          <div class="num">3</div>
+          <div class="lbl">مؤكدة اليوم</div>
+          <div class="sub">جاهزة للخدمة</div>
+        </div>
+        <div class="d3-big-stat amber">
+          <div class="num">2</div>
+          <div class="lbl">بانتظار التأكيد</div>
+          <div class="sub">يحتاج رد منك</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="d3-tab-nav">
+        <button class="d3-tab-item active">📋 اليوم (8)</button>
+        <button class="d3-tab-item">⏰ مواعيد العمل</button>
+        <button class="d3-tab-item">⚙ الإعدادات</button>
+      </div>
+
+      <!-- Timeline -->
+      <div class="d3-timeline">
+        <div class="d3-tl-item">
+          <div class="d3-tl-time"><div class="t">9:00</div><div class="p">صباحاً</div></div>
+          <div class="d3-tl-dot green"></div>
+          <div class="d3-tl-card">
+            <div class="name">د. أحمد محمد</div>
+            <div class="meta">موعد فحص — 01012345678</div>
+            <div class="btns">
+              <button class="d3-tl-btn complete">✓ تم</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="d3-tl-item">
+          <div class="d3-tl-time"><div class="t">9:40</div><div class="p">صباحاً</div></div>
+          <div class="d3-tl-dot amber"></div>
+          <div class="d3-tl-card">
+            <div class="name">سارة علي</div>
+            <div class="meta">استشارة — 01112891062</div>
+            <div class="btns">
+              <button class="d3-tl-btn confirm">✓ تأكيد</button>
+              <button class="d3-tl-btn cancel">✕ إلغاء</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="d3-tl-item">
+          <div class="d3-tl-time"><div class="t">10:20</div><div class="p">صباحاً</div></div>
+          <div class="d3-tl-dot amber"></div>
+          <div class="d3-tl-card">
+            <div class="name">عمر حسن</div>
+            <div class="meta">متابعة — 01077777777</div>
+            <div class="btns">
+              <button class="d3-tl-btn confirm">✓ تأكيد</button>
+              <button class="d3-tl-btn cancel">✕ إلغاء</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="d3-tl-item">
+          <div class="d3-tl-time"><div class="t">11:00</div><div class="p">صباحاً</div></div>
+          <div class="d3-tl-dot blue"></div>
+          <div class="d3-tl-card">
+            <div class="name">محمد علي</div>
+            <div class="meta">فحص سنوي — 01099999999</div>
+            <div class="btns">
+              <button class="d3-tl-btn complete">✓ تم</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom -->
+      <div class="d3-bottom">
+        <div class="d3-bottom-inner">
+          <button class="d3-bottom-btn primary">+ حجز يدوي</button>
+          <button class="d3-bottom-btn secondary">📅 مواعيد العمل</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</body>
+</html>

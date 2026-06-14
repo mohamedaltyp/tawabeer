@@ -40,7 +40,7 @@ export async function POST(
     if (settings && settings.is_open === 0) {
       return NextResponse.json(
         {
-          error: "المحل مغلق حالياً. لا يمكن حجز أدوار جديدة.",
+          error: "المنشأة مغلقة حالياً. لا يمكن حجز أدوار جديدة.",
           code: "shop_closed",
         },
         { status: 403 }
@@ -54,7 +54,7 @@ export async function POST(
       const limits = getPlanLimits(shopPlan);
       return NextResponse.json(
         {
-          error: `المحل وصل للحد الأقصى من الزبائن اليوم (${limits.maxDailyCustomers}). جرب بكرة أو رقي الباقة.`,
+          error: `المنشأة وصل للحد الأقصى من الزبائن اليوم (${limits.maxDailyCustomers}). جرب بكرة أو رقي الباقة.`,
           code: "daily_limit_reached",
           upgradeUrl: "/dashboard/pricing",
         },

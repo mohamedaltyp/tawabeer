@@ -65,7 +65,7 @@ export async function notifyCustomerCalled(
 
   // إضافة رابط واتساب لو موجود
   if (waLink) {
-    message += `\\n\\n💬 <b>تواصل مع المحل عبر واتساب:</b>`;
+    message += `\\n\\n💬 <b>تواصل مع المنشأة عبر واتساب:</b>`;
     message += `\\n👉 <a href="${waLink}">فتح واتساب</a>`;
   }
 

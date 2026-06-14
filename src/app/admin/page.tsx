@@ -75,7 +75,7 @@ function AdminPanel() {
       const data = await res.json();
       setShops(data.shops || []);
     } catch {
-      setMessage({ type: "error", text: "فشل تحميل المحلات" });
+      setMessage({ type: "error", text: "فشل تحميل المنشآت" });
     }
     setLoading(false);
   };
@@ -143,7 +143,7 @@ function AdminPanel() {
     );
   };
 
-  // تجميع المحلات حسب رقم هاتف المالك
+  // تجميع المنشآت حسب رقم هاتف المالك
   const owners = new Map<string, any[]>();
   shops.forEach((shop) => {
     const key = shop.owner_phone || "بدون هاتف";
@@ -166,7 +166,7 @@ function AdminPanel() {
           <div className="flex items-center gap-6">
             <div className="text-center">
               <p className="text-2xl font-black text-indigo-600">{shops.length}</p>
-              <p className="text-xs text-gray-400">محل</p>
+              <p className="text-xs text-gray-400">منشأة</p>
             </div>
             <button
               onClick={handleLogout}
@@ -193,7 +193,7 @@ function AdminPanel() {
           <div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-indigo-600 font-bold mb-1">إجمالي المحلات</p>
+                <p className="text-xs text-indigo-600 font-bold mb-1">إجمالي المنشآت</p>
                 <p className="text-3xl font-black text-indigo-700">{shops.length}</p>
               </div>
               <span className="text-cyan-300"><Icon name="store" size={36} /></span>
@@ -236,7 +236,7 @@ function AdminPanel() {
 
         {/* Shops by Owner */}
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><Icon name="chart" size={18} className="inline -mt-0.5" /> المحلات والمالكين</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><Icon name="chart" size={18} className="inline -mt-0.5" /> المنشآت والمالكين</h2>
         </div>
         {loading ? (
           <div className="flex justify-center py-12">
@@ -245,7 +245,7 @@ function AdminPanel() {
         ) : shops.length === 0 ? (
           <div className="text-center py-12 rounded-2xl bg-white border border-gray-100">
             <span className="mb-2 flex justify-center text-gray-500"><Icon name="inbox" size={36} /></span>
-            <p className="text-gray-400">لا توجد محلات بعد</p>
+            <p className="text-gray-400">لا توجد منشآت بعد</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -262,7 +262,7 @@ function AdminPanel() {
                       <span className="text-xs text-gray-500 mr-2 font-mono"><Icon name="smartphone" size={12} className="inline -mt-0.5" /> {phone}</span>
                     </div>
                   </div>
-                  <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full">{ownerShops.length} محل</span>
+                  <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full">{ownerShops.length} منشأة</span>
                 </div>
 
                 {/* Shops */}

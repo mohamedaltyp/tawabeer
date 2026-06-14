@@ -48,8 +48,8 @@ export default function QRPage() {
         <div className="mb-6 flex items-center gap-3">
           <Link href={`/dashboard/shop/${id}`} className="text-gray-400 hover:text-gray-600">&larr;</Link>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">{shop?.name || "المحل"}</h1>
-            <p className="text-xs text-gray-400">QR كود المحل</p>
+            <h1 className="text-lg font-bold text-gray-900">{shop?.name || "المنشأة"}</h1>
+            <p className="text-xs text-gray-400">QR كود المنشأة</p>
           </div>
         </div>
 
@@ -68,7 +68,7 @@ export default function QRPage() {
           {shop?.address && <p className="text-sm text-gray-500 mt-1"><Icon name="pin" size={13} className="inline -mt-0.5" /> {shop.address}</p>}
 
           <div className="mt-6 rounded-xl bg-gray-50 p-3">
-            <p className="text-xs text-gray-400 mb-1">رابط المحل</p>
+            <p className="text-xs text-gray-400 mb-1">رابط المنشأة</p>
             <p className="text-sm text-indigo-600 font-medium break-all">{shopUrl}</p>
           </div>
 

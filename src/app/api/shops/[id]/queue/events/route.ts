@@ -12,7 +12,7 @@ export async function GET(
   const shop = await getShop(id);
   if (!shop) return new Response("Shop not found", { status: 404 });
 
-  // Rate limit: حد أقصى لاتصالات SSE لكل محل
+  // Rate limit: حد أقصى لاتصالات SSE لكل منشأة
   const current = sseConnectionCount.get(id) || 0;
   if (current >= MAX_SSE_PER_SHOP) {
     return new Response("Too many connections", { status: 429 });

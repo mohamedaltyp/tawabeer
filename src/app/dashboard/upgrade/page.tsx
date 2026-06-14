@@ -39,7 +39,7 @@ function UpgradeContent() {
       .join("\n");
     setMessage(
       `تم استلام طلبك للترقية إلى الباقة ${plan.name}!\n\n` +
-        `📱 رقم المحل: ${shopId}\n` +
+        `📱 رقم المنشأة: ${shopId}\n` +
         `💳 المطلوب: ${plan.price} ج.م شهرياً\n\n` +
         `يرجى تحويل المبلغ على:\n${methodsList}\n\n` +
         `بعد التحويل، أرسل صورة الإيصال على واتساب ${adminWhatsapp}\n` +
@@ -70,7 +70,7 @@ function UpgradeContent() {
 
             <div className="rounded-2xl bg-white border border-gray-100 p-6 shadow-sm space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">رقم هاتف صاحب المحل *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">رقم هاتف صاحب المنشأة *</label>
                 <input
                   type="tel"
                   value={phone}
@@ -80,7 +80,7 @@ function UpgradeContent() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">رقم المحل (ID) *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">رقم المنشأة (ID) *</label>
                 <input
                   type="text"
                   value={shopId}
@@ -89,7 +89,7 @@ function UpgradeContent() {
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-right focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-50"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  ⚡ تجده في لوحة التحكم ← بجانب اسم المحل ← 🆔 رقم المحل
+                  ⚡ تجده في لوحة التحكم ← بجانب اسم المنشأة ← 🆔 رقم المنشأة
                 </p>
               </div>
 

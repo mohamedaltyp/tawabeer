@@ -162,15 +162,15 @@ export default function DashboardPage() {
           {/* Welcome Section */}
           <div className="mb-8">
             <h1 className="text-2xl font-black text-gray-900 mb-1">مرحباً {loggedIn.name}!</h1>
-            <p className="text-gray-400 text-sm">إدارة محلاتك وطوابيرك من مكان واحد</p>
+            <p className="text-gray-400 text-sm">إدارة منشآتك وطوابيرك من مكان واحد</p>
           </div>
 
           {shops.length === 0 ? (
             /* Empty State */
             <div className="rounded-3xl bg-white border border-gray-100 p-12 text-center shadow-sm">
               <div className="mb-6 flex justify-center text-cyan-300 animate-float"><Icon name="store" size={64} /></div>
-              <h2 className="text-2xl font-black text-gray-900 mb-2">ليس لديك محلات بعد</h2>
-              <p className="text-gray-400 mb-8 max-w-md mx-auto">أضف أول محل لك لبدء إدارة الطوابير واستقبال العملاء</p>
+              <h2 className="text-2xl font-black text-gray-900 mb-2">ليس لديك منشآت بعد</h2>
+              <p className="text-gray-400 mb-8 max-w-md mx-auto">أضف أول منشأة لك لبدء إدارة الطوابير واستقبال العملاء</p>
               <div className="max-w-sm mx-auto">
                 <AddShopForm onAdded={() => fetchShops(loggedIn.phone)} />
               </div>
@@ -182,7 +182,7 @@ export default function DashboardPage() {
                 <div className="card p-4 text-center">
                   <span className="mb-1 flex justify-center text-cyan-300"><Icon name="store" size={24} /></span>
                   <p className="text-2xl font-black text-gray-900">{shops.length}</p>
-                  <p className="text-xs text-gray-400">عدد المحلات</p>
+                  <p className="text-xs text-gray-400">عدد المنشآت</p>
                 </div>
                 <div className="card p-4 text-center">
                   <span className="mb-1 flex justify-center text-cyan-300"><Icon name="refresh" size={24} /></span>
@@ -203,13 +203,13 @@ export default function DashboardPage() {
                   <p className="text-2xl font-black text-emerald-600">
                     {shops.filter((s) => s.is_active === 1).length}
                   </p>
-                  <p className="text-xs text-gray-400">محلات نشطة</p>
+                  <p className="text-xs text-gray-400">منشآت نشطة</p>
                 </div>
               </div>
 
               {/* Shops Header */}
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900">محلاتك</h2>
+                <h2 className="text-lg font-bold text-gray-900">منشآتك</h2>
                 <AddShopModal onAdded={() => fetchShops(loggedIn.phone)} />
               </div>
 
@@ -321,7 +321,7 @@ export default function DashboardPage() {
             <span className="text-cyan-300"><Icon name="listNumbers" size={30} /></span>
             <span className="text-3xl font-black bg-gradient-to-l from-cyan-400 to-violet-500 bg-clip-text text-transparent">طوابير</span>
           </Link>
-          <p className="mt-2 text-gray-500 text-sm">منصة إدارة الطوابير الذكية للمحلات</p>
+          <p className="mt-2 text-gray-500 text-sm">منصة إدارة الطوابير الذكية للمنشآت</p>
         </div>
 
         {/* Card */}
@@ -346,7 +346,7 @@ export default function DashboardPage() {
                   : "text-gray-400 hover:text-gray-600"
               }`}
             >
-              محل جديد
+              منشأة جديدة
             </button>
           </div>
 
@@ -401,21 +401,21 @@ export default function DashboardPage() {
             <div className="space-y-3">
               <input
                 type="text"
-                placeholder="اسم المحل *"
+                placeholder="اسم المنشأة *"
                 value={newShop.name}
                 onChange={(e) => setNewShop({ ...newShop, name: e.target.value })}
                 className="input-field"
               />
               <input
                 type="text"
-                placeholder="اسم صاحب المحل *"
+                placeholder="اسم صاحب المنشأة *"
                 value={newShop.owner_name}
                 onChange={(e) => setNewShop({ ...newShop, owner_name: e.target.value })}
                 className="input-field"
               />
               <input
                 type="tel"
-                placeholder="رقم هاتف صاحب المحل *"
+                placeholder="رقم هاتف صاحب المنشأة *"
                 value={newShop.owner_phone}
                 onChange={(e) => setNewShop({ ...newShop, owner_phone: e.target.value })}
                 className="input-field"
@@ -462,7 +462,7 @@ export default function DashboardPage() {
                 className="btn-primary w-full text-base flex items-center justify-center gap-2"
               >
                 <Icon name="rocket" size={18} />
-                <span>افتح محلك الآن</span>
+                <span>افتح منشأتك الآن</span>
               </button>
             </div>
           )}
@@ -514,9 +514,9 @@ function AddShopForm({ onAdded }: { onAdded: () => void }) {
 
   return (
     <div className="space-y-3 text-right">
-      <input placeholder="اسم المحل *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" />
-      <input placeholder="اسم صاحب المحل *" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} className="input-field" />
-      <input type="tel" placeholder="رقم هاتف صاحب المحل *" value={form.owner_phone} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })} className="input-field" />
+      <input placeholder="اسم المنشأة *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" />
+      <input placeholder="اسم صاحب المنشأة *" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} className="input-field" />
+      <input type="tel" placeholder="رقم هاتف صاحب المنشأة *" value={form.owner_phone} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })} className="input-field" />
       <input type="password" placeholder="كلمة المرور *" value={form.owner_password} onChange={(e) => setForm({ ...form, owner_password: e.target.value })} className="input-field" />
       {error && <div className="text-sm text-red-500 text-center">{error}</div>}
       <button onClick={handleSubmit} disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
@@ -528,7 +528,7 @@ function AddShopForm({ onAdded }: { onAdded: () => void }) {
         ) : (
           <>
             <Icon name="plus" size={16} />
-            <span>أضف المحل</span>
+            <span>أضف المنشأة</span>
           </>
         )}
       </button>
@@ -546,13 +546,13 @@ function AddShopModal({ onAdded }: { onAdded: () => void }) {
         className="btn-primary flex items-center gap-2 text-sm"
       >
         <Icon name="plus" size={16} />
-        <span>أضف محل</span>
+        <span>أضف منشأة</span>
       </button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setOpen(false)}>
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">محل جديد</h3>
+              <h3 className="text-xl font-bold text-gray-900">منشأة جديدة</h3>
               <button onClick={() => setOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors"><Icon name="x" size={18} /></button>
             </div>
             <AddShopForm onAdded={() => { setOpen(false); onAdded(); }} />

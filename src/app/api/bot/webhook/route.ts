@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
         const entry = entries[0];
         const customerPhone = entry.customer_phone || "";
-        const shopName = entry.shop_name || "المحل";
+        const shopName = entry.shop_name || "المنشأة";
         const entryNumber = entry.number;
 
         // ✅ Link the chat_id to the queue entry
@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
       await sendTelegram(
         chatId,
         `👋 مرحباً بك في بوت <b>طوابير</b>!\n\n`
-        + `📌 هذا البوت يرسل لك إشعار لما يجي طوابير في أي محل يستخدم نظام توابير.\n\n`
+        + `📌 هذا البوت يرسل لك إشعار لما يجي طوابير في أي منشأة يستخدم نظام توابير.\n\n`
         + `💡 <b>الاستخدام:</b>\n`
         + `1️⃣ أرسل رقم موبايلك عشان تربط حسابك (مثال: 01001112233)\n`
         + `2️⃣ احجز طوابير بنفس رقم الموبايل\n`
@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
       `;
       await sendTelegram(
         chatId,
-        `✅ <b>تم ربط رقمك بنجاح!</b>\n\n📱 ${phone}\n\n🔔 هتوصللك إشعارات على تيليجرام لما يجي طوابير في أي محل — بس تأكد إنك تستخدم نفس الرقم عند حجز الدور.`
+        `✅ <b>تم ربط رقمك بنجاح!</b>\n\n📱 ${phone}\n\n🔔 هتوصللك إشعارات على تيليجرام لما يجي طوابير في أي منشأة — بس تأكد إنك تستخدم نفس الرقم عند حجز الدور.`
       );
       return NextResponse.json({ ok: true });
     }
@@ -257,7 +257,7 @@ export async function POST(req: NextRequest) {
         const entry: any = entries[0];
         const statusMap: Record<string, string> = {
           waiting: "🟢 في الانتظار",
-          called: "🔔 تمت مناداتك — تفضل للمحل",
+          called: "🔔 تمت مناداتك — تفضل للمنشأة",
           completed: "✅ تمت الخدمة",
           cancelled: "❌ ملغي",
         };

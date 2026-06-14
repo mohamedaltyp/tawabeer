@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تصميم إضافة موعد عمل — 3 خيارات</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: linear-gradient(to bottom right, #020617, #1e1b4b, #581c87);
+    color: white;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  
+  .design-label {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0.5;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+  
+  .card {
+    max-width: 420px;
+    margin: 0 auto 40px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+  }
+  
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-header .icon-box {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: rgba(99,102,241,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .card-header h3 { font-size: 15px; font-weight: 800; }
+  .card-header p { font-size: 11px; opacity: 0.4; margin-top: 1px; }
+  .card-body { padding: 20px; }
+  
+  /* SVG Icons */
+  .ic { width: 18px; height: 18px; display: inline-block; vertical-align: middle; }
+  .ic-sm { width: 14px; height: 14px; }
+
+  /* ============================================================
+     DESIGN 1: Smart Multi-Day + Quick Templates
+     ============================================================ */
+  
+  /* Quick Templates */
+  .templates { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; }
+  .tmpl {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+    text-align: center;
+    min-width: 100px;
+    transition: all 0.2s;
+    font-family: inherit;
+    color: white;
+  }
+  .tmpl:hover { background: rgba(255,255,255,0.08); border-color: rgba(99,102,241,0.3); }
+  .tmpl.selected { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); box-shadow: 0 0 20px rgba(99,102,241,0.15); }
+  .tmpl .emoji { font-size: 22px; display: block; margin-bottom: 4px; }
+  .tmpl .name { font-size: 11px; font-weight: 700; }
+  .tmpl .time { font-size: 10px; opacity: 0.4; margin-top: 2px; }
+  
+  /* Multi-Day Toggle */
+  .day-toggles { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 20px; }
+  .day-toggle {
+    text-align: center;
+    padding: 10px 2px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.02);
+    font-family: inherit;
+    color: white;
+    position: relative;
+  }
+  .day-toggle.on { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); }
+  .day-toggle .d-emoji { font-size: 16px; display: block; }
+  .day-toggle .d-name { font-size: 9px; font-weight: 600; margin-top: 2px; display: block; }
+  .day-toggle .check {
+    position: absolute; top: -4px; right: -4px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #6366f1;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+  }
+  .day-toggle.on .check { display: flex; }
+  
+  /* Visual Time Slider */
+  .time-visual {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .time-visual .label { font-size: 12px; font-weight: 700; opacity: 0.7; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .time-bar {
+    position: relative;
+    height: 40px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .time-bar .hour-markers {
+    display: flex;
+    height: 100%;
+    position: relative;
+  }
+  .time-bar .hour-mark {
+    flex: 1;
+    border-left: 1px solid rgba(255,255,255,0.05);
+    position: relative;
+  }
+  .time-bar .hour-mark .h-num {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8px;
+    opacity: 0.3;
+  }
+  .time-bar .active-range {
+    position: absolute;
+    top: 4px;
+    height: 28px;
+    background: linear-gradient(to left, #6366f1, #818cf8);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    box-shadow: 0 0 20px rgba(99,102,241,0.3);
+  }
+  .time-bar .active-range::before,
+  .time-bar .active-range::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  .time-bar .active-range::before { left: -6px; }
+  .time-bar .active-range::after { right: -6px; }
+  
+  .time-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .time-detail-box {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    margin: 0 4px;
+  }
+  .time-detail-box .td-label { font-size: 9px; opacity: 0.4; margin-bottom: 2px; }
+  .time-detail-box .td-value { font-size: 16px; font-weight: 800; color: #a5b4fc; }
+  .time-detail-box .td-period { font-size: 10px; opacity: 0.5; }
+  .time-detail-arrow { font-size: 18px; opacity: 0.3; margin: 0 2px; }
+  .time-detail-box:last-child .td-value { color: #818cf8; }
+  
+  /* Duration Badge */
+  .duration-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(99,102,241,0.1);
+    border: 1px solid rgba(99,102,241,0.2);
+    font-size: 11px;
+    font-weight: 600;
+    color: #a5b4fc;
+    margin-top: 12px;
+  }
+  
+  /* Add Button */
+  .add-btn-full {
+    width: 100%;
+    padding: 14px;
+    border-radius: 14px;
+    background: linear-gradient(to left, #6366f1, #4f46e5);
+    color: white;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+  }
+  .add-btn-full:hover { opacity: 0.9; transform: translateY(-1px); }
+  
+  /* Preview */
+  .preview-strip {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .preview-chip {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.2);
+    font-size: 10px;
+    font-weight: 600;
+    color: #34d399;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .preview-chip .remove {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: rgba(239,68,68,0.2);
+    color: #f87171;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px;
+    cursor: pointer;
+  }
+
+  /* ============================================================
+     DESIGN 2: Day Cards with Inline Time
+     ============================================================ */
+  .day-card {
+    display: flex;
+    align-items: center;
+    padding: 14px;
+    margin-bottom: 8px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: all 0.2s;
+    gap: 12px;
+  }
+  .day-card.active { background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.2); }
+  .day-card .dc-toggle {
+    width: 44px; height: 26px;
+    border-radius: 13px;
+    background: rgba(255,255,255,0.1);
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex-shrink: 0;
+  }
+  .day-card.active .dc-toggle { background: #6366f1; }
+  .day-card .dc-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: white;
+    transition: all 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  .day-card.active .dc-toggle::after { transform: translateX(-18px); }
+  
+  .day-card .dc-info { flex: 1; }
+  .day-card .dc-name { font-size: 13px; font-weight: 700; }
+  .day-card .dc-emoji { font-size: 14px; margin-left: 6px; }
+  .day-card .dc-time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+  }
+  .day-card.active .dc-time-inputs { opacity: 1; }
+  .day-card .dc-time-inputs input {
+    width: 70px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    font-family: inherit;
+    font-size: 12px;
+    text-align: center;
+    outline: none;
+  }
+  .day-card .dc-time-inputs input:focus { border-color: rgba(99,102,241,0.5); }
+  .day-card .dc-time-inputs .arrow { font-size: 12px; opacity: 0.3; }
+
+  /* Quick Apply Row */
+  .quick-apply {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .qa-btn {
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .qa-btn:hover { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.3); color: #a5b4fc; }
+
+  /* ============================================================
+     DESIGN 3: Visual Weekly Grid
+     ============================================================ */
+  .week-grid {
+    display: grid;
+    grid-template-columns: 60px repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 16px;
+    font-size: 10px;
+  }
+  .week-grid .wg-corner { }
+  .week-grid .wg-day {
+    text-align: center;
+    padding: 8px 2px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .week-grid .wg-day.on { background: rgba(99,102,241,0.2); color: #a5b4fc; }
+  .week-grid .wg-day .wg-emoji { font-size: 14px; display: block; }
+  .week-grid .wg-day .wg-name { font-size: 8px; margin-top: 2px; display: block; }
+  
+  .week-grid .wg-hour {
+    padding: 4px 2px;
+    text-align: center;
+    font-size: 8px;
+    opacity: 0.3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .week-grid .wg-cell {
+    height: 28px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.02);
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .week-grid .wg-cell:hover { background: rgba(99,102,241,0.1); }
+  .week-grid .wg-cell.filled {
+    background: linear-gradient(to bottom, rgba(99,102,241,0.3), rgba(99,102,241,0.15));
+    border: 1px solid rgba(99,102,241,0.3);
+  }
+  .week-grid .wg-cell.filled::after {
+    content: '✓';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 10px;
+    color: #a5b4fc;
+  }
+  
+  /* Visual Summary */
+  .visual-summary {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .vs-card {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    text-align: center;
+  }
+  .vs-card .vs-num { font-size: 22px; font-weight: 800; color: #a5b4fc; }
+  .vs-card .vs-label { font-size: 10px; opacity: 0.4; margin-top: 2px; }
+  
+  /* Time Block Visual */
+  .time-blocks { margin-bottom: 16px; }
+  .tb-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .tb-label { width: 50px; font-size: 10px; font-weight: 600; opacity: 0.5; text-align: left; }
+  .tb-bar-container { flex: 1; position: relative; height: 28px; }
+  .tb-bar-bg {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 100%;
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
+  }
+  .tb-bar-active {
+    position: absolute;
+    top: 3px;
+    height: 22px;
+    background: linear-gradient(to left, rgba(99,102,241,0.4), rgba(99,102,241,0.2));
+    border-radius: 5px;
+    border: 1px solid rgba(99,102,241,0.3);
+  }
+
+  /* Preset Buttons */
+  .presets { display: flex; gap: 6px; margin-bottom: 16px; }
+  .preset {
+    flex: 1;
+    padding: 10px 8px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    text-align: center;
+    cursor: pointer;
+    font-family: inherit;
+    color: white;
+    transition: all 0.2s;
+  }
+  .preset:hover { background: rgba(255,255,255,0.08); }
+  .preset.sel { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.3); }
+  .preset .p-icon { font-size: 20px; display: block; }
+  .preset .p-name { font-size: 10px; font-weight: 700; margin-top: 4px; }
+  .preset .p-time { font-size: 9px; opacity: 0.4; margin-top: 1px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     DESIGN 1: Smart Templates + Multi-Day Toggle + Visual Slider
+     ============================================================ -->
+<div class="design-label">— التصميم ١: قوالب ذكية + اختيار متعدد —</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="icon-box">➕</div>
+    <div>
+      <h3>إضافة موعد عمل</h3>
+      <p>اختر القالب أو عدّل يدويًا</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <!-- Quick Templates -->
+    <div style="font-size: 12px; font-weight: 700; opacity: 0.6; margin-bottom: 10px;">⚡ اختيار سريع</div>
+    <div class="templates">
+      <div class="tmpl selected">
+        <span class="emoji">🌅</span>
+        <span class="name">صباحي</span>
+        <span class="time">9 ص — 2 م</span>
+      </div>
+      <div class="tmpl">
+        <span class="emoji">🌆</span>
+        <span class="name">مسائي</span>
+        <span class="time">2 م — 7 م</span>
+      </div>
+      <div class="tmpl">
+        <span class="emoji">☀️</span>
+        <span class="name">يوم كامل</span>
+        <span class="time">9 ص — 5 م</span>
+      </div>
+      <div class="tmpl">
+        <span class="emoji">🌙</span>
+        <span class="name">مساء متأخر</span>
+        <span class="time">5 م — 10 م</span>
+      </div>
+    </div>
+    
+    <!-- Multi-Day Toggle -->
+    <div style="font-size: 12px; font-weight: 700; opacity: 0.6; margin-bottom: 10px;">📅 الأيام</div>
+    <div class="day-toggles">
+      <div class="day-toggle on">
+        <span class="check">✓</span>
+        <span class="d-emoji">🌞</span>
+        <span class="d-name">الأحد</span>
+      </div>
+      <div class="day-toggle on">
+        <span class="check">✓</span>
+        <span class="d-emoji">🌙</span>
+        <span class="d-name">الاثنين</span>
+      </div>
+      <div class="day-toggle on">
+        <span class="check">✓</span>
+        <span class="d-emoji">⭐</span>
+        <span class="d-name">الثلاثاء</span>
+      </div>
+      <div class="day-toggle on">
+        <span class="check">✓</span>
+        <span class="d-emoji">🌟</span>
+        <span class="d-name">الأربعاء</span>
+      </div>
+      <div class="day-toggle on">
+        <span class="check">✓</span>
+        <span class="d-emoji">💫</span>
+        <span class="d-name">الخميس</span>
+      </div>
+      <div class="day-toggle">
+        <span class="check">✓</span>
+        <span class="d-emoji">☀️</span>
+        <span class="d-name">الجمعة</span>
+      </div>
+      <div class="day-toggle">
+        <span class="check">✓</span>
+        <span class="d-emoji">🌙</span>
+        <span class="d-name">السبت</span>
+      </div>
+    </div>
+    
+    <!-- Visual Time Slider -->
+    <div class="time-visual">
+      <div class="label">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #818cf8;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        الوقت
+      </div>
+      <div class="time-bar">
+        <div class="hour-markers">
+          <div class="hour-mark"><span class="h-num">6</span></div>
+          <div class="hour-mark"><span class="h-num">7</span></div>
+          <div class="hour-mark"><span class="h-num">8</span></div>
+          <div class="hour-mark"><span class="h-num">9</span></div>
+          <div class="hour-mark"><span class="h-num">10</span></div>
+          <div class="hour-mark"><span class="h-num">11</span></div>
+          <div class="hour-mark"><span class="h-num">12</span></div>
+          <div class="hour-mark"><span class="h-num">1</span></div>
+          <div class="hour-mark"><span class="h-num">2</span></div>
+          <div class="hour-mark"><span class="h-num">3</span></div>
+          <div class="hour-mark"><span class="h-num">4</span></div>
+          <div class="hour-mark"><span class="h-num">5</span></div>
+          <div class="hour-mark"><span class="h-num">6</span></div>
+          <div class="hour-mark"><span class="h-num">7</span></div>
+          <div class="hour-mark"><span class="h-num">8</span></div>
+          <div class="hour-mark"><span class="h-num">9</span></div>
+          <div class="hour-mark"><span class="h-num">10</span></div>
+        </div>
+        <div class="active-range" style="left: 17.6%; width: 29.4%;">5 ساعات</div>
+      </div>
+      <div class="time-details">
+        <div class="time-detail-box">
+          <div class="td-label">من</div>
+          <div class="td-value">9:00</div>
+          <div class="td-period">صباحًا</div>
+        </div>
+        <div class="time-detail-arrow">←</div>
+        <div class="time-detail-box">
+          <div class="td-label">إلى</div>
+          <div class="td-value">2:00</div>
+          <div class="td-period">ظهراً</div>
+        </div>
+      </div>
+      <div class="duration-badge">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        المدة: 5 ساعات — كل موعد 30 دقيقة = 10 حجوزات
+      </div>
+    </div>
+    
+    <!-- Add Button -->
+    <button class="add-btn-full">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      إضافة 5 أيام (الأحد — الخميس)
+    </button>
+    
+    <!-- Preview -->
+    <div class="preview-strip">
+      <div class="preview-chip">
+        <span>🌞 الأحد 9ص–2م</span>
+        <span class="remove">✕</span>
+      </div>
+      <div class="preview-chip">
+        <span>🌙 الاثنين 9ص–2م</span>
+        <span class="remove">✕</span>
+      </div>
+      <div class="preview-chip">
+        <span>⭐ الثلاثاء 9ص–2م</span>
+        <span class="remove">✕</span>
+      </div>
+      <div class="preview-chip">
+        <span>🌟 الأربعاء 9ص–2م</span>
+        <span class="remove">✕</span>
+      </div>
+      <div class="preview-chip">
+        <span>💫 الخميس 9ص–2م</span>
+        <span class="remove">✕</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     DESIGN 2: Day-by-Day Cards with Toggle + Inline Time
+     ============================================================ -->
+<div class="design-label">— التصميم ٢: بطاقات يوم بيوم مع تبديل —</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="icon-box">⏰</div>
+    <div>
+      <h3>إضافة مواعيد العمل</h3>
+      <p>فعّل كل يوم واضبط الوقت</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <!-- Quick Apply -->
+    <div class="quick-apply">
+      <button class="qa-btn">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>
+        تطبيق على الكل
+      </button>
+      <button class="qa-btn">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        أيام الأسبوع
+      </button>
+      <button class="qa-btn">
+        <svg class="ic-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+        مسح الكل
+      </button>
+    </div>
+    
+    <!-- Day Cards -->
+    <div class="day-card active">
+      <div class="dc-toggle"></div>
+      <div class="dc-info">
+        <div class="dc-name"><span class="dc-emoji">🌞</span> الأحد</div>
+      </div>
+      <div class="dc-time-inputs">
+        <input type="time" value="09:00">
+        <span class="arrow">←</span>
+        <input type="time" value="17:00">
+      </div>
+    </div>
+    
+    <div class="day-card active">
+      <div class="dc-toggle"></div>
+      <div class="dc-info">
+        <div class="dc-name"><span class="dc-emoji">🌙</span> الاثنين</div>
+      </div>
+      <div class="dc-time-inputs">
+        <input type="time" value="09:00">
+        <span class="arrow">←</span>
+        <input type="time" value="17:00">
+      </div>
+    </div>
+    
+    <div class="day-card active">
+      <div class="dc-toggle"></div>
+      <div class="dc-info">
+        <div class="dc-name"><span class="dc-emoji">⭐</span> الثلاثاء</div>
+      </div>
+      <div class="dc-time-inputs">
+        <input type="time" value="09:00">
+        <span class="arrow">←</span>
+        <input type="time" value="17:00">
+      </div>
+    </div>
+    
+    <div class="day-card active">
+      <div class="dc-toggle"></div>
+      <div class="dc-info">
+        <div class="dc-name"><span class="dc-emoji">🌟</span> الأربعاء</div>
+      </div>
+      <div class="dc-time-inputs">
+        <input type="time" value="09:00">
+        <span class="arrow">←</span>
+        <input type="time" value="17:00">
+      </div>
+    </div>
+    
+    <div class="day-card active">
+      <div class="dc-toggle"></div>
+      <div class="dc-info">
+        <div class="dc-name"><span class="dc-emoji">💫</span> الخميس</div>
+      </div>
+      <div class="dc-time-inputs">
+        <input type="time" value="09:00">
+        <span class="arrow">←</span>
+        <input type="time" value="14:00">
+      </div>
+    </div>
+    
+    <div class="day-card">
+      <div class="dc-toggle"></div>
+      <div class="dc-info">
+        <div class="dc-name"><span class="dc-emoji">☀️</span> الجمعة</div>
+      </div>
+      <div class="dc-time-inputs">
+        <input type="time" value="09:00">
+        <span class="arrow">←</span>
+        <input type="time" value="17:00">
+      </div>
+    </div>
+    
+    <div class="day-card">
+      <div class="dc-toggle"></div>
+      <div class="dc-info">
+        <div class="dc-name"><span class="dc-emoji">🌙</span> السبت</div>
+      </div>
+      <div class="dc-time-inputs">
+        <input type="time" value="09:00">
+        <span class="arrow">←</span>
+        <input type="time" value="17:00">
+      </div>
+    </div>
+    
+    <button class="add-btn-full" style="margin-top: 16px;">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+      حفظ المواعيد (5 أيام نشطة)
+    </button>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     DESIGN 3: Visual Weekly Grid + Presets
+     ============================================================ -->
+<div class="design-label">— التصميم ٣: شبكة أسبوعية بصرية + قوالب —</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="icon-box">📅</div>
+    <div>
+      <h3>إضافة مواعيد العمل</h3>
+      <p>اختر القالب أو حدد يدويًا</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <!-- Preset Templates -->
+    <div style="font-size: 12px; font-weight: 700; opacity: 0.6; margin-bottom: 10px;">⚡ قوالب جاهزة</div>
+    <div class="presets">
+      <div class="preset sel">
+        <span class="p-icon">🌅</span>
+        <span class="p-name">صباحي</span>
+        <span class="p-time">9 ص — 2 م</span>
+      </div>
+      <div class="preset">
+        <span class="p-icon">🌆</span>
+        <span class="p-name">مسائي</span>
+        <span class="p-time">2 م — 7 م</span>
+      </div>
+      <div class="preset">
+        <span class="p-icon">☀️</span>
+        <span class="p-name">يوم كامل</span>
+        <span class="p-time">9 ص — 5 م</span>
+      </div>
+      <div class="preset">
+        <span class="p-icon">✨</span>
+        <span class="p-name">مخصص</span>
+        <span class="p-time">أنت تختار</span>
+      </div>
+    </div>
+    
+    <!-- Summary Cards -->
+    <div class="visual-summary">
+      <div class="vs-card">
+        <div class="vs-num">5</div>
+        <div class="vs-label">أيام نشطة</div>
+      </div>
+      <div class="vs-card">
+        <div class="vs-num">5</div>
+        <div class="vs-label">ساعات يوميًا</div>
+      </div>
+      <div class="vs-card">
+        <div class="vs-num">25</div>
+        <div class="vs-label">ساعة أسبوعيًا</div>
+      </div>
+      <div class="vs-card">
+        <div class="vs-num">50</div>
+        <div class="vs-label">موعد/أسبوع</div>
+      </div>
+    </div>
+    
+    <!-- Visual Weekly Grid -->
+    <div style="font-size: 12px; font-weight: 700; opacity: 0.6; margin-bottom: 10px;">📊 الجدول الأسبوعي</div>
+    <div class="week-grid">
+      <!-- Header Row -->
+      <div class="wg-corner"></div>
+      <div class="wg-day on"><span class="wg-emoji">🌞</span><span class="wg-name">الأحد</span></div>
+      <div class="wg-day on"><span class="wg-emoji">🌙</span><span class="wg-name">الاثنين</span></div>
+      <div class="wg-day on"><span class="wg-emoji">⭐</span><span class="wg-name">الثلاثاء</span></div>
+      <div class="wg-day on"><span class="wg-emoji">🌟</span><span class="wg-name">الأربعاء</span></div>
+      <div class="wg-day on"><span class="wg-emoji">💫</span><span class="wg-name">الخميس</span></div>
+      <div class="wg-day"><span class="wg-emoji">☀️</span><span class="wg-name">الجمعة</span></div>
+      <div class="wg-day"><span class="wg-emoji">🌙</span><span class="wg-name">السبت</span></div>
+      
+      <!-- 8 AM -->
+      <div class="wg-hour">8 ص</div>
+      <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+      
+      <!-- 9 AM -->
+      <div class="wg-hour">9 ص</div>
+      <div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+      
+      <!-- 10 AM -->
+      <div class="wg-hour">10 ص</div>
+      <div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+      
+      <!-- 11 AM -->
+      <div class="wg-hour">11 ص</div>
+      <div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+      
+      <!-- 12 PM -->
+      <div class="wg-hour">12 م</div>
+      <div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+      
+      <!-- 1 PM -->
+      <div class="wg-hour">1 م</div>
+      <div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell filled"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+      
+      <!-- 2 PM -->
+      <div class="wg-hour">2 م</div>
+      <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+      
+      <!-- 3 PM -->
+      <div class="wg-hour">3 م</div>
+      <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+      
+      <!-- 4 PM -->
+      <div class="wg-hour">4 م</div>
+      <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+      
+      <!-- 5 PM -->
+      <div class="wg-hour">5 م</div>
+      <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+      
+      <!-- 6 PM -->
+      <div class="wg-hour">6 م</div>
+      <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+      
+      <!-- 7 PM -->
+      <div class="wg-hour">7 م</div>
+      <div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div><div class="wg-cell"></div>
+    </div>
+    
+    <button class="add-btn-full">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      حفظ المواعيد
+    </button>
+  </div>
+</div>
+
+
+</body>
+</html>

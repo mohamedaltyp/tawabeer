@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ shops });
   } catch (e: any) {
     console.error("GET /api/shops error:", e);
-    return NextResponse.json({ error: "حدث خطأ في تحميل المحلات" }, { status: 500 });
+    return NextResponse.json({ error: "حدث خطأ في تحميل المنشآت" }, { status: 500 });
   }
 }
 
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
         const limits = getPlanLimits(plan);
         return NextResponse.json(
           {
-            error: `باقتك (${plan === "free" ? "مجاني" : plan}) تسمح فقط بـ ${limits.maxShops} محلات. رقي باقتك لتنشئ المزيد.`,
+            error: `باقتك (${plan === "free" ? "مجاني" : plan}) تسمح فقط بـ ${limits.maxShops} منشآت. رقي باقتك لتنشئ المزيد.`,
             code: "plan_limit_reached",
             upgradeUrl: "/dashboard/pricing",
           },
@@ -40,6 +40,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ shop }, { status: 201 });
   } catch (e: any) {
     console.error("POST /api/shops error:", e);
-    return NextResponse.json({ error: "تعذر إنشاء المحل. تحقق من البيانات وحاول مجدداً." }, { status: 500 });
+    return NextResponse.json({ error: "تعذر إنشاء المنشأة. تحقق من البيانات وحاول مجدداً." }, { status: 500 });
   }
 }

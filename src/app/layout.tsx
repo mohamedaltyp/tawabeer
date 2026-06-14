@@ -12,7 +12,7 @@ const cairo = Cairo({ variable: "--font-cairo", subsets: ["arabic", "latin"], we
 
 export const metadata: Metadata = {
   title: "طوابير — نظام إدارة الطوابير الذكي",
-  description: "نظام إدارة قوائم الانتظار الرقمية للمحلات والخدمات",
+  description: "نظام إدارة قوائم الانتظار الرقمية للمنشآت والخدمات",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

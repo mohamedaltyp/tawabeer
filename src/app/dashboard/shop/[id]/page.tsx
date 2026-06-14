@@ -75,6 +75,7 @@ export default function ShopDashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
+  const [bookingEnabled, setBookingEnabled] = useState(false);
   const [counters, setCounters] = useState<Counter[]>([]);
   const [selectedCounter, setSelectedCounter] = useState<string>("");
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -106,6 +107,7 @@ export default function ShopDashboard() {
         if (d.settings) {
           setAvgServiceMinutes(d.settings.avg_service_minutes || 10);
           setIsOpen(d.settings.is_open !== 0);
+          setBookingEnabled(d.settings.booking_enabled === 1);
         }
       })
       .catch(() => {});
@@ -337,7 +339,17 @@ export default function ShopDashboard() {
         <div className="bg-gradient-to-r from-red-500 to-rose-600 text-white text-center py-3 px-4">
           <p className="font-bold text-sm flex items-center justify-center gap-2">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-400" />
-            <span>المحل مغلق — العملاء لا يستطيعون حجز أدوار جديدة</span>
+            <span>المنشأة مغلقة — العملاء لا يستطيعون حجز أدوار جديدة</span>
+          </p>
+        </div>
+      )}
+
+      {/* Booking Disabled Banner */}
+      {isOpen && !bookingEnabled && (
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-center py-3 px-4">
+          <p className="font-bold text-sm flex items-center justify-center gap-2">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400" />
+            <span>الحجز المسبق معطّل —فعّله من الإعدادات للسماح بالحجز أونلاين</span>
           </p>
         </div>
       )}
@@ -645,7 +657,7 @@ export default function ShopDashboard() {
           <div className="text-center py-16">
             <div className="mb-6 flex justify-center text-cyan-300 animate-float"><Icon name="users" size={64} /></div>
             <p className="text-xl font-bold text-gray-900 mb-2">لا يوجد زبائن حتى الآن</p>
-            <p className="text-sm text-gray-400 mb-6">شارك QR كود محلك ليبدأ الزبائن في الحجز</p>
+            <p className="text-sm text-gray-400 mb-6">شارك QR كود منشأتك ليبدأ الزبائن في الحجز</p>
             <button
               onClick={() => setShowQR(true)}
               className="btn-primary inline-flex items-center gap-2"
@@ -662,7 +674,7 @@ export default function ShopDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowQR(false)}>
           <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl animate-scale-in text-center" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900"><Icon name="smartphone" size={16} /> QR Code المحل</h3>
+              <h3 className="text-lg font-bold text-gray-900"><Icon name="smartphone" size={16} /> QR Code المنشأة</h3>
               <button onClick={() => setShowQR(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600"><Icon name="x" size={18} /></button>
             </div>
             <p className="text-sm text-gray-400 mb-4">شارك هذا الكود مع عملائك لحجز الأدوار</p>

@@ -236,7 +236,7 @@ export default function StatsPage() {
             <span className="text-cyan-300"><Icon name="arrowLeft" size={20} /></span>
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">{shop?.name || "المحل"}</h1>
+            <h1 className="text-xl font-bold text-gray-900">{shop?.name || "المنشأة"}</h1>
             <p className="text-xs text-gray-400">الإحصائيات والتحليلات</p>
           </div>
         </div>

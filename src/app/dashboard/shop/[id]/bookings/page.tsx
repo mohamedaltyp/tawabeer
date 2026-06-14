@@ -29,6 +29,7 @@ interface BookingSlot {
   day_of_week: number;
   start_time: string;
   end_time: string;
+  max_bookings: number;
   is_active: boolean;
   created_at: string;
 }
@@ -100,11 +101,11 @@ export default function BookingsManagementPage() {
   // Settings panel
   const [showSettings, setShowSettings] = useState(false);
 
-  // New slot form
-  const [showSlotForm, setShowSlotForm] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(0);
-  const [slotStart, setSlotStart] = useState("09:00");
-  const [slotEnd, setSlotEnd] = useState("17:00");
+  // Multi-slot form state
+  const [selectedDays, setSelectedDays] = useState<number[]>([0,1,2,3,4]); // Sun-Thu
+  const [slotTemplates, setSlotTemplates] = useState<{startTime: string; endTime: string; maxBookings: number}[]>([
+    { startTime: "09:00", endTime: "14:00", maxBookings: 10 }
+  ]);
 
   const [filterDate, setFilterDate] = useState(() => {
     const today = new Date();
@@ -177,29 +178,41 @@ export default function BookingsManagementPage() {
   };
 
   const handleAddSlot = async () => {
+    if (selectedDays.length === 0 || slotTemplates.length === 0) {
+      flash("error", "اختر يوماً واحداً على الأقل وأضف فترة زمنية");
+      return;
+    }
     setAddingSlot(true);
     const pw = getOwnerPassword();
-    try {
-      const res = await fetch(`/api/shops/${id}/booking-slots`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-        body: JSON.stringify({
-          dayOfWeek: selectedDay,
-          startTime: slotStart,
-          endTime: slotEnd,
-          owner_password: pw,
-        }),
-      });
-      const data = await res.json();
-      if (data.slot) {
-        setSlots([...slots, data.slot]);
-        flash("success", `✅ تم إضافة موعد ${DAY_NAMES[selectedDay]} من ${formatTime(slotStart)} إلى ${formatTime(slotEnd)}`);
-        setShowSlotForm(false);
-      } else if (data.error) {
-        flash("error", data.error);
+    let added = 0;
+    for (const day of selectedDays) {
+      for (const tmpl of slotTemplates) {
+        try {
+          const res = await fetch(`/api/shops/${id}/booking-slots`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+            body: JSON.stringify({
+              dayOfWeek: day,
+              startTime: tmpl.startTime,
+              endTime: tmpl.endTime,
+              maxBookings: tmpl.maxBookings,
+              owner_password: pw,
+            }),
+          });
+          const data = await res.json();
+          if (data.slot) {
+            setSlots(prev => [...prev, data.slot]);
+            added++;
+          } else if (data.error) {
+            flash("error", data.error);
+          }
+        } catch {
+          flash("error", "حدث خطأ");
+        }
       }
-    } catch {
-      flash("error", "حدث خطأ");
+    }
+    if (added > 0) {
+      flash("success", `✅ تم إضافة ${added} موعد عمل بنجاح`);
     }
     setAddingSlot(false);
   };
@@ -473,7 +486,7 @@ export default function BookingsManagementPage() {
                     </span>
                     {slotsByDay[day]?.length > 0 ? (
                       <p className="text-xs text-white/50 mt-0.5">
-                        {slotsByDay[day].sort((a, b) => (a.start_time > b.start_time ? 1 : -1)).map((s) => `${formatTime(s.start_time)} - ${formatTime(s.end_time)}`).join(" • ")}
+                        {slotsByDay[day].sort((a, b) => (a.start_time > b.start_time ? 1 : -1)).map((s) => `${formatTime(s.start_time)} - ${formatTime(s.end_time)} (${s.max_bookings || 5} حجز)`).join(" • ")}
                       </p>
                     ) : (
                       <p className="text-xs text-white/20 mt-0.5">لا توجد مواعيد</p>
@@ -499,26 +512,54 @@ export default function BookingsManagementPage() {
           </div>
         </div>
 
-        {/* Add Slot Form */}
+        {/* Add Slot Form — Multi-Slot */}
         <div className="rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 overflow-hidden">
           <div className="px-5 py-4 border-b border-white/5">
             <h3 className="text-lg font-bold flex items-center gap-2">
               <Plus className="w-5 h-5 text-indigo-400" />
-              إضافة موعد عمل جديد
+              إضافة مواعيد عمل جديدة
             </h3>
-            <p className="text-xs text-white/40 mt-1">أضف مواعيد العمل للسماح للعملاء بالحجز</p>
+            <p className="text-xs text-white/40 mt-1">أضف فترات زمنية للسماح للعملاء بالحجز — كل يوم يقدر يكون فيه أكتر من فترة</p>
           </div>
-          <div className="p-5 space-y-4">
-            {/* Day picker grid */}
+          <div className="p-5 space-y-5">
+
+            {/* Quick Templates */}
             <div>
-              <label className="block text-sm font-bold text-white/70 mb-3">اختر اليوم</label>
-              <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+              <label className="block text-sm font-bold text-white/70 mb-2">⚡ اختيار سريع</label>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: "صباحي", slots: [{ startTime: "09:00", endTime: "14:00", maxBookings: 10 }] },
+                  { label: "مسائي", slots: [{ startTime: "16:00", endTime: "21:00", maxBookings: 10 }] },
+                  { label: "يوم كامل", slots: [{ startTime: "09:00", endTime: "14:00", maxBookings: 10 }, { startTime: "16:00", endTime: "21:00", maxBookings: 10 }] },
+                  { label: "مخصص", slots: [{ startTime: "09:00", endTime: "14:00", maxBookings: 10 }] },
+                ].map((tmpl) => (
+                  <button
+                    key={tmpl.label}
+                    onClick={() => setSlotTemplates(tmpl.slots.map(s => ({ ...s })))}
+                    className="p-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white/60 hover:bg-indigo-500/10 hover:border-indigo-500/30 hover:text-indigo-300 transition-all"
+                  >
+                    {tmpl.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Multi-Day Picker */}
+            <div>
+              <label className="block text-sm font-bold text-white/70 mb-2">
+                📅 الأيام <span className="text-indigo-400">({selectedDays.length} محددة)</span>
+              </label>
+              <div className="grid grid-cols-7 gap-2">
                 {[0, 1, 2, 3, 4, 5, 6].map((day) => (
                   <button
                     key={day}
-                    onClick={() => setSelectedDay(day)}
-                    className={`p-2.5 rounded-xl text-sm font-medium transition-all ${
-                      selectedDay === day
+                    onClick={() => {
+                      setSelectedDays(prev =>
+                        prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+                      );
+                    }}
+                    className={`p-2 rounded-xl text-sm font-medium transition-all ${
+                      selectedDays.includes(day)
                         ? "bg-indigo-600 text-white shadow-lg scale-105"
                         : "bg-white/5 text-white/60 hover:bg-white/10"
                     }`}
@@ -528,40 +569,94 @@ export default function BookingsManagementPage() {
                   </button>
                 ))}
               </div>
-            </div>
-
-            {/* Time range */}
-            <div>
-              <label className="block text-sm font-bold text-white/70 mb-2">⏱️ الوقت</label>
-              <div className="flex items-end gap-3">
-                <div className="flex-1">
-                  <label className="block text-xs text-white/40 mb-1">من</label>
-                  <input
-                    type="time"
-                    value={slotStart}
-                    onChange={(e) => setSlotStart(e.target.value)}
-                    className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-                  />
-                </div>
-                <span className="text-white/30 text-xl pb-2">←</span>
-                <div className="flex-1">
-                  <label className="block text-xs text-white/40 mb-1">إلى</label>
-                  <input
-                    type="time"
-                    value={slotEnd}
-                    onChange={(e) => setSlotEnd(e.target.value)}
-                    className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-                  />
-                </div>
-                <button
-                  onClick={handleAddSlot}
-                  disabled={addingSlot}
-                  className="rounded-xl bg-gradient-to-l from-indigo-600 to-indigo-500 px-8 py-2.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition-all whitespace-nowrap"
-                >
-                  {addingSlot ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "✓ إضافة"}
-                </button>
+              <div className="flex gap-2 mt-2">
+                <button onClick={() => setSelectedDays([0,1,2,3,4])} className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs text-white/50 hover:bg-white/10">أيام الأسبوع</button>
+                <button onClick={() => setSelectedDays([0,1,2,3,4,5,6])} className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs text-white/50 hover:bg-white/10">الكل</button>
+                <button onClick={() => setSelectedDays([])} className="px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 hover:bg-red-500/20">مسح</button>
               </div>
             </div>
+
+            {/* Time Slots — Dynamic List */}
+            <div>
+              <label className="block text-sm font-bold text-white/70 mb-3">⏱️ الفترات الزمنية</label>
+              <div className="space-y-3">
+                {slotTemplates.map((tmpl, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-white/[0.03] border border-white/5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-indigo-400">فترة {idx + 1}</span>
+                      {slotTemplates.length > 1 && (
+                        <button
+                          onClick={() => setSlotTemplates(prev => prev.filter((_, i) => i !== idx))}
+                          className="w-6 h-6 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-xs text-red-400 hover:bg-red-500/20"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1">
+                        <label className="block text-xs text-white/40 mb-1">من</label>
+                        <input
+                          type="time"
+                          value={tmpl.startTime}
+                          onChange={(e) => {
+                            const updated = [...slotTemplates];
+                            updated[idx] = { ...updated[idx], startTime: e.target.value };
+                            setSlotTemplates(updated);
+                          }}
+                          className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                        />
+                      </div>
+                      <span className="text-white/30 text-xl pb-2">←</span>
+                      <div className="flex-1">
+                        <label className="block text-xs text-white/40 mb-1">إلى</label>
+                        <input
+                          type="time"
+                          value={tmpl.endTime}
+                          onChange={(e) => {
+                            const updated = [...slotTemplates];
+                            updated[idx] = { ...updated[idx], endTime: e.target.value };
+                            setSlotTemplates(updated);
+                          }}
+                          className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                        />
+                      </div>
+                      <div className="w-20">
+                        <label className="block text-xs text-white/40 mb-1">حد أقصى</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={tmpl.maxBookings}
+                          onChange={(e) => {
+                            const updated = [...slotTemplates];
+                            updated[idx] = { ...updated[idx], maxBookings: Number(e.target.value) || 1 };
+                            setSlotTemplates(updated);
+                          }}
+                          className="w-full rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-sm text-emerald-400 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-center"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => setSlotTemplates(prev => [...prev, { startTime: "14:00", endTime: "17:00", maxBookings: 10 }])}
+                className="w-full mt-3 py-2.5 rounded-xl border-2 border-dashed border-indigo-500/20 text-indigo-400 text-sm font-bold hover:border-indigo-500/40 hover:bg-indigo-500/5 transition-all flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> إضافة فترة أخرى
+              </button>
+            </div>
+
+            {/* Add Button */}
+            <button
+              onClick={handleAddSlot}
+              disabled={addingSlot || selectedDays.length === 0}
+              className="w-full rounded-xl bg-gradient-to-l from-indigo-600 to-indigo-500 px-6 py-3 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+            >
+              {addingSlot ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              إضافة {selectedDays.length} أيام × {slotTemplates.length} فترة = {selectedDays.length * slotTemplates.length} موعد
+            </button>
           </div>
         </div>
 

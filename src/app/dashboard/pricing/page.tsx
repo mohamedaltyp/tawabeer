@@ -18,7 +18,7 @@ export default function PricingPage() {
       color: "bg-gray-50 border-gray-200",
       badge: "",
       features: [
-        "✓ محل واحد",
+        "✓ منشأة واحدة",
         "✓ حتى ٥٠ زبون يومياً",
         "✓ إشعارات المتصفح",
         "✓ QR كود",
@@ -36,10 +36,10 @@ export default function PricingPage() {
       color: "bg-blue-50 border-blue-200 ring-2 ring-blue-400",
       badge: "الأكثر طلباً",
       features: [
-        "✓ حتى ٣ محلات",
+        "✓ حتى ٣ منشآت",
         "✓ حتى ٢٠٠ زبون يومياً",
         "✓ إشعارات المتصفح + واتساب",
-        "✓ QR كود مخصص لكل محل",
+        "✓ QR كود مخصص لكل منشأة",
         "✓ إحصائيات متقدمة",
         "✓ تقارير PDF أسبوعية",
         "✓ دعم عبر واتساب",
@@ -56,7 +56,7 @@ export default function PricingPage() {
       color: "bg-purple-50 border-purple-200",
       badge: "",
       features: [
-        "✓ حتى ١٠ محلات",
+        "✓ حتى ١٠ منشآت",
         "✓ زبائن غير محدود",
         "✓ كل ميزات الأساسي +",
         "✓ اسم نطاق مخصص",
@@ -76,7 +76,7 @@ export default function PricingPage() {
       color: "bg-amber-50 border-amber-200",
       badge: "",
       features: [
-        "✓ محلات غير محدود",
+        "✓ منشآت غير محدود",
         "✓ زبائن غير محدود",
         "✓ White-Label (بدون علامة طوابير)",
         "✓ لوحة تحكم مركزية",
@@ -109,7 +109,7 @@ export default function PricingPage() {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4"><Icon name="wallet" size={26} className="inline -mt-1" /> الباقات والأسعار</h1>
           <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-            اختر الباقة المناسبة لمحلك — ابدأ مجاناً وطور عملك مع المزيد من المميزات
+            اختر الباقة المناسبة لمنشأتك — ابدأ مجاناً وطور عملك مع المزيد من المميزات
           </p>
         </div>
 

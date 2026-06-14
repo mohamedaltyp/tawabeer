@@ -176,7 +176,7 @@ export default function BookingPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6" style={{ background: "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6C3CE1 100%)" }}>
         <div className="flex justify-center text-cyan-300"><Icon name="warning" size={76} /></div>
-        <h1 className="text-2xl font-bold text-white">المحل غير موجود</h1>
+        <h1 className="text-2xl font-bold text-white">المنشأة غير موجودة</h1>
         <Link href="/" className="text-white/70 hover:text-white transition-colors underline">العودة للرئيسية</Link>
       </div>
     );
@@ -196,12 +196,12 @@ export default function BookingPage() {
         <div className="flex flex-col items-center justify-center gap-4 p-6 pt-20">
           <div className="flex justify-center text-cyan-300"><Icon name="calendar" size={56} /></div>
           <h2 className="text-xl font-bold text-white text-center">الحجز بالمواعيد غير متاح</h2>
-          <p className="text-white/60 text-center">هذا المحل لا يقبل حجوزات أونلاين حالياً</p>
+          <p className="text-white/60 text-center">هذه المنشأة لا يقبل حجوزات أونلاين حالياً</p>
           <Link
             href={`/shop/${id}`}
             className="mt-4 px-6 py-3 bg-white/20 hover:bg-white/30 rounded-xl text-white font-bold transition-all"
           >
-            العودة لصفحة المحل
+            العودة لصفحة المنشأة
           </Link>
         </div>
       </div>
@@ -245,7 +245,7 @@ export default function BookingPage() {
             حجز موعد آخر
           </button>
           <Link href={`/shop/${id}`} className="text-white/60 hover:text-white text-sm underline transition-colors">
-            العودة لصفحة المحل
+            العودة لصفحة المنشأة
           </Link>
         </div>
       </div>

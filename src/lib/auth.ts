@@ -73,7 +73,7 @@ export async function requireOwner(
     if (shop.owner_phone && session.phone === shop.owner_phone) {
       return { ok: true, phone: session.phone, isAdmin: false };
     }
-    return { ok: false, status: 403, error: "غير مصرح لك بإدارة هذا المحل" };
+    return { ok: false, status: 403, error: "غير مصرح لك بإدارة هذه المنشأة" };
   }
 
   const password = req.headers.get("x-owner-password") || legacyBodyPassword;

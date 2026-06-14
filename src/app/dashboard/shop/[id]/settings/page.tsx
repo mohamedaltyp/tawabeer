@@ -14,6 +14,10 @@ interface ShopSettings {
   whatsapp_number: string;
   whatsapp_access_token?: string;
   whatsapp_business_account_id?: string;
+  booking_enabled: number;
+  slot_duration_minutes: number;
+  max_bookings_per_slot: number;
+  booking_advance_days: number;
 }
 
 interface Counter {
@@ -73,6 +77,10 @@ export default function ShopSettingsPage() {
         body: JSON.stringify({
           avg_service_minutes: settings.avg_service_minutes,
           greeting_message: settings.greeting_message,
+          booking_enabled: settings.booking_enabled,
+          slot_duration_minutes: settings.slot_duration_minutes,
+          max_bookings_per_slot: settings.max_bookings_per_slot,
+          booking_advance_days: settings.booking_advance_days,
           owner_password: pw,
         }),
       });
@@ -184,13 +192,13 @@ export default function ShopSettingsPage() {
         {/* shop status toggle */}
         <div className={`bg-white rounded-2xl border-2 overflow-hidden transition-colors ${settings.is_open === 1 ? "border-green-100" : "border-red-100"}`}>
           <div className={`px-5 py-4 border-b border-gray-100 ${settings.is_open === 1 ? "bg-green-50" : "bg-red-50"}`}>
-            <h2 className="font-bold flex items-center gap-2"><span className="text-xl">{settings.is_open === 1 ? "🟢" : "🔴"}</span><span className={settings.is_open === 1 ? "text-green-900" : "text-red-900"}>حالة المحل</span></h2>
+            <h2 className="font-bold flex items-center gap-2"><span className="text-xl">{settings.is_open === 1 ? "🟢" : "🔴"}</span><span className={settings.is_open === 1 ? "text-green-900" : "text-red-900"}>حالة المنشأة</span></h2>
           </div>
           <div className="p-5">
             <div className="flex items-center justify-between">
               <div>
                 <span className={`text-sm font-bold ${settings.is_open === 1 ? "text-green-700" : "text-red-700"}`}>
-                  {settings.is_open === 1 ? "✅ المحل مفتوح الآن" : "❌ المحل مغلق حالياً"}
+                  {settings.is_open === 1 ? "✅ المنشأة مفتوح الآن" : "❌ المنشأة مغلقة حالياً"}
                 </span>
                 <p className="text-xs text-gray-500 mt-1">عند الإغلاق، لن يتمكن العملاء من حجز أدوار جديدة</p>
               </div>
@@ -205,7 +213,7 @@ export default function ShopSettingsPage() {
                   if (res.ok) {
                     const data = await res.json();
                     if (data.settings) setSettings(data.settings);
-                    setMessage(newVal === 0 ? "🔴 تم إغلاق المحل" : "🟢 تم فتح المحل");
+                    setMessage(newVal === 0 ? "🔴 تم إغلاق المنشأة" : "🟢 تم فتح المنشأة");
                     setTimeout(() => setMessage(""), 3000);
                   }
                 }}
@@ -213,6 +221,81 @@ export default function ShopSettingsPage() {
                 <span className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all ${settings.is_open === 0 ? "translate-x-1" : "translate-x-8"}`} />
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Advance Booking Toggle */}
+        <div className={`bg-white rounded-2xl border-2 overflow-hidden transition-colors ${settings.booking_enabled === 1 ? "border-indigo-100" : "border-gray-100"}`}>
+          <div className={`px-5 py-4 border-b border-gray-100 ${settings.booking_enabled === 1 ? "bg-indigo-50" : "bg-gray-50"}`}>
+            <h2 className="font-bold flex items-center gap-2">
+              <span className="text-xl">📅</span>
+              <span className={settings.booking_enabled === 1 ? "text-indigo-900" : "text-gray-900"}>الحجز المسبق</span>
+            </h2>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className={`text-sm font-bold ${settings.booking_enabled === 1 ? "text-indigo-700" : "text-gray-600"}`}>
+                  {settings.booking_enabled === 1 ? "✅ الحجز المسبق مفعّل" : "❌ الحجز المسبق معطّل"}
+                </span>
+                <p className="text-xs text-gray-500 mt-1">السماح للعملاء بحجز مواعيد مسبقة من الموقع</p>
+              </div>
+              <button onClick={async () => {
+                  const newVal = settings.booking_enabled === 0 ? 1 : 0;
+                  const pw = getOwnerPassword();
+                  const res = await fetch(`/api/shops/${id}/settings`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+                    body: JSON.stringify({ booking_enabled: newVal, owner_password: pw }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.settings) setSettings(data.settings);
+                    setMessage(newVal === 1 ? "✅ تم تفعيل الحجز المسبق" : "❌ تم تعطيل الحجز المسبق");
+                    setTimeout(() => setMessage(""), 3000);
+                  }
+                }}
+                className={`relative w-16 h-8 rounded-full transition-all ${settings.booking_enabled === 0 ? "bg-gray-300" : "bg-indigo-500"} shadow-lg`}>
+                <span className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all ${settings.booking_enabled === 0 ? "translate-x-1" : "translate-x-8"}`} />
+              </button>
+            </div>
+
+            {settings.booking_enabled === 1 && (
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                {/* Slot Duration */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ⏱️ مدة كل موعد: <span className="font-bold text-indigo-600">{settings.slot_duration_minutes} دقيقة</span>
+                  </label>
+                  <input type="range" min="15" max="120" step="5" value={settings.slot_duration_minutes}
+                    onChange={(e) => setSettings({ ...settings, slot_duration_minutes: Number(e.target.value) })}
+                    className="w-full h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer" />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1"><span>15 د</span><span>120 د</span></div>
+                </div>
+
+                {/* Max Bookings per Slot */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    👥 أقصى حجوزات لكل موعد: <span className="font-bold text-indigo-600">{settings.max_bookings_per_slot}</span>
+                  </label>
+                  <input type="range" min="1" max="20" value={settings.max_bookings_per_slot}
+                    onChange={(e) => setSettings({ ...settings, max_bookings_per_slot: Number(e.target.value) })}
+                    className="w-full h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer" />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1"><span>1</span><span>20</span></div>
+                </div>
+
+                {/* Advance Days */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📆 الحجز المسبق: <span className="font-bold text-indigo-600">{settings.booking_advance_days} يوم</span>
+                  </label>
+                  <input type="range" min="1" max="30" value={settings.booking_advance_days}
+                    onChange={(e) => setSettings({ ...settings, booking_advance_days: Number(e.target.value) })}
+                    className="w-full h-2 rounded-full appearance-none bg-gray-200 accent-indigo-600 cursor-pointer" />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1"><span>يوم</span><span>30 يوم</span></div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
